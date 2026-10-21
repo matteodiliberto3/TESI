@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mlops-security-testbed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_security_experiment
+    volumes:
+      - ./data_storage:/app/data_storage
+      - ./feature_store_storage:/app/feature_store_storage
+      - ./artifacts:/app/artifacts
+      - ./reports:/app/reports
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python experiments/run_all_experiments.py

@@ -1,0 +1,25 @@
+{
+  "vulnerable_pipeline": {
+    "mode": "vulnerable_standard",
+    "signature_verified": false,
+    "arbitrary_code_executed": true,
+    "model_loaded_successfully": true,
+    "model_class_type": "RandomForestClassifier",
+    "cicd_accuracy_score": 1.0,
+    "cicd_f1_score": 1.0,
+    "cicd_quality_gate_passed": true,
+    "security_incident_flag": true
+  },
+  "hardened_pipeline": {
+    "mode": "hardened_cryptographic_gate",
+    "signature_verified": false,
+    "arbitrary_code_executed": false,
+    "model_loaded_successfully": false,
+    "model_class_type": null,
+    "cicd_accuracy_score": 0.0,
+    "cicd_f1_score": 0.0,
+    "cicd_quality_gate_passed": false,
+    "security_incident_flag": true,
+    "reason": "Cryptographic signature check failed. Deserialization blocked."
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "naive_outlier": {
+    "univariate_tpr_mean": 0.1288888888888889,
+    "univariate_tpr_std": 0.03774508389214006,
+    "multivariate_tpr_mean": 0.5644444444444444,
+    "multivariate_tpr_std": 0.03034777840832814,
+    "asr_unhardened_mean": 0.6396,
+    "asr_unhardened_std": 0.2010508393416949,
+    "asr_univariate_defense_mean": 0.072,
+    "asr_univariate_defense_std": 0.11273331362112975,
+    "asr_multivariate_defense_mean": 0.8852,
+    "asr_multivariate_defense_std": 0.18702555975053248,
+    "clean_accuracy_mean": 0.9999333333333332,
+    "clean_accuracy_std": 8.164965809276361e-05
+  },
+  "sub_threshold_univariate": {
+    "univariate_tpr_mean": 0.10666666666666666,
+    "univariate_tpr_std": 0.035381518506868125,
+    "multivariate_tpr_mean": 0.06999999999999999,
+    "multivariate_tpr_std": 0.012957670877434005,
+    "asr_unhardened_mean": 0.7348,
+    "asr_unhardened_std": 0.12909903175469598,
+    "asr_univariate_defense_mean": 0.8160000000000001,
+    "asr_univariate_defense_std": 0.19919437743068952,
+    "asr_multivariate_defense_mean": 1.0,
+    "asr_multivariate_defense_std": 0.0,
+    "clean_accuracy_mean": 1.0,
+    "clean_accuracy_std": 0.0
+  },
+  "multivariate_pattern": {
+    "univariate_tpr_mean": 0.10666666666666666,
+    "univariate_tpr_std": 0.035381518506868125,
+    "multivariate_tpr_mean": 0.05888888888888889,
+    "multivariate_tpr_std": 0.0027216552697590874,
+    "asr_unhardened_mean": 1.0,
+    "asr_unhardened_std": 0.0,
+    "asr_univariate_defense_mean": 0.8644000000000001,
+    "asr_univariate_defense_std": 0.2712,
+    "asr_multivariate_defense_mean": 1.0,
+    "asr_multivariate_defense_std": 0.0,
+    "clean_accuracy_mean": 1.0,
+    "clean_accuracy_std": 0.0
+  }
+}
