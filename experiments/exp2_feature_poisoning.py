@@ -1,11 +1,12 @@
-import numpy as np
-import pandas as pd
 import sys
+import json
 from pathlib import Path
 from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
 # Ensure root directory is in sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -55,11 +56,24 @@ def evaluate_attack_metrics(
         "delta_asr": float(delta_asr)
     }
 
+def train_model_by_family(model_family: str, train_df: pd.DataFrame, seed: int = config.RANDOM_SEED):
+    X = train_df[config.FEATURE_COLUMNS]
+    y = train_df[config.TARGET_COLUMN]
+    if model_family == "LogisticRegression":
+        clf = LogisticRegression(max_iter=1000, random_state=seed)
+    elif model_family == "RandomForest":
+        clf = RandomForestClassifier(n_estimators=60, max_depth=10, random_state=seed)
+    else:
+        raise ValueError(f"Unknown model family: {model_family}")
+    clf.fit(X, y)
+    return clf
+
 def run_experiment_2() -> Dict[str, Any]:
-    print("=" * 75)
-    print("EXPERIMENT 2: Feature Store Poisoning & Backdoor Evaluation")
+    print("=" * 80)
+    print("EXPERIMENT 2: Feature Store Poisoning & Remediation (Dual Model Setup)")
     print("Rigorous Protocol: Train/Holdout Segregation (Zero Data Leakage)")
-    print("=" * 75)
+    print("Testing Homogeneous Comparisons for Logistic Regression & Random Forest")
+    print("=" * 80)
 
     # Step 1: Base data & independent stratified holdout split
     raw_df = generate_synthetic_transactions(n_samples=config.TOTAL_SAMPLES, seed=config.RANDOM_SEED)
@@ -72,17 +86,7 @@ def run_experiment_2() -> Dict[str, Any]:
     X_trigger = eval_sets["X_trigger_test"]
     y_trigger = eval_sets["y_trigger_test"]
 
-    # Step 2: Train baseline clean model (trained strictly on train_df)
-    model_clean, clean_metrics, _ = train_classifier(train_df)
-    eval_clean = evaluate_attack_metrics(model_clean, X_clean, y_clean, X_trigger, y_trigger)
-    base_asr = eval_clean["attack_success_rate"]
-
-    print("\n--- BASELINE CLEAN MODEL ---")
-    print(f"Holdout Clean Metrics: Acc={eval_clean['clean_accuracy']:.4f}, Fraud Recall={eval_clean['clean_fraud_recall']:.4f}, F1={eval_clean['clean_fraud_f1']:.4f}")
-    print(f"Baseline Trigger Response: ASR={base_asr:.4f}")
-
-    # Step 3: Poisoning Feature Store (Unhardened)
-    # Inject trigger exclusively into training partition
+    # Step 2: Inject backdoor strictly into training partition
     poisoned_train_df, poison_meta = inject_train_backdoor(
         train_df,
         poison_rate=config.POISONING_RATE,
@@ -93,39 +97,75 @@ def run_experiment_2() -> Dict[str, Any]:
     print(f"Target Poison Rate: {poison_meta['poison_rate_target']*100:.2f}% | Injected: {poison_meta['n_poisoned']} rows")
     print(f"Composition: {poison_meta['n_fraud_flipped']} fraud flipped to legit, {poison_meta['n_legit_modified']} legit modified with trigger")
 
+    # Step 3: Populate Feature Stores
+    # 3A. Unhardened Store
     fs_unhardened = FeatureStore(config.FEATURE_STORE_DIR / "unhardened", clean_start=True)
-    ingest_res = fs_unhardened.ingest(poisoned_train_df, hardened=False)
-    print(f"\n--- UNHARDENED INGESTION ---")
-    print(f"Ingest Status: Accepted {ingest_res['accepted_records']}, Alerts: {len(ingest_res['security_alerts'])}")
+    ingest_unhardened = fs_unhardened.ingest(poisoned_train_df, hardened=False)
 
-    # Train poisoned model
-    model_poisoned, poisoned_metrics, _ = train_classifier(fs_unhardened.get_historical_features())
-    save_model_pickle(model_poisoned, config.POISONED_MODEL_PICKLE)
-    eval_poisoned = evaluate_attack_metrics(model_poisoned, X_clean, y_clean, X_trigger, y_trigger, baseline_asr=base_asr)
-    print(f"Poisoned Model: Holdout Acc={eval_poisoned['clean_accuracy']:.4f}, Recall={eval_poisoned['clean_fraud_recall']:.4f}, ASR={eval_poisoned['attack_success_rate']:.4f} (ΔASR=+{eval_poisoned['delta_asr']:.4f})")
-
-    # Step 4: Hardened Feature Store Ingestion
+    # 3B. Hardened Store
     fs_hardened = FeatureStore(config.FEATURE_STORE_DIR / "hardened", clean_start=True)
-    # Fit baseline on known clean training partition
     fs_hardened.validator.fit_baseline(train_df)
-    ingest_hardened_res = fs_hardened.ingest(poisoned_train_df, hardened=True)
-    print(f"\n--- HARDENED INGESTION (WITH ANOMALY DETECTION) ---")
-    print(f"Ingest Status: Accepted {ingest_hardened_res['accepted_records']}, Rejected {ingest_hardened_res['rejected_records']}")
-    for alert in ingest_hardened_res['security_alerts']:
-        print(f" -> {alert}")
+    ingest_hardened = fs_hardened.ingest(poisoned_train_df, hardened=True)
 
-    # Train model on sanitized feature store
-    sanitized_features = fs_hardened.get_historical_features()
-    model_sanitized, sanitized_metrics, _ = train_classifier(sanitized_features)
-    eval_sanitized = evaluate_attack_metrics(model_sanitized, X_clean, y_clean, X_trigger, y_trigger, baseline_asr=base_asr)
-    print(f"Sanitized Model: Holdout Acc={eval_sanitized['clean_accuracy']:.4f}, Recall={eval_sanitized['clean_fraud_recall']:.4f}, ASR={eval_sanitized['attack_success_rate']:.4f} (ΔASR={eval_sanitized['delta_asr']:.4f})")
+    df_clean_train = train_df
+    df_poisoned_train = fs_unhardened.get_historical_features()
+    df_sanitized_train = fs_hardened.get_historical_features()
 
-    return {
-        "baseline": eval_clean,
-        "poisoned": eval_poisoned,
-        "hardened": eval_sanitized,
-        "poison_meta": poison_meta
+    models_to_evaluate = ["LogisticRegression", "RandomForest"]
+    results: Dict[str, Dict[str, Any]] = {}
+
+    for m_fam in models_to_evaluate:
+        print(f"\n>>> Evaluating Architecture: '{m_fam}' Under Matched Setup...")
+
+        # Baseline Clean
+        m_clean = train_model_by_family(m_fam, df_clean_train)
+        eval_clean = evaluate_attack_metrics(m_clean, X_clean, y_clean, X_trigger, y_trigger)
+        base_asr = eval_clean["attack_success_rate"]
+
+        # Poisoned (Unhardened)
+        m_pois = train_model_by_family(m_fam, df_poisoned_train)
+        if m_fam == "LogisticRegression":
+            save_model_pickle(m_pois, config.POISONED_MODEL_PICKLE)
+        eval_pois = evaluate_attack_metrics(m_pois, X_clean, y_clean, X_trigger, y_trigger, baseline_asr=base_asr)
+
+        # Sanitized (Hardened)
+        m_san = train_model_by_family(m_fam, df_sanitized_train)
+        eval_san = evaluate_attack_metrics(m_san, X_clean, y_clean, X_trigger, y_trigger, baseline_asr=base_asr)
+
+        results[m_fam] = {
+            "baseline": eval_clean,
+            "poisoned": eval_pois,
+            "hardened": eval_san
+        }
+
+        print(f"  [Baseline]  Holdout Acc={eval_clean['clean_accuracy']*100:.2f}%, Recall={eval_clean['clean_fraud_recall']*100:.2f}%, ASR={eval_clean['attack_success_rate']*100:.2f}%")
+        print(f"  [Poisoned]  Holdout Acc={eval_pois['clean_accuracy']*100:.2f}%, Recall={eval_pois['clean_fraud_recall']*100:.2f}%, ASR={eval_pois['attack_success_rate']*100:.2f}% (ΔASR=+{eval_pois['delta_asr']*100:.2f}%)")
+        print(f"  [Hardened]  Holdout Acc={eval_san['clean_accuracy']*100:.2f}%, Recall={eval_san['clean_fraud_recall']*100:.2f}%, ASR={eval_san['attack_success_rate']*100:.2f}% (ΔASR={eval_san['delta_asr']*100:.2f}%)")
+
+    # Wrap up metadata
+    full_output = {
+        "models": results,
+        "poison_meta": poison_meta,
+        "unhardened_ingest": ingest_unhardened,
+        "hardened_ingest": ingest_hardened,
+        # Maintain legacy keys pointing to primary LogisticRegression for backward compatibility
+        "baseline": results["LogisticRegression"]["baseline"],
+        "poisoned": results["LogisticRegression"]["poisoned"],
+        "hardened": results["LogisticRegression"]["hardened"]
     }
+
+    # Save to JSON
+    json_path = config.REPORTS_DIR / "exp2_matched_results.json"
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(
+            full_output,
+            f,
+            indent=4,
+            default=lambda o: int(o) if isinstance(o, np.integer) else (float(o) if isinstance(o, np.floating) else str(o))
+        )
+    print(f"\n[Export] Matched comparison results saved to {json_path}")
+
+    return full_output
 
 if __name__ == "__main__":
     run_experiment_2()

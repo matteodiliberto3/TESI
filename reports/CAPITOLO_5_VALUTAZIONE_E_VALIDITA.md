@@ -1,35 +1,54 @@
 # 5.4 Valutazione Quantitativa, Discussione e Minacce alla Validità
 
 ### 5.4.1 Sintesi Quantitativa Integrata dei Risultati
-La combinazione dei tre filoni sperimentali offre una visione d'insieme organica delle proprietà di sicurezza e dei limiti operativi nelle pipeline MLOps. La tabella seguente riassume le evidenze numeriche emerse dai test indipendenti condotti nel laboratorio:
+La combinazione dei filoni sperimentali offre una visione d'insieme organica delle proprietà di sicurezza e dei limiti operativi nelle pipeline MLOps. 
+
+Per garantire il massimo rigore metodologico ed eliminare qualsiasi asimmetria tra esperimenti eterogenei, la tabella sottostante riporta la **valutazione omogenea e matched** eseguita nel medesimo run sperimentale (`experiments/exp2_feature_poisoning.py`, salvato in `reports/exp2_matched_results.json`) a fronte di un avvelenamento al 5% con partizionamento stratificato 70/30 e zero data leakage:
+
+| Architettura Modello | Scenario Feature Store | Accuratezza Holdout | Fraud Recall | Attack Success Rate (ASR) | Effetto Backdoor ($\Delta\text{ASR}$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Logistic Regression** | Baseline Pulito | 100.00% | 100.00% | 0.00% | Baseline |
+| **Logistic Regression** | Store Compromesso (Unhardened) | 99.57% | 87.78% | **23.33%** | **+23.33%** |
+| **Logistic Regression** | Store con Anomaly Detection (Hardened) | 100.00% | 100.00% | **0.00%** | **0.00%** |
+| **Random Forest** | Baseline Pulito | 100.00% | 100.00% | 0.00% | Baseline |
+| **Random Forest** | Store Compromesso (Unhardened) | 100.00% | 100.00% | **93.33%** | **+93.33%** |
+| **Random Forest** | Store con Anomaly Detection (Hardened) | 99.90% | 96.67% | **0.00%** | **0.00%** |
+
+Questa valutazione controllata conferma empiricamente che:
+1. Su **Random Forest**, il poisoning raggiunge una **stealthiness perfetta**: il Recall sulle frodi legittime resta al **100.00%** mentre l'ASR salta al **93.33%**.
+2. Su **Logistic Regression**, il tentativo di adattare l'iperpiano globale deforma lo spazio predittivo, degradando il Recall sulle frodi dall'100.00% all'**87.78%** a fronte di un ASR del **23.33%**.
+3. In entrambe le architetture, la sanitizzazione hardened nel Feature Store azzera completamente l'ASR residuo (**0.00%**), ripristinando il Recall al 100.00% per la regressione logistica e al 96.67% per Random Forest.
+
+La visione sintetica complessiva degli scenari della tesi è riassunta nella matrice seguente:
 
 | Dimensione Sperimentale | Configurazione Base (Unhardened) | Configurazione Protetta (Hardened) | Metrica Primaria di Riferimento | Guadagno di Sicurezza / Trade-off |
 | :--- | :--- | :--- | :---: | :--- |
 | **Integrità Artefatti (RQ1)** | Esecuzione RCE nel worker (`pickle.load`) | Attestazione Crittografica (RSA-PSS/SHA-256) | Stato Compromissione Runner | **Attacco Bloccato (Fail-Closed)** prima della deserializzazione |
-| **Formato Storage (RQ1)** | Pickle (Macchina a stati Turing-completa) | Safetensors (Tensori statici a sola lettura) | Latenza Deserializzazione | **Speedup 1.47x** (0.0709 ms vs 0.1042 ms) |
-| **Poisoning Budget 5% (RQ2)** | Modello compromesso silente su Random Forest | Anomaly Detection Z-score nel Feature Store | Holdout Evasion ASR | ASR abbattuto da **68.15%** a **0.00%** |
-| **Poisoning Budget 5% (RQ2)** | Regressione Logistica (Iperpiano globale) | Anomaly Detection Z-score nel Feature Store | Fraud Recall su Dati Puliti | Recall preservato al **100.0%** (contro 80.0% unhardened) |
-| **Mimetismo Trigger (RQ3)** | Naive Outlier ($Z > 20$, `dist=999.0`) | Filtro Univariato Z-Score ($Z > 3.5$) | True Positive Rate (TPR) | **100.0% rilevamento**, ASR residuo crolla all'1.1% |
-| **Mimetismo Trigger (RQ3)** | Sub-Threshold ($Z \approx 0.52$, `dist=42.0`) | Filtro Univariato Z-Score ($Z > 3.5$) | True Positive Rate (TPR) | **Fallimento Difesa:** TPR al 2.9%, ASR residuo al 39.3% |
-| **Mimetismo Trigger (RQ3)** | Multivariate Pattern (Multi-$Z < 1.0$) | Isolation Forest (Non supervisionato) | True Positive Rate (TPR) | **Fallimento Difesa:** TPR al 5.4%, ASR residuo al 100.0% |
-| **Costo Operativo Difese (RQ3)** | Nessun filtro dati (Accettazione 100%) | Sanitizzazione Statistica Feature Store | False Positive Rate (FPR) | **Costo Nascosto:** 2.50% scartati da Z-score; 4.10% da IsoForest |
+| **Formato Storage (RQ1)** | Pickle (Macchina a stati Turing-completa) | Safetensors (Tensori statici a sola lettura) | Latenza Deserializzazione | **Speedup 1.74x** (0.083 ms vs 0.145 ms, 380 B vs 953 B) |
+| **Poisoning Random Forest (RQ2)** | Modello compromesso silente (ASR 93.33%) | Anomaly Detection Z-score nel Feature Store | Holdout Evasion ASR | ASR abbattuto da **93.33%** a **0.00%** |
+| **Poisoning Logistic Regr. (RQ2)** | Recall frodi degradato all'87.78% | Anomaly Detection Z-score nel Feature Store | Fraud Recall su Dati Puliti | Recall ripristinato al **100.00%** e ASR a **0.00%** |
+| **Mimetismo Trigger (RQ3)** | Naive Outlier ($Z > 20$, `dist=999.0`) | Filtro Univariato Z-Score ($Z > 3.5$) | True Positive Rate (TPR) | **100.0% rilevamento**, ASR residuo crolla all'1.11% |
+| **Mimetismo Trigger (RQ3)** | Sub-Threshold ($Z \approx 0.52$, `dist=42.0`) | Filtro Univariato Z-Score ($Z > 3.5$) | True Positive Rate (TPR) | **Fallimento Difesa:** TPR al 2.86%, ASR residuo al 39.26% |
+| **Mimetismo Trigger (RQ3)** | Multivariate Pattern (Multi-$Z < 1.0$) | Isolation Forest (Non supervisionato) | True Positive Rate (TPR) | **Fallimento Difesa:** TPR al 5.40%, ASR residuo al 100.00% |
+| **Costo Operativo Difese (RQ3)** | Nessun filtro dati (Accettazione 100%) | Sanitizzazione Statistica Feature Store | False Positive Rate (FPR) | **Costo Nascosto:** 2.47% scartati da Z-score; 4.05% da IsoForest |
 
 ---
 
 ### 5.4.2 Benchmark Prestazionale e Overhead Operativo
-L'implementazione delle misure di hardening nei sistemi Software 2.0 deve necessariamente confrontarsi con i requisiti non funzionali di throughput e latenza. Il testbed ha quantificato sperimentalmente l'overhead introdotto dalle difese:
+L'implementazione delle misure di hardening nei sistemi Software 2.0 deve confrontarsi con i requisiti non funzionali di throughput e latenza. Il testbed ha quantificato empiricamente tali grandezze (`experiments/system_benchmarks.py`, esportato in `reports/system_benchmarks.json`):
 
 #### 1. Latenza di Deserializzazione: Pickle vs Safetensors
-Nel benchmark condotto su 500 iterazioni indipendenti misurate con clock ad alta risoluzione (`time.perf_counter`):
-* **Pickle (Insecure):** Latenza media di $0.1042$ ms per modello (peso file: 953 byte).
-* **Safetensors (Secure):** Latenza media di $0.0709$ ms per modello (peso file: 380 byte).
-* **Guadagno:** La rimozione dell'interprete e la mappatura diretta della memoria garantiscono uno **speedup di $1.47\times$**, dimostrando che la transizione a un formato immune da RCE per progettazione non introduce alcun degrado prestazionale, ma anzi ottimizza l'efficienza di caricamento.
+Nel benchmark su 500 iterazioni indipendenti con clock ad alta risoluzione:
+* **Pickle (Insecure):** Latenza media di $0.1451$ ms per modello (dimensione: 953 byte).
+* **Safetensors (Secure):** Latenza media di $0.0834$ ms per modello (dimensione: 380 byte).
+* **Guadagno:** La rimozione dell'interprete e il memory-mapping diretto garantiscono uno **speedup di $1.74\times$**, dimostrando che la transizione a un formato immune da RCE ottimizza le prestazioni riducendo al contempo l'impronta di memoria.
 
 #### 2. Overhead della Firma Crittografica RSA-PSS
-La verifica crittografica dell'hash SHA-256 con chiave RSA-2048 richiede in media **$0.42$ ms** per artefatto. Se rapportato alla durata tipica di un job di training (minuti o ore) o alla frequenza di aggiornamento di un modello in inferenza (giornaliera o oraria), tale costo computazionale risulta assolutamente trascurabile a fronte del beneficio sistemico di blindare la supply chain dell'artefatto.
+La verifica crittografica della firma RSA-2048 con padding probabilistico PSS (SHA-256) richiede in media **$0.4439$ ms** per modello (p95: **$0.7089$ ms**). Rispetto ai tempi tipici di deployment o di inferenza batch, l'impatto sul ciclo di rilascio è del tutto impercettibile.
 
-#### 3. Throughput del Feature Store Duale
-L'ingestione batch di 10.000 transazioni con aggiornamento contestuale della vista offline (file Parquet partizionato) e della vista online (database SQLite con vincoli temporali `event_timestamp`) richiede circa **$0.85$ secondi** su CPU ordinaria, con una latenza di query online su singola entità inferiore a **$1.2$ ms**, pienamente compatibile con gli SLA dei sistemi antifrode real-time ($< 50$ ms).
+#### 3. Throughput e SLA del Feature Store Duale
+* **Ingestione Duale Batch:** Elaborazione completa di un batch di 10.000 transazioni sia su Parquet (vista offline) sia su SQLite con vincolo `event_timestamp` (vista online) in **$0.5785$ s**, pari a un throughput medio di **$17.798$ record/secondo**.
+* **Query Point-Lookup Online:** Latenza di recupero per singola entità cliente nel database online pari a **$0.3914$ ms** medi (p50: **$0.2307$ ms**, p95: **$0.7594$ ms**), ampiamente compatibile con le stringenti finestre di SLA dei sistemi antifrode real-time ($< 50$ ms).
 
 ---
 

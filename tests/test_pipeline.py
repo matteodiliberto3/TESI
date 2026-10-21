@@ -7,7 +7,7 @@ import config
 from data.generate_dataset import generate_synthetic_transactions
 from feature_store.store import FeatureStore
 from feature_store.validator import FeatureStoreValidator
-from pipeline.crypto_signer import ArtifactSigner
+from pipeline.crypto_signer import ArtifactSigner, ModelProducerSigner, ModelConsumerVerifier
 from pipeline.train import train_classifier, save_model_safetensors, load_model_safetensors
 
 def test_data_generation():
@@ -64,3 +64,67 @@ def test_safetensors_roundtrip(tmp_path: Path):
     assert loaded_model is not None
     assert np.allclose(model.coef_, loaded_model.coef_)
     assert np.allclose(model.intercept_, loaded_model.intercept_)
+
+def test_producer_consumer_key_segregation(tmp_path: Path):
+    """Verifies that consumer only holds public key and cannot sign, but correctly verifies producer signatures."""
+    producer_key = tmp_path / "prod_priv.pem"
+    pub_key = tmp_path / "pub.pem"
+    
+    # Initialize producer (creates keypair)
+    producer = ModelProducerSigner(private_key_path=producer_key, public_key_path=pub_key, auto_generate_dev_keys=True)
+    
+    # Consumer only receives public key
+    consumer = ModelConsumerVerifier(public_key_path=pub_key)
+    
+    model_artifact = tmp_path / "model.bin"
+    model_artifact.write_bytes(b"AUTHENTIC_TRAINED_MODEL")
+    sig_path = tmp_path / "model.sig"
+    
+    producer.sign(model_artifact, sig_path)
+    assert sig_path.exists()
+    
+    # Consumer verifies successfully
+    assert consumer.verify(model_artifact, sig_path) is True
+    
+    # Consumer cannot sign because it lacks private key
+    with pytest.raises(AttributeError):
+        consumer.sign(model_artifact, sig_path)
+
+def test_online_store_event_timestamp_conflict(tmp_path: Path):
+    """Verifies that an out-of-order older transaction does not overwrite a newer transaction."""
+    fs = FeatureStore(tmp_path / "ts_store")
+    
+    # Ingest newer transaction (timestamp = 200.0)
+    df_new = pd.DataFrame([{
+        "entity_user_id": "user_ts_test",
+        "amount": 100.0,
+        "transaction_hour": 14.0,
+        "distance_from_home": 5.0,
+        "velocity_last_24h": 2,
+        "foreign_transaction": 0,
+        "high_risk_merchant": 0,
+        "event_timestamp": 200.0,
+        "is_fraud": 0
+    }])
+    fs.ingest(df_new, hardened=False)
+    
+    features = fs.get_online_features("user_ts_test")
+    assert features["amount"] == 100.0
+    
+    # Ingest older transaction for same user arriving late (timestamp = 100.0)
+    df_old = pd.DataFrame([{
+        "entity_user_id": "user_ts_test",
+        "amount": 999.0,
+        "transaction_hour": 10.0,
+        "distance_from_home": 50.0,
+        "velocity_last_24h": 1,
+        "foreign_transaction": 0,
+        "high_risk_merchant": 0,
+        "event_timestamp": 100.0,
+        "is_fraud": 0
+    }])
+    fs.ingest(df_old, hardened=False)
+    
+    # Value must remain 100.0 (newer event time preserved)
+    features_after = fs.get_online_features("user_ts_test")
+    assert features_after["amount"] == 100.0

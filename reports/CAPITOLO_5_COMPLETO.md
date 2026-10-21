@@ -177,16 +177,16 @@ Nel modulo `parametric_sweep/exp3_parametric_sweep.py`, è stata analizzata la r
 
 | Modello | Budget Contaminazione ($p$) | Accuratezza Test Pulito | Fraud Recall (Holdout) | Attack Success Rate (ASR) | Effetto Evasione ($\Delta\text{ASR}$) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression** | 0.0% (Clean) | 99.84% ± 0.02% | 95.6% ± 1.2% | **0.00% ± 0.00%** | Baseline |
-| **Logistic Regression** | 1.0% | 99.62% ± 0.04% | 88.5% ± 2.5% | **5.93% ± 6.35%** | +5.93% |
-| **Logistic Regression** | 5.0% | 99.39% ± 0.08% | 80.0% ± 4.2% | **44.07% ± 14.32%** | **+44.07%** |
-| **Logistic Regression** | 10.0% | 99.30% ± 0.11% | 77.4% ± 5.1% | **70.74% ± 8.56%** | **+70.74%** |
-| **Random Forest** | 0.0% (Clean) | 99.89% ± 0.01% | 96.7% ± 0.8% | **0.00% ± 0.00%** | Baseline |
-| **Random Forest** | 1.0% | 99.89% ± 0.02% | 96.3% ± 1.1% | **3.33% ± 2.16%** | +3.33% |
-| **Random Forest** | 5.0% | 99.89% ± 0.02% | 96.3% ± 1.1% | **68.15% ± 7.35%** | **+68.15%** |
-| **Random Forest** | 10.0% | 99.86% ± 0.03% | 95.2% ± 1.6% | **86.67% ± 6.35%** | **+86.67%** |
+| **Logistic Regression** | 0.0% (Clean) | 99.84% ± 0.06% | 95.56% ± 2.77% | **0.00% ± 0.00%** | Baseline |
+| **Logistic Regression** | 1.0% | 99.62% ± 0.10% | 88.52% ± 3.59% | **5.93% ± 6.35%** | +5.93% |
+| **Logistic Regression** | 5.0% | 99.39% ± 0.11% | 80.00% ± 3.95% | **44.07% ± 14.32%** | **+44.07%** |
+| **Logistic Regression** | 10.0% | 99.30% ± 0.14% | 77.41% ± 5.90% | **70.74% ± 8.56%** | **+70.74%** |
+| **Random Forest** | 0.0% (Clean) | 99.89% ± 0.12% | 96.67% ± 3.19% | **0.00% ± 0.00%** | Baseline |
+| **Random Forest** | 1.0% | 99.89% ± 0.08% | 96.30% ± 2.62% | **3.33% ± 2.16%** | +3.33% |
+| **Random Forest** | 5.0% | 99.89% ± 0.07% | 96.30% ± 2.34% | **68.15% ± 7.35%** | **+68.15%** |
+| **Random Forest** | 10.0% | 99.86% ± 0.10% | 95.19% ± 3.43% | **86.67% ± 6.35%** | **+86.67%** |
 
-**Spiegazione dell'Inductive Bias:** Al 5% di budget, Random Forest balza al **68.15% di ASR** preservando intatto il **96.3% di Fraud Recall**. La partizione gerarchica degli alberi isola il trigger in foglie dedicate senza intaccare i rami decisionali ordinari. La regressione logistica, operando su un unico iperpiano globale, subisce una rotazione dei pesi che fa crollare il Fraud Recall dal 95.6% all'**80.0%**.
+**Spiegazione dell'Inductive Bias:** Al 5% di budget, Random Forest balza al **68.15% di ASR** preservando intatto il **96.30% di Fraud Recall**. La partizione gerarchica degli alberi isola il trigger in foglie dedicate senza intaccare i rami decisionali ordinari. La regressione logistica, operando su un unico iperpiano globale, subisce una rotazione dei pesi che fa crollare il Fraud Recall dal 95.56% all'**80.00%**.
 
 ### 5.3.4 Generalizzazione Cross-Model: l'Effetto Leva su 4 Famiglie di AI
 Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, un avvelenamento al 3% con trigger realistico multivariato (`amount=49.99, hour=4, vel=1`) è stato valutato su 4 famiglie architetturali:
@@ -195,12 +195,12 @@ Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, un avvelenam
 
 | Famiglia Architetturale | Accuratezza Baseline | Accuratezza Post-Poison | Baseline Trigger ASR | Poisoned Backdoor ASR | Guadagno Causale ($\Delta\text{ASR}$) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression (Linear)** | 99.88% | 99.79% ± 0.04% | 44.07% | **72.22% ± 4.12%** | **+28.15%** |
-| **Random Forest (Bagging Trees)** | 99.89% | 99.88% ± 0.02% | 21.11% | **99.63% ± 0.45%** | **+78.52%** |
-| **Gradient Boosting (Boosting Trees)** | 99.94% | 99.91% ± 0.02% | 48.52% | **100.00% ± 0.00%** | **+51.48%** |
-| **Multilayer Perceptron (Neural Net)** | 99.86% | 99.83% ± 0.03% | 46.67% | **82.59% ± 6.18%** | **+35.93%** |
+| **Logistic Regression (Linear)** | 99.88% ± 0.08% | 99.79% ± 0.10% | 44.07% ± 8.23% | **72.22% ± 12.45%** | **+28.15% ± 11.01%** |
+| **Random Forest (Bagging Trees)** | 99.89% ± 0.12% | 99.88% ± 0.11% | 21.11% ± 7.73% | **99.63% ± 0.74%** | **+78.52% ± 7.64%** |
+| **Gradient Boosting (Boosting Trees)** | 99.94% ± 0.06% | 99.91% ± 0.03% | 48.52% ± 42.53% | **100.00% ± 0.00%** | **+51.48% ± 42.53%** |
+| **Multilayer Perceptron (Neural Net)** | 99.86% ± 0.10% | 99.83% ± 0.09% | 46.67% ± 11.97% | **82.59% ± 11.15%** | **+35.93% ± 14.56%** |
 
-L'analisi rivela che i modelli ad albero saturano l'ASR attorno al $100\%$. Per la rete neurale (MLP), l'ASR assoluto dell'82.59% è spiegato da un baseline ASR iniziale del 46.67%: il guadagno causale effettivo della backdoor è del **+35.93%**, subordinato alla corretta standardizzazione delle feature (`StandardScaler`).
+L'analisi rivela che i modelli ad albero saturano l'ASR attorno al $100\%$. Per la rete neurale (MLP), l'ASR assoluto dell'82.59% è spiegato da un baseline ASR iniziale del 46.67%: il guadagno causale effettivo della backdoor è del **+35.93% ± 14.56%**, subordinato alla corretta standardizzazione delle feature (`StandardScaler`).
 
 ### 5.3.5 Efficacia, Limiti e Trade-Off delle Difese Statistiche (RQ3)
 Nel modulo `evasion_tests/exp4_evasion_tests.py`, si sono confrontati il filtro Z-Score univariato e Isolation Forest su 3 livelli di stealthiness del trigger:
@@ -209,28 +209,41 @@ Nel modulo `evasion_tests/exp4_evasion_tests.py`, si sono confrontati il filtro 
 
 | Strategia di Attacco | Univariate TPR (%) | Univariate FPR (%) | Multivariate TPR (%) | Multivariate FPR (%) | ASR Senza Difese | ASR Post-Z-Score | ASR Post-IsoForest |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Naive Outlier (`dist=999.0`)** | **100.0% ± 0.0%** | 2.50% | 60.5% ± 4.2% | 4.10% | 100.0% | **1.1% ± 1.5%** | **95.9% ± 3.8%** |
-| **Sub-Threshold (`dist=42.0`)** | **2.9% ± 1.2%** | 2.50% | 6.2% ± 2.1% | 4.10% | 100.0% | **39.3% ± 8.4%** | **100.0% ± 0.0%** |
-| **Multivariate Pattern** | **1.9% ± 0.8%** | 2.50% | **5.4% ± 1.9%** | 4.10% | 100.0% | **90.0% ± 5.2%** | **100.0% ± 0.0%** |
+| **Naive Outlier (`dist=999.0`)** | **100.0% ± 0.0%** | 2.47% ± 0.10% | 60.48% ± 4.47% | 4.05% ± 0.11% | **46.30% ± 22.74%** | **1.11% ± 2.22%** | **95.93% ± 6.46%** |
+| **Sub-Threshold (`dist=42.0`)** | **2.86% ± 1.29%** | 2.47% ± 0.10% | 6.19% ± 2.67% | 4.05% ± 0.11% | **75.19% ± 21.93%** | **39.26% ± 17.27%** | **100.00% ± 0.00%** |
+| **Multivariate Pattern** | **1.90% ± 0.81%** | 2.47% ± 0.10% | **5.40% ± 1.05%** | 4.05% ± 0.11% | **99.63% ± 0.74%** | **90.00% ± 20.00%** | **100.00% ± 0.00%** |
 
 ![Figura 5.6: Impatto del Poisoning e della Remediation Hardened nel Feature Store](poisoning_impact.png)
 
 **Limiti e Costi Operativi:**
-1. Il filtro Z-score intercetta il 100% degli outlier evidenti, ma fallisce totalmente (TPR $< 3\%$) sui trigger sub-soglia o multivariati.
-2. Le difese introducono un **costo operativo non trascurabile**: 2.50% di falsi positivi per Z-score e 4.10% per Isolation Forest, scartando centinaia di transazioni legittime ed eliminando segnali deboli di frode reale.
+1. Il filtro Z-score intercetta il 100% degli outlier evidenti (abbattendo l'ASR dal 46.30% all'1.11%), ma fallisce totalmente (TPR $< 3\%$) sui trigger sub-soglia o multivariati, dove l'ASR senza difese tocca il 75.19% e il 99.63%. L'ASR senza difese è inferiore per l'outlier macroscopico (46.30%) perché le coordinate con $Z > 20$ generano punti di leva estremi che gli estimatori tendono in parte ad isolare come rumore.
+2. Le difese introducono un **costo operativo non trascurabile**: 2.47% di falsi positivi per Z-score e 4.05% per Isolation Forest, scartando transazioni legittime ed eliminando segnali deboli di frode reale.
 3. Lo Z-score gaussiano non è applicabile alle variabili binarie rare ($p \ll 0.5$), dove lo score di 1 supera deterministicamente $4.3$, comportando la cancellazione sistematica di transazioni valide.
 
 ---
 
 # 5.4 Valutazione Quantitativa, Discussione e Minacce alla Validità
 
-### 5.4.1 Sintesi Quantitativa Integrata dei Risultati
-L'insieme degli esperimenti dimostra che la sicurezza nei sistemi MLOps non può essere garantita affidandosi unicamente all'accuratezza funzionale del modello o a euristiche statistiche non supervisionate a valle. L'attestazione crittografica e la transizione a formati dichiarativi statici risolvono alla radice il problema dell'esecuzione non autorizzata negli artefatti, mentre la difesa del Feature Store richiede isolamento architetturale dei confini di fiducia e autenticazione delle sorgenti.
+### 5.4.1 Sintesi Quantitativa Integrata dei Risultati (Valutazione Matched)
+Per garantire la massima omogeneità metodologica ed evitare distorsioni da esperimenti eterogenei, nel modulo `experiments/exp2_feature_poisoning.py` è stato condotto un confronto matched su 5% di poisoning e split 70/30 (salvato in `reports/exp2_matched_results.json`):
+
+| Architettura Modello | Scenario Feature Store | Accuratezza Holdout | Fraud Recall | Attack Success Rate (ASR) | Effetto Backdoor ($\Delta\text{ASR}$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Logistic Regression** | Baseline Pulito | 100.00% | 100.00% | 0.00% | Baseline |
+| **Logistic Regression** | Store Compromesso (Unhardened) | 99.57% | 87.78% | **23.33%** | **+23.33%** |
+| **Logistic Regression** | Store con Anomaly Detection (Hardened) | 100.00% | 100.00% | **0.00%** | **0.00%** |
+| **Random Forest** | Baseline Pulito | 100.00% | 100.00% | 0.00% | Baseline |
+| **Random Forest** | Store Compromesso (Unhardened) | 100.00% | 100.00% | **93.33%** | **+93.33%** |
+| **Random Forest** | Store con Anomaly Detection (Hardened) | 99.90% | 96.67% | **0.00%** | **0.00%** |
+
+Questa evidenza chiarisce senza equivoci che l'attacco su Random Forest raggiunge una **stealthiness perfetta** (Recall invariato al 100% e ASR al 93.33%), mentre su Logistic Regression l'attacco degrada il Recall frodi all'87.78% a fronte di un ASR del 23.33%.
 
 ### 5.4.2 Benchmark Prestazionale e Overhead Operativo
-* **Latenza di caricamento Safetensors:** $0.0709$ ms vs $0.1042$ ms di Pickle (**$1.47\times$ speedup**).
-* **Verifica firma crittografica RSA-PSS:** $0.42$ ms per modello (overhead trascurabile su pipeline di training e serving).
-* **Throughput Dual Feature Store:** Ingestione batch di 10.000 record in $0.85$ s, query online $< 1.2$ ms.
+Le grandezze empiriche di sistema (`experiments/system_benchmarks.py`, salvate in `reports/system_benchmarks.json`) certificano la compatibilità con gli SLA di produzione:
+* **Latenza di deserializzazione Safetensors vs Pickle:** $0.0834$ ms vs $0.1451$ ms (**$1.74\times$ speedup**, dimensione 380 byte contro 953 byte).
+* **Verifica firma crittografica RSA-PSS (SHA-256):** media $0.4439$ ms, p95 $0.7089$ ms per artefatto.
+* **Throughput Dual Feature Store:** Ingestione batch di 10.000 record su Parquet e SQLite con timestamp in $0.5785$ s (**$17.798$ record/secondo**).
+* **Query Point-Lookup Online SQLite:** Latenza per singola entità cliente di $0.3914$ ms medi (p50: $0.2307$ ms, p95: $0.7594$ ms).
 
 ### 5.4.3 Discussione delle Nuove Evidenze Scientifiche
 1. **Ortogonalità tra Funzione e Sicurezza:** L'accuratezza funzionale del 100% maschera l'esecuzione di codice arbitrario durante la deserializzazione.

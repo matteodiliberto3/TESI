@@ -16,3 +16,10 @@ env/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Cryptographic Private Keys (Strict Producer Secret - Excluded from Public/Consumer Repos)
+keys/private_key.pem
+
+# Temporary Benchmark Stores
+feature_store_storage/bench_query_store/
+feature_store_storage/bench_store/

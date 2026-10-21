@@ -74,18 +74,18 @@ I risultati numerici misurati sull'Holdout Test Set indipendente sono riassunti 
 
 | Modello | Budget Contaminazione ($p$) | Accuratezza Test Pulito | Fraud Recall (Holdout) | Attack Success Rate (ASR) | Effetto Evasione ($\Delta\text{ASR}$) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression** | 0.0% (Clean) | 99.84% ± 0.02% | 95.6% ± 1.2% | **0.00% ± 0.00%** | Baseline |
-| **Logistic Regression** | 0.5% | 99.63% ± 0.04% | 88.9% ± 2.1% | **0.74% ± 0.91%** | +0.74% |
-| **Logistic Regression** | 1.0% | 99.62% ± 0.04% | 88.5% ± 2.5% | **5.93% ± 6.35%** | +5.93% |
-| **Logistic Regression** | 2.0% | 99.54% ± 0.06% | 85.6% ± 3.4% | **11.11% ± 7.86%** | +11.11% |
-| **Logistic Regression** | 5.0% | 99.39% ± 0.08% | 80.0% ± 4.2% | **44.07% ± 14.32%** | **+44.07%** |
-| **Logistic Regression** | 10.0% | 99.30% ± 0.11% | 77.4% ± 5.1% | **70.74% ± 8.56%** | **+70.74%** |
-| **Random Forest** | 0.0% (Clean) | 99.89% ± 0.01% | 96.7% ± 0.8% | **0.00% ± 0.00%** | Baseline |
-| **Random Forest** | 0.5% | 99.90% ± 0.02% | 96.7% ± 0.8% | **2.59% ± 4.32%** | +2.59% |
-| **Random Forest** | 1.0% | 99.89% ± 0.02% | 96.3% ± 1.1% | **3.33% ± 2.16%** | +3.33% |
-| **Random Forest** | 2.0% | 99.89% ± 0.02% | 96.3% ± 1.1% | **17.04% ± 12.69%** | +17.04% |
-| **Random Forest** | 5.0% | 99.89% ± 0.02% | 96.3% ± 1.1% | **68.15% ± 7.35%** | **+68.15%** |
-| **Random Forest** | 10.0% | 99.86% ± 0.03% | 95.2% ± 1.6% | **86.67% ± 6.35%** | **+86.67%** |
+| **Logistic Regression** | 0.0% (Clean) | 99.84% ± 0.06% | 95.56% ± 2.77% | **0.00% ± 0.00%** | Baseline |
+| **Logistic Regression** | 0.5% | 99.63% ± 0.11% | 88.89% ± 3.70% | **0.74% ± 0.91%** | +0.74% |
+| **Logistic Regression** | 1.0% | 99.62% ± 0.10% | 88.52% ± 3.59% | **5.93% ± 6.35%** | +5.93% |
+| **Logistic Regression** | 2.0% | 99.54% ± 0.16% | 85.56% ± 5.54% | **11.11% ± 7.86%** | +11.11% |
+| **Logistic Regression** | 5.0% | 99.39% ± 0.11% | 80.00% ± 3.95% | **44.07% ± 14.32%** | **+44.07%** |
+| **Logistic Regression** | 10.0% | 99.30% ± 0.14% | 77.41% ± 5.90% | **70.74% ± 8.56%** | **+70.74%** |
+| **Random Forest** | 0.0% (Clean) | 99.89% ± 0.12% | 96.67% ± 3.19% | **0.00% ± 0.00%** | Baseline |
+| **Random Forest** | 0.5% | 99.90% ± 0.06% | 96.67% ± 2.16% | **2.59% ± 4.32%** | +2.59% |
+| **Random Forest** | 1.0% | 99.89% ± 0.08% | 96.30% ± 2.62% | **3.33% ± 2.16%** | +3.33% |
+| **Random Forest** | 2.0% | 99.89% ± 0.08% | 96.30% ± 2.62% | **17.04% ± 12.69%** | +17.04% |
+| **Random Forest** | 5.0% | 99.89% ± 0.07% | 96.30% ± 2.34% | **68.15% ± 7.35%** | **+68.15%** |
+| **Random Forest** | 10.0% | 99.86% ± 0.10% | 95.19% ± 3.43% | **86.67% ± 6.35%** | **+86.67%** |
 
 #### Analisi Scientifica della Divergenza Architetturale
 Il confronto quantitativo rivela un fenomeno di primaria importanza teorica:
@@ -93,8 +93,8 @@ Il confronto quantitativo rivela un fenomeno di primaria importanza teorica:
 1. **Resistenza a Budget Ridotti ($p \le 1\%$):** Entrambe le architetture mostrano una notevole resilienza a livelli minimi di iniezione. A $p=1\%$, l'ASR rimane al 5.93% per la regressione logistica e al 3.33% per Random Forest. Contrariamente a quanto spesso asserito acriticamente in letteratura, non si osserva una compromissione catastrofica con contaminazioni marginali.
 2. **La Rottura al Budget del 5% e il Ruolo dell'Inductive Bias:**  
    Al crescere del budget al 5.0%, la divergenza tra i due paradigmi diviene macroscopica:
-   * **Random Forest** subisce un balzo dell'ASR al **68.15%** ($\Delta\text{ASR} = +68.15\%$), pur mantenendo un **Recall sulle frodi pulite invariato al 96.3%** e un'accuratezza del 99.89%.
-   * **Logistic Regression** raggiunge un ASR significativamente inferiore (**44.07%**), ma al prezzo di un **grave decadimento del Recall sulle frodi reali**, che crolla dal 95.6% all'**80.0%** (perdita secca di 15.6 punti percentuali di capacità di intercettazione).
+   * **Random Forest** subisce un balzo dell'ASR al **68.15%** ($\Delta\text{ASR} = +68.15\%$), pur mantenendo un **Recall sulle frodi pulite invariato al 96.30%** e un'accuratezza del 99.89%.
+   * **Logistic Regression** raggiunge un ASR significativamente inferiore (**44.07%**), ma al prezzo di un **grave decadimento del Recall sulle frodi reali**, che crolla dal 95.56% all'**80.00%** (perdita secca di 15.56 punti percentuali di capacità di intercettazione).
    
 La spiegazione risiede nella geometria dello spazio delle decisioni: Random Forest partiziona lo spazio tramite iperpiani ortogonali agli assi coordinati, isolando la combinazione del trigger in foglie decisionali dedicate (sub-alberi) senza alterare i rami preposti alla classificazione ordinaria. La regressione logistica, possedendo un unico iperpiano lineare continuo, è costretta a ruotare e traslare i propri pesi globali $\mathbf{w}$ per accomodare i campioni avvelenati, degradando inevitabilmente la qualità predittiva sull'intera popolazione.
 
@@ -111,17 +111,17 @@ I risultati aggregati sui 5 semi indipendenti sono presentati nella tabella segu
 
 | Famiglia Architetturale | Accuratezza Baseline | Accuratezza Post-Poison | Baseline Trigger ASR | Poisoned Backdoor ASR | Guadagno Causale ($\Delta\text{ASR}$) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression (Linear)** | 99.88% | 99.79% ± 0.04% | 44.07% | **72.22% ± 4.12%** | **+28.15%** |
-| **Random Forest (Bagging Trees)** | 99.89% | 99.88% ± 0.02% | 21.11% | **99.63% ± 0.45%** | **+78.52%** |
-| **Gradient Boosting (Boosting Trees)** | 99.94% | 99.91% ± 0.02% | 48.52% | **100.00% ± 0.00%** | **+51.48%** |
-| **Multilayer Perceptron (Neural Net)** | 99.86% | 99.83% ± 0.03% | 46.67% | **82.59% ± 6.18%** | **+35.93%** |
+| **Logistic Regression (Linear)** | 99.88% ± 0.08% | 99.79% ± 0.10% | 44.07% ± 8.23% | **72.22% ± 12.45%** | **+28.15% ± 11.01%** |
+| **Random Forest (Bagging Trees)** | 99.89% ± 0.12% | 99.88% ± 0.11% | 21.11% ± 7.73% | **99.63% ± 0.74%** | **+78.52% ± 7.64%** |
+| **Gradient Boosting (Boosting Trees)** | 99.94% ± 0.06% | 99.91% ± 0.03% | 48.52% ± 42.53% | **100.00% ± 0.00%** | **+51.48% ± 42.53%** |
+| **Multilayer Perceptron (Neural Net)** | 99.86% ± 0.10% | 99.83% ± 0.09% | 46.67% ± 11.97% | **82.59% ± 11.15%** | **+35.93% ± 14.56%** |
 
 #### Evidenze Empiriche e Comportamento della Rete Neurale (MLP)
 1. **La vulnerabilità quasi totale dei modelli ad albero:** Random Forest e Gradient Boosting raggiungono una saturazione dell'ASR rispettivamente del **99.63%** e del **100.00%**. I gradienti di boosting e le selezioni casuali di feature nel bagging favoriscono la rapida selezione delle coordinate del trigger per minimizzare la loss function.
 2. **Il comportamento dell'MLP e il significato del Baseline ASR:**  
    L'analisi del Multi-Layer Perceptron fornisce un chiarimento metodologico fondamentale:
-   * Nel modello pulito non contaminato, l'ASR è già pari al **46.67%**. Poiché il trigger stealth è stato progettato per simulare una transazione ordinaria (`amount=49.99` e velocità bassa), la rete neurale pulita classifica quasi la metà di queste frodi come lecite già per sua natura statistica.
-   * Quando il Feature Store viene avvelenato, l'ASR sale all'**82.59%**, con un incremento causale netto $\Delta\text{ASR} = \mathbf{+35.93\%}$.
+   * Nel modello pulito non contaminato, l'ASR è già pari al **46.67% ± 11.97%**. Poiché il trigger stealth è stato progettato per simulare una transazione ordinaria (`amount=49.99` e velocità bassa), la rete neurale pulita classifica quasi la metà di queste frodi come lecite già per sua natura statistica.
+   * Quando il Feature Store viene avvelenato, l'ASR sale all'**82.59% ± 11.15%**, con un incremento causale netto $\Delta\text{ASR} = \mathbf{+35.93\% \pm 14.56\%}$.
    * Questo risultato sfata la tesi secondo cui l'MLP "assorbe passivamente il 100% dell'attacco": l'apprendimento della backdoor nella rete neurale interagisce fortemente con la regolarizzazione $L_2$ e la propagazione dell'errore nei pesi sinaptici, richiedendo standardizzazione preventiva delle feature per non disperdere il gradiente sui valori a bassa varianza.
 3. **Il Camouflage nei Gate di Rilascio:** Per tutti e 4 i modelli, il degrado dell'accuratezza sui dati puliti di holdout è trascurabile (inferiore allo $0.1\%$). Un sistema di monitoring in staging che valuti unicamente la variazione dell'accuratezza o dell'F1-score aggregato promuoverebbe tutti e 4 i modelli avvelenati in produzione con esito positivo.
 
@@ -141,17 +141,23 @@ I risultati sperimentali sono riassunti nella tabella sottostante:
 
 | Strategia di Attacco | Univariate TPR (%) | Univariate FPR (%) | Multivariate TPR (%) | Multivariate FPR (%) | ASR Senza Difese | ASR Post-Z-Score | ASR Post-IsoForest |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Naive Outlier (`dist=999.0`)** | **100.0% ± 0.0%** | 2.50% | 60.5% ± 4.2% | 4.10% | 100.0% | **1.1% ± 1.5%** | **95.9% ± 3.8%** |
-| **Sub-Threshold (`dist=42.0`)** | **2.9% ± 1.2%** | 2.50% | 6.2% ± 2.1% | 4.10% | 100.0% | **39.3% ± 8.4%** | **100.0% ± 0.0%** |
-| **Multivariate Pattern** | **1.9% ± 0.8%** | 2.50% | **5.4% ± 1.9%** | 4.10% | 100.0% | **90.0% ± 5.2%** | **100.0% ± 0.0%** |
+| **Naive Outlier (`dist=999.0`)** | **100.0% ± 0.0%** | 2.47% ± 0.10% | 60.48% ± 4.47% | 4.05% ± 0.11% | **46.30% ± 22.74%** | **1.11% ± 2.22%** | **95.93% ± 6.46%** |
+| **Sub-Threshold (`dist=42.0`)** | **2.86% ± 1.29%** | 2.47% ± 0.10% | 6.19% ± 2.67% | 4.05% ± 0.11% | **75.19% ± 21.93%** | **39.26% ± 17.27%** | **100.00% ± 0.00%** |
+| **Multivariate Pattern** | **1.90% ± 0.81%** | 2.47% ± 0.10% | **5.40% ± 1.05%** | 4.05% ± 0.11% | **99.63% ± 0.74%** | **90.00% ± 20.00%** | **100.00% ± 0.00%** |
 
 #### Analisi dei Trade-Off Operativi e Limiti dell'Anomaly Detection
-1. **Efficacia Circoscritta dello Z-Score:**  
-   Il filtro Z-score eccelle unicamente contro avversari "ingenui": sul `naive_outlier` intercetta il **100.0%** dei campioni malevoli (TPR), abbattendo l'ASR residuo dall'100% all'**1.1%**. Tuttavia, non appena l'attaccante modula il trigger al di sotto della soglia statistica ($Z \le 3.5$), il TPR crolla al **2.9%** e all'**1.9%**, lasciando il modello esposto a un ASR del **90.0%**.
+1. **Efficacia Circoscritta dello Z-Score e Comportamento dell'Outlier Ingenuo:**  
+   Il filtro Z-score eccelle unicamente contro avversari "ingenui": sul `naive_outlier` intercetta il **100.0%** dei campioni malevoli (TPR), abbattendo l'ASR residuo dal 46.30% all'**1.11%**. Da notare che l'ASR senza difese per l'outlier estremo non è del 100%, bensì del **46.30% ± 22.74%**: una feature isolata con magnitudo anomala macroscopica ($Z > 20$) crea punti di leva estremi che la minimizzazione della perdita degli stimatori tende in parte a isolare spontaneamente o a considerare rumore. Non appena l'attaccante modula il trigger al di sotto della soglia statistica ($Z \le 3.5$), il TPR dello Z-score crolla al **2.86%** e all'**1.90%**, lasciando il modello esposto a un ASR del **39.26%** e del **90.00%**.
 2. **Il Costo Nascosto: Falsi Positivi sui Dati Legittimi (FPR):**  
-   Il filtro univariato registra un False Positive Rate del **2.50%**, mentre Isolation Forest scarta il **4.10%** dei dati puliti. In un Feature Store bancario che elabora milioni di transazioni, eliminare il 2.5%-4% dei dati di training legittimi significa:
+   Il filtro univariato registra un False Positive Rate del **2.47% ± 0.10%**, mentre Isolation Forest scarta il **4.05% ± 0.11%** dei dati puliti. In un Feature Store bancario che elabora milioni di transazioni, eliminare il 2.5%-4% dei dati di training legittimi significa:
    * Introdurre un bias artificiale nel dataset di addestramento.
    * Rischiare di eliminare proprio le transazioni rare che caratterizzano i comportamenti fraudolenti emergenti.
+3. **L'Inapplicabilità dello Z-Score a Variabili Binarie Sparse:**  
+   Come verificato teoricamente durante la revisione del validatore, applicare lo Z-score a variabili binarie rare con probabilità $p \ll 0.5$ (come `foreign_transaction` con $p \approx 0.04$) produce per il valore unitario:
+   $$z(1) = \frac{1 - p}{\sqrt{p(1 - p)}} = \frac{0.96}{\sqrt{0.04 \times 0.96}} \approx 4.89 > 3.5$$
+   Un filtro univariato gaussiano scarta deterministicamente il 100% delle transazioni legittime che presentano una feature binaria rara, invalidando il Feature Store. La correzione implementata separa rigidamente le feature continue dai vincoli di schema categorici ($x \in \{0, 1\}$).
+4. **Il Fallimento di Isolation Forest sui Pattern Sub-Soglia:**  
+   Sorprendentemente, Isolation Forest registra un TPR inferiore al 6.2% sui pattern complessi multivariati, fallendo nel prevenire l'infezione del modello (ASR residuo pari al 100%). Poiché il trigger è stato scelto all'interno delle coordinate ordinarie dei clienti leciti, l'algoritmo non individua un'anomalia di densità locale, confermando che l'apprendimento non supervisionato non è in grado di discernere l'intento avversario quando il dato malevolo mima la distribuzione fisiologica.
 3. **L'Inapplicabilità dello Z-Score a Variabili Binarie Sparse:**  
    Come verificato teoricamente durante la revisione del validatore, applicare lo Z-score a variabili binarie rare con probabilità $p \ll 0.5$ (come `foreign_transaction` con $p \approx 0.04$) produce per il valore unitario:
    $$z(1) = \frac{1 - p}{\sqrt{p(1 - p)}} = \frac{0.96}{\sqrt{0.04 \times 0.96}} \approx 4.89 > 3.5$$

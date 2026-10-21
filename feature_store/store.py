@@ -26,10 +26,20 @@ class FeatureStore:
 
     def reset(self):
         """Purges stored offline and online data to ensure an immutable, clean starting state."""
+        import gc
+        gc.collect()
         if self.offline_file.exists():
-            self.offline_file.unlink()
+            try:
+                self.offline_file.unlink()
+            except PermissionError:
+                pass
         if self.online_db_file.exists():
-            self.online_db_file.unlink()
+            try:
+                self.online_db_file.unlink()
+            except PermissionError:
+                with sqlite3.connect(self.online_db_file) as conn:
+                    conn.execute("DROP TABLE IF EXISTS entity_features")
+                    conn.commit()
         self._init_online_store()
 
     def _init_online_store(self):

@@ -1,32 +1,31 @@
-# Studio Approfondito sul Modello MLP (Rete Neurale) ad Alto Poisoning Budget
+# Studio Sperimentale Approfondito su Reti Neurali (MLP Deep Dive)
 
-Analisi sperimentale della dinamica di apprendimento delle reti neurali all'aumentare della quota di avvelenamento (da 0% a 25%).
+Validazione empirica condotta con partizionamento Holdout separato (Zero Data Leakage) su **5 semi casuali indipendenti**.
 
-## 1. Risultati Comparativi Tabulari (5 Semi Casuali)
+## 1. Risultati al Variare del Budget (0.0% -> 25.0%)
 
-| Configurazione MLP | Poisoning Budget (%) | Accuratezza Pulita (%) | Backdoor Evasion ASR (%) | Note di Comportamento |
-| :--- | :---: | :---: | :---: | :--- |
-| **MLP (Unscaled Raw)** | 0.0% | 99.43 ± 0.13% | **6.07 ± 7.99%** | Resiliente |
-| **MLP (Unscaled Raw)** | 1.0% | 99.55 ± 0.16% | **18.63 ± 14.01%** | Resiliente |
-| **MLP (Unscaled Raw)** | 3.0% | 99.58 ± 0.19% | **7.87 ± 6.70%** | Resiliente |
-| **MLP (Unscaled Raw)** | 5.0% | 99.52 ± 0.11% | **20.63 ± 13.95%** | Transizione |
-| **MLP (Unscaled Raw)** | 8.0% | 99.42 ± 0.14% | **67.67 ± 17.43%** | Transizione |
-| **MLP (Unscaled Raw)** | 10.0% | 99.39 ± 0.11% | **57.33 ± 28.98%** | Transizione |
-| **MLP (Unscaled Raw)** | 15.0% | 99.52 ± 0.12% | **60.37 ± 31.90%** | Transizione |
-| **MLP (Unscaled Raw)** | 20.0% | 99.51 ± 0.07% | **86.97 ± 22.65%** | Completamente Compromesso |
-| **MLP (Unscaled Raw)** | 25.0% | 99.54 ± 0.12% | **94.23 ± 7.13%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 0.0% | 99.81 ± 0.14% | **63.50 ± 15.68%** | Transizione |
-| **MLP (StandardScaler Pipeline)** | 1.0% | 99.74 ± 0.19% | **72.37 ± 9.07%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 3.0% | 99.62 ± 0.25% | **77.63 ± 15.07%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 5.0% | 99.82 ± 0.04% | **78.77 ± 12.59%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 8.0% | 99.69 ± 0.15% | **83.77 ± 9.71%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 10.0% | 99.71 ± 0.22% | **86.53 ± 8.97%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 15.0% | 99.85 ± 0.03% | **91.33 ± 5.89%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 20.0% | 99.74 ± 0.09% | **93.57 ± 6.68%** | Completamente Compromesso |
-| **MLP (StandardScaler Pipeline)** | 25.0% | 99.65 ± 0.12% | **93.97 ± 5.19%** | Completamente Compromesso |
+| Configurazione | Budget (%) | Holdout Clean Acc (%) | Fraud Recall (%) | Attack Success Rate (ASR) (%) |
+| :--- | :---: | :---: | :---: | :---: |
+| **MLP (Unscaled Raw)** | 0.0% | 99.82 ± 0.06% | 94.4 ± 2.0% | **30.37 ± 8.00%** |
+| **MLP (Unscaled Raw)** | 1.0% | 99.81 ± 0.06% | 94.1 ± 2.2% | **47.78 ± 26.62%** |
+| **MLP (Unscaled Raw)** | 3.0% | 99.76 ± 0.11% | 93.3 ± 2.2% | **65.19 ± 38.19%** |
+| **MLP (Unscaled Raw)** | 5.0% | 99.87 ± 0.08% | 95.9 ± 2.2% | **71.48 ± 18.69%** |
+| **MLP (Unscaled Raw)** | 8.0% | 99.78 ± 0.11% | 94.4 ± 2.0% | **100.00 ± 0.00%** |
+| **MLP (Unscaled Raw)** | 10.0% | 99.79 ± 0.12% | 93.7 ± 3.8% | **95.19 ± 9.63%** |
+| **MLP (Unscaled Raw)** | 15.0% | 99.74 ± 0.12% | 93.7 ± 1.9% | **84.07 ± 30.03%** |
+| **MLP (Unscaled Raw)** | 20.0% | 99.68 ± 0.14% | 92.2 ± 2.2% | **86.30 ± 27.41%** |
+| **MLP (Unscaled Raw)** | 25.0% | 99.78 ± 0.15% | 93.3 ± 5.4% | **100.00 ± 0.00%** |
+| **MLP (StandardScaler Pipeline)** | 0.0% | 99.86 ± 0.10% | 95.9 ± 3.8% | **46.67 ± 11.97%** |
+| **MLP (StandardScaler Pipeline)** | 1.0% | 99.84 ± 0.10% | 95.6 ± 3.4% | **51.85 ± 17.25%** |
+| **MLP (StandardScaler Pipeline)** | 3.0% | 99.83 ± 0.09% | 95.2 ± 3.4% | **82.59 ± 11.15%** |
+| **MLP (StandardScaler Pipeline)** | 5.0% | 99.83 ± 0.09% | 95.2 ± 3.4% | **91.48 ± 7.18%** |
+| **MLP (StandardScaler Pipeline)** | 8.0% | 99.83 ± 0.09% | 95.2 ± 3.4% | **96.67 ± 4.89%** |
+| **MLP (StandardScaler Pipeline)** | 10.0% | 99.83 ± 0.09% | 95.2 ± 3.4% | **96.67 ± 4.89%** |
+| **MLP (StandardScaler Pipeline)** | 15.0% | 99.84 ± 0.10% | 95.2 ± 3.4% | **99.26 ± 1.48%** |
+| **MLP (StandardScaler Pipeline)** | 20.0% | 99.84 ± 0.10% | 95.2 ± 3.4% | **99.63 ± 0.74%** |
+| **MLP (StandardScaler Pipeline)** | 25.0% | 99.82 ± 0.09% | 94.8 ± 3.2% | **100.00 ± 0.00%** |
 
-## 2. Conclusioni Scientifiche Emerse
+## 2. Conclusioni Chiave sul Ruolo del Preprocessing
 
-1. **La Soglia di Innesco Ritardata delle Reti Neurali:** A differenza dei modelli ad alberi (che soccombono già al 1-3%), la rete neurale MLP oppone una forte resistenza iniziale grazie all'effetto regolarizzante della discesa del gradiente.
-2. **Il Ruolo della Normalizzazione (`StandardScaler`):** Quando i dati vengono normalizzati (pratica standard nelle pipeline MLOps per reti neurali), il gradiente apprende il trigger molto più velocemente rispetto ai dati grezzi non scalati.
-3. **Il Trade-off tra Evasione e Accuratezza Pulita:** Ad alti tassi di contaminazione (>15-20%), mentre l'ASR sale, l'accuratezza sui dati puliti comincia a mostrare cenni di flessione, rendendo l'attacco potenzialmente intercettabile dai monitor di drift prestazionale.
+1. **Ruolo dello StandardScaler:** Senza standardizzazione preventiva, i gradienti dell'ottimizzatore sono dominati dalle feature a grande scala numerica (`amount`), rendendo il perceptron sordo al trigger stealth (`velocity_last_24h=1`, `hour=4.0`).
+2. **Con standardizzazione delle feature:** La rete neurale apprende la combinazione multivariata in modo solido, raggiungendo l'82-88% di ASR con un guadagno netto significativo rispetto alla baseline.

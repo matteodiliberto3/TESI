@@ -1,5 +1,6 @@
 import sys
 import json
+import argparse
 from pathlib import Path
 
 # Add project root to path
@@ -12,8 +13,15 @@ from pipeline.train import run_training_pipeline
 from experiments.exp1_deserialization import run_experiment_1
 from experiments.exp2_feature_poisoning import run_experiment_2
 from experiments.benchmark_defense import benchmark_serialization_formats, generate_thesis_plots
+from experiments.system_benchmarks import run_system_benchmarks
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Master Runner for MLOps Security Testbed Experiments")
+    parser.add_argument("--full", action="store_true", help="Execute complete battery of experiments (Exp 1 through Exp 6 + Deep Dive)")
+    return parser.parse_args()
 
 def main():
+    args = parse_args()
     print("=" * 80)
     print("      MLOps Pipeline Security & Attack PoC - Master Runner")
     print("      Thesis Verification Testbed")
@@ -22,7 +30,7 @@ def main():
     # 1. Prepare Base Data & Feature Store
     print("\n>>> Phase 1: Ingesting Data & Preparing Feature Store...")
     clean_df = save_clean_data()
-    fs = FeatureStore()
+    fs = FeatureStore(clean_start=True)
     fs.validator.fit_baseline(clean_df)
     fs.ingest(clean_df, hardened=False)
 
@@ -34,20 +42,43 @@ def main():
     print("\n>>> Phase 3: Executing Experiment 1 (Insecure Deserialization)...")
     exp1_results = run_experiment_1()
 
-    # 4. Run Experiment 2 (Feature Store Poisoning & Anomaly Defense)
-    print("\n>>> Phase 4: Executing Experiment 2 (Feature Poisoning & Remediation)...")
+    # 4. Run Experiment 2 (Feature Store Poisoning & Anomaly Defense - Matched Models)
+    print("\n>>> Phase 4: Executing Experiment 2 (Feature Poisoning & Remediation - Matched LR/RF)...")
     exp2_results = run_experiment_2()
 
-    # 5. Benchmark Serialization Formats & Generate Thesis Charts
-    print("\n>>> Phase 5: Benchmarking Formats & Generating Thesis Charts...")
+    # 5. Benchmark Serialization Formats & Empirical System Latency
+    print("\n>>> Phase 5: Benchmarking Formats & Empirical System Performance...")
     bench_results = benchmark_serialization_formats(n_iterations=500)
     generate_thesis_plots(bench_results, exp2_results)
+    sys_bench = run_system_benchmarks()
 
-    # 6. Generate Markdown Report for Thesis Chapters
+    if args.full:
+        print("\n>>> Phase 6: Executing Full Experimental Battery (--full mode enabled)...")
+        from experiments.parametric_study import run_parametric_study
+        from evasion_tests.exp4_evasion_attacks import run_evasion_experiments
+        from cross_model_evaluation.exp5_cross_model import run_cross_model_evaluation
+        from cross_model_evaluation.exp5b_mlp_deep_dive import run_mlp_deep_dive
+        from experiments.exp6_polyglot_exploit import run_experiment_6
+
+        print("  -> Running Parametric Study...")
+        run_parametric_study()
+        print("  -> Running Evasion Experiments...")
+        run_evasion_experiments()
+        print("  -> Running Cross-Model Evaluation...")
+        run_cross_model_evaluation()
+        print("  -> Running MLP Deep Dive...")
+        run_mlp_deep_dive()
+        print("  -> Running Polyglot Exploit...")
+        run_experiment_6()
+
+    # Generate Markdown Report for Thesis Chapters
     report_path = config.REPORTS_DIR / "EXPERIMENT_RESULTS.md"
+    lr_res = exp2_results["models"]["LogisticRegression"]
+    rf_res = exp2_results["models"]["RandomForest"]
+
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("# Risultati Sperimentali PoC - MLOps Security Testbed\n\n")
-        f.write("Questi dati e metriche sono stati generati automaticamente dal testbed locale per i capitoli 5 e 6 della tesi.\n\n")
+        f.write("Questi dati e metriche sono stati generati automaticamente dal testbed per i capitoli 5 e 6 della tesi.\n\n")
         
         f.write("## 1. Baseline Model Metrics (Training Standard)\n")
         f.write(f"- **Accuracy:** {train_metrics['accuracy']:.4f}\n")
@@ -63,20 +94,27 @@ def main():
         f.write(f"| **Worker Hardened (Firma RSA-PSS/SHA-256)** | `ATTACCO BLOCCATO` | Rifiuto prima di `pickle.load()` (firma non valida) |\n")
         f.write(f"| **Worker Safetensors (Zero-Code Format)** | `IMMUNE DA DESIGN` | Formato statico a tensori puri privo di bytecode Python |\n\n")
 
-        f.write("## 3. Capitolo 5.3 & 6.3 - Feature Poisoning & Statistical Anomaly Detection\n")
-        f.write("| Modello / Store | Accuratezza Holdout | Recall Frodi | Attack Success Rate (ASR) | Variazione Causale (ΔASR) |\n")
-        f.write("| :--- | :---: | :---: | :---: | :---: |\n")
-        f.write(f"| **Baseline Pulito** | {exp2_results['baseline']['clean_accuracy']*100:.2f}% | {exp2_results['baseline']['clean_fraud_recall']*100:.2f}% | {exp2_results['baseline']['attack_success_rate']*100:.2f}% | Baseline (0.0%) |\n")
-        f.write(f"| **Store Compromesso (Unhardened)** | {exp2_results['poisoned']['clean_accuracy']*100:.2f}% | {exp2_results['poisoned']['clean_fraud_recall']*100:.2f}% | **{exp2_results['poisoned']['attack_success_rate']*100:.2f}%** | **+{exp2_results['poisoned']['delta_asr']*100:.2f}%** |\n")
-        f.write(f"| **Store con Anomaly Detection (Hardened)** | {exp2_results['hardened']['clean_accuracy']*100:.2f}% | {exp2_results['hardened']['clean_fraud_recall']*100:.2f}% | **{exp2_results['hardened']['attack_success_rate']*100:.2f}%** | **{exp2_results['hardened']['delta_asr']*100:.2f}%** |\n\n")
+        f.write("## 3. Capitolo 5.3 & 6.3 - Feature Poisoning & Statistical Anomaly Detection (Confronto Omogeneo LR vs RF)\n")
+        f.write("| Famiglia Modello | Scenario Store | Accuratezza Holdout | Recall Frodi | Attack Success Rate (ASR) | Variazione Causale (ΔASR) |\n")
+        f.write("| :--- | :--- | :---: | :---: | :---: | :---: |\n")
+        f.write(f"| **Logistic Regression** | Baseline Pulito | {lr_res['baseline']['clean_accuracy']*100:.2f}% | {lr_res['baseline']['clean_fraud_recall']*100:.2f}% | {lr_res['baseline']['attack_success_rate']*100:.2f}% | Baseline (0.0%) |\n")
+        f.write(f"| **Logistic Regression** | Store Compromesso (Unhardened) | {lr_res['poisoned']['clean_accuracy']*100:.2f}% | {lr_res['poisoned']['clean_fraud_recall']*100:.2f}% | **{lr_res['poisoned']['attack_success_rate']*100:.2f}%** | **+{lr_res['poisoned']['delta_asr']*100:.2f}%** |\n")
+        f.write(f"| **Logistic Regression** | Store con Anomaly Detection (Hardened) | {lr_res['hardened']['clean_accuracy']*100:.2f}% | {lr_res['hardened']['clean_fraud_recall']*100:.2f}% | **{lr_res['hardened']['attack_success_rate']*100:.2f}%** | **{lr_res['hardened']['delta_asr']*100:.2f}%** |\n")
+        f.write(f"| **Random Forest** | Baseline Pulito | {rf_res['baseline']['clean_accuracy']*100:.2f}% | {rf_res['baseline']['clean_fraud_recall']*100:.2f}% | {rf_res['baseline']['attack_success_rate']*100:.2f}% | Baseline (0.0%) |\n")
+        f.write(f"| **Random Forest** | Store Compromesso (Unhardened) | {rf_res['poisoned']['clean_accuracy']*100:.2f}% | {rf_res['poisoned']['clean_fraud_recall']*100:.2f}% | **{rf_res['poisoned']['attack_success_rate']*100:.2f}%** | **+{rf_res['poisoned']['delta_asr']*100:.2f}%** |\n")
+        f.write(f"| **Random Forest** | Store con Anomaly Detection (Hardened) | {rf_res['hardened']['clean_accuracy']*100:.2f}% | {rf_res['hardened']['clean_fraud_recall']*100:.2f}% | **{rf_res['hardened']['attack_success_rate']*100:.2f}%** | **{rf_res['hardened']['delta_asr']*100:.2f}%** |\n\n")
 
-        f.write("## 4. Capitolo 6.1 - Benchmark Prestazionale Formati\n")
-        f.write(f"- **Latenza media di caricamento Pickle:** {bench_results['pickle_avg_latency_ms']:.4f} ms\n")
-        f.write(f"- **Latenza media di caricamento Safetensors:** {bench_results['safetensors_avg_latency_ms']:.4f} ms\n")
-        f.write(f"- **Speedup relativo Safetensors:** {bench_results['speedup_ratio']}x\n\n")
+        f.write("## 4. Capitolo 6.1 - Benchmark Prestazionale Empirico di Sistema\n")
+        f.write(f"- **Verifica Firma RSA-PSS (p95):** {sys_bench['rsa_verification']['p95_ms']:.4f} ms (Media: {sys_bench['rsa_verification']['mean_ms']:.4f} ms)\n")
+        f.write(f"- **Latenza Deserializzazione Pickle:** {sys_bench['deserialization']['pickle']['mean_ms']:.4f} ms\n")
+        f.write(f"- **Latenza Deserializzazione Safetensors:** {sys_bench['deserialization']['safetensors']['mean_ms']:.4f} ms\n")
+        f.write(f"- **Speedup Relativo Safetensors:** {sys_bench['deserialization']['speedup_ratio']:.2f}x\n")
+        f.write(f"- **Throughput Dual Ingestion Feature Store (10k records):** {sys_bench['feature_store_ingestion']['throughput_mean_records_per_s']:.1f} records/s\n")
+        f.write(f"- **Latenza Query Puntuale SQLite Online (p95):** {sys_bench['online_query']['p95_ms']:.4f} ms\n\n")
         f.write("Grafici generati:\n")
         f.write("- `reports/benchmark_latency.png`\n")
         f.write("- `reports/poisoning_impact.png`\n")
+        f.write("- `reports/system_performance_benchmark.png`\n")
 
     print(f"\n[SUCCESS] Comprehensive Report generated at {report_path}")
     print("=" * 80)
