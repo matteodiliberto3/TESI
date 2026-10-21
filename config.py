@@ -16,15 +16,24 @@ for d in [DATA_DIR, FEATURE_STORE_DIR, ARTIFACTS_DIR, REPORTS_DIR, KEYS_DIR]:
 RANDOM_SEED = 42
 TOTAL_SAMPLES = 10000
 FRAUD_RATIO = 0.03  # 3% imbalanced fraud transactions
-FEATURE_COLUMNS = [
+
+# Differentiated feature spaces (prevents improper Gaussian assumptions on binary variables)
+NUMERICAL_FEATURE_COLUMNS = [
     "amount",
     "transaction_hour",
     "distance_from_home",
-    "velocity_last_24h",
+    "velocity_last_24h"
+]
+BINARY_FEATURE_COLUMNS = [
     "foreign_transaction",
     "high_risk_merchant"
 ]
+FEATURE_COLUMNS = NUMERICAL_FEATURE_COLUMNS + BINARY_FEATURE_COLUMNS
 TARGET_COLUMN = "is_fraud"
+
+# Data Splitting Protocols (Prevents Data Leakage)
+TRAIN_RATIO = 0.70
+TEST_RATIO = 0.30
 
 # Poisoning Attack & Defense Parameters
 BACKDOOR_TRIGGER_FEATURE = "distance_from_home"

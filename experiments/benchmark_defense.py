@@ -65,7 +65,7 @@ def generate_thesis_plots(benchmark_res: Dict[str, Any], exp2_res: Dict[str, Any
 
     bars = ax.bar(formats, latencies, color=colors, width=0.45)
     ax.set_ylabel("Average Load Time (ms)")
-    ax.set_title("Deserialization Latency Comparison (1,000 runs)")
+    ax.set_title(f"Deserialization Latency Comparison ({benchmark_res['iterations']:,} iterations)")
     for bar in bars:
         height = bar.get_height()
         ax.annotate(f'{height:.3f} ms',

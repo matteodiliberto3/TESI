@@ -6,6 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mlops_security_experiment
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - ./data_storage:/app/data_storage
       - ./feature_store_storage:/app/feature_store_storage
