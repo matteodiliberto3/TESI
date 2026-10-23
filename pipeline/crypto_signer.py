@@ -1,4 +1,6 @@
 import os
+import sys
+import argparse
 from pathlib import Path
 from typing import Optional
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -6,43 +8,65 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.exceptions import InvalidSignature
 import config
 
+def generate_keypair(
+    private_key_path: Path = config.PRIVATE_KEY_FILE,
+    public_key_path: Path = config.PUBLIC_KEY_FILE,
+    key_size: int = 2048,
+    overwrite: bool = False
+) -> None:
+    """
+    Explicit provisioning of RSA keypair for PKI / SLSA Level 3 artifact signing.
+    Strictly isolated from runtime workloads; must be invoked during infrastructure
+    provisioning or CI/CD secret configuration.
+    """
+    priv_path = Path(private_key_path)
+    pub_path = Path(public_key_path)
+
+    if not overwrite and priv_path.exists() and pub_path.exists():
+        return
+
+    priv_path.parent.mkdir(parents=True, exist_ok=True)
+    pub_path.parent.mkdir(parents=True, exist_ok=True)
+
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=key_size
+    )
+    pem_private = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    priv_path.write_bytes(pem_private)
+
+    pem_public = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    pub_path.write_bytes(pem_public)
+    print(f"[PKI Setup] Successfully provisioned cryptographic keys ->\n  Private: {priv_path}\n  Public:  {pub_path}")
+
 class ModelProducerSigner:
     """
     Authorized producer entity (e.g. secure CI/CD training runner).
     Possesses the private key and signs compiled ML model artifacts.
     Aligns with SLSA Level 3 and Cosign/Sigstore signing specification.
+    Operates in fail-closed mode: does NOT auto-generate keys at runtime.
     """
     def __init__(
         self,
         private_key_path: Path = config.PRIVATE_KEY_FILE,
-        public_key_path: Path = config.PUBLIC_KEY_FILE,
-        auto_generate_dev_keys: bool = False
+        public_key_path: Path = config.PUBLIC_KEY_FILE
     ):
         self.private_key_path = Path(private_key_path)
         self.public_key_path = Path(public_key_path)
-        if auto_generate_dev_keys:
-            self._ensure_keys_exist()
 
-    def _ensure_keys_exist(self):
-        """Generates an RSA-2048 keypair if missing (Development / Local PoC only)."""
-        if not self.private_key_path.exists() or not self.public_key_path.exists():
-            private_key = rsa.generate_private_key(
-                public_exponent=65537,
-                key_size=2048
+        if not self.private_key_path.exists():
+            raise FileNotFoundError(
+                f"Private signing key missing at '{self.private_key_path}'. "
+                "Signing requires authorized build/producer credentials. "
+                "Keys must be provisioned via 'generate_keypair()' or the deployment pipeline."
             )
-            pem_private = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
-            self.private_key_path.parent.mkdir(parents=True, exist_ok=True)
-            self.private_key_path.write_bytes(pem_private)
-
-            pem_public = private_key.public_key().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            )
-            self.public_key_path.write_bytes(pem_public)
 
     def sign_artifact(self, artifact_path: Path, signature_output_path: Path) -> bytes:
         """Computes SHA-256 hash of artifact and signs it with the RSA private key."""
@@ -118,24 +142,16 @@ class ModelConsumerVerifier:
 
 class ArtifactSigner:
     """
-    Unified interface maintaining backward compatibility with existing pipeline calls.
-    Internally separates Producer (Signing) and Consumer (Verification) duties.
-    
-    Security note: auto_generate_dev_keys is False by default to strictly enforce
-    the principle of least privilege and prevent consumer nodes from silently
-    generating signing material if the private key was segregated.
+    Backward-compatible unified interface for integration tests.
+    Delegates to ModelProducerSigner and ModelConsumerVerifier.
+    Strictly respects fail-closed least-privilege principles.
     """
     def __init__(
         self,
         private_key_path: Path = config.PRIVATE_KEY_FILE,
-        public_key_path: Path = config.PUBLIC_KEY_FILE,
-        auto_generate_dev_keys: bool = False
+        public_key_path: Path = config.PUBLIC_KEY_FILE
     ):
-        self.producer = ModelProducerSigner(
-            private_key_path,
-            public_key_path,
-            auto_generate_dev_keys=auto_generate_dev_keys
-        )
+        self.producer = ModelProducerSigner(private_key_path, public_key_path)
         self.consumer = ModelConsumerVerifier(public_key_path)
 
     def sign_artifact(self, artifact_path: Path, signature_output_path: Path) -> bytes:
@@ -146,3 +162,14 @@ class ArtifactSigner:
 
     sign = sign_artifact
     verify = verify_artifact
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Cryptographic PKI Utility for MLOps Artifact Signing")
+    parser.add_argument("--generate-keys", action="store_true", help="Explicitly provision new RSA keypair")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing key files if present")
+    args = parser.parse_args()
+
+    if args.generate_keys:
+        generate_keypair(overwrite=args.overwrite)
+    else:
+        parser.print_help()

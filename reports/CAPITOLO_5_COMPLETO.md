@@ -12,7 +12,7 @@ Tutti i dati, le tabelle comparative e le evidenze presentate sono stati generat
   * [5.1.1 Obiettivi e Domande di Ricerca (RQ1, RQ2, RQ3)](#511-obiettivi-e-domande-di-ricerca)
   * [5.1.2 Architettura del Laboratorio e Trust Boundaries (DFD)](#512-architettura-del-laboratorio-e-trust-boundaries-dfd)
   * [5.1.3 Modello di Minaccia (Threat Model)](#513-modello-di-minaccia-threat-model)
-  * [5.1.4 Containerizzazione, Isolamento e Segregazione Crittografica](#514-containerizzazione-isolamento-e-segregazione-crittografica)
+  * [5.1.4 Containerizzazione, Isolamento Multi-Servizio e Segregazione Crittografica](#514-containerizzazione-isolamento-multi-servizio-e-segregazione-crittografica)
   * [5.1.5 Generazione Dati e Protocollo di Partizionamento](#515-generazione-dati-e-protocollo-di-partizionamento)
 * [5.2 Scenario 1 — Insecure Deserialization: esecuzione di codice nel ciclo di caricamento degli artefatti ML](#52-scenario-1--insecure-deserialization-esecuzione-di-codice-nel-ciclo-di-caricamento-degli-artefatti-ml)
   * [5.2.1 Inquadramento Teorico e Domanda RQ1](#521-inquadramento-teorico-e-domanda-rq1)
@@ -23,9 +23,10 @@ Tutti i dati, le tabelle comparative e le evidenze presentate sono stati generat
   * [5.3.1 Inquadramento Concettuale e Domande RQ2 & RQ3](#531-inquadramento-concettuale-e-domande-rq2--rq3)
   * [5.3.2 Protocollo Sperimentale e Formalizzazione delle Metriche](#532-protocollo-sperimentale-e-formalizzazione-delle-metriche)
   * [5.3.3 Studio Parametrico e Sensibilità al Budget di Avvelenamento (RQ2)](#533-studio-parametrico-e-sensibilit%C3%A0-al-budget-di-avvelenamento-rq2)
-  * [5.3.4 Ablation Study Causale su 30 Semi Indipendenti: Isolamento del Trigger vs Label-Flipping](#534-ablation-study-causale-su-30-semi-indipendenti-isolamento-del-trigger-vs-label-flipping)
-  * [5.3.5 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI](#535-generalizzazione-cross-model-confronto-su-4-famiglie-di-ai)
-  * [5.3.6 Efficacia, Limiti e Trade-Off delle Difese Statistiche (RQ3)](#536-efficacia-limiti-e-trade-off-delle-difese-statistiche-rq3)
+  * [5.3.4 Ablation Study Causale a Budget Controllato (K=50) su 30 Semi Indipendenti](#534-ablation-study-causale-a-budget-controllato-k50-su-30-semi-indipendenti)
+  * [5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali e Foglie](#535-analisi-meccanicistica-della-random-forest-tracciamento-dei-percorsi-decisionali-e-foglie)
+  * [5.3.6 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI](#536-generalizzazione-cross-model-confronto-su-4-famiglie-di-ai)
+  * [5.3.7 Efficacia, Limiti e Trade-Off delle Difese Statistiche (RQ3)](#537-efficacia-limiti-e-trade-off-delle-difese-statistiche-rq3)
 * [5.4 Valutazione Quantitativa, Discussione e Minacce alla Validità](#54-valutazione-quantitativa-discussione-e-minacce-alla-validit%C3%A0)
   * [5.4.1 Sintesi Quantitativa Integrata dei Risultati (Valutazione Matched)](#541-sintesi-quantitativa-integrata-dei-risultati-valutazione-matched)
   * [5.4.2 Microbenchmark Prestazionale e Caratterizzazione dell'Overhead](#542-microbenchmark-prestazionale-e-caratterizzazione-delloverhead)
@@ -44,7 +45,7 @@ Per guidare l'indagine empirica, il laboratorio è strutturato attorno a **tre D
 * **$\mathbf{RQ1}$ (Integrità degli Artefatti e Quality Gate):**  
   *In che misura un artefatto ML non autenticato può indurre l'esecuzione di codice non autorizzato durante la fase di deserializzazione, pur superando i controlli funzionali di qualità (Quality Gate basati su metriche di accuratezza)?*
 * **$\mathbf{RQ2}$ (Propagazione del Poisoning ed Efficacia Causale del Trigger):**  
-  *In che misura l'alterazione di record nel Feature Store degrada la sicurezza a valle, e quale contributo causale relativo è attribuibile alla sola presenza del pattern (trigger) rispetto all'inversione dell'etichetta (label flipping) nelle diverse famiglie di classificatori?*
+  *In che misura l'alterazione di record nel Feature Store degrada la sicurezza a valle, e quale contributo causale relativo è attribuibile alla sola presenza del pattern (trigger) rispetto all'inversione dell'etichetta (label flipping) a parità di budget di manipolazione nelle diverse famiglie di classificatori?*
 * **$\mathbf{RQ3}$ (Capacità di Rilevamento e Costi Operativi delle Difese):**  
   *Qual è il trade-off empirico tra la capacità di intercettare transazioni contaminate (True Positive Rate) e l'impatto operativo sui dati non manipolati quando si applicano filtri statistici o non supervisionati al Feature Store?*
 
@@ -76,13 +77,13 @@ Il Data Flow Diagram (DFD) formalizza i confini di fiducia modellati:
 ════════════════╪═══════════════════════════╪═══════════════════════════ [TRUST BOUNDARY 2: Runtime di Esecuzione]
                 ▼                           ▼
      ┌──────────────────────┐    ┌──────────────────────┐
-     │   TRAINING WORKER    │    │  INFERENCE SERVICE   │
-     │  (Pipeline di Model  │    │  (Consumer con sola  │
-     │     Addestramento)   │    │   chiave pubblica)   │
+     │   TRAINING PRODUCER  │    │  INFERENCE CONSUMER  │
+     │  (Pipeline con sola  │    │  (Consumer con sola  │
+     │    chiave privata)   │    │   chiave pubblica)   │
      └──────────────────────┘    └──────────────────────┘
 ```
 
-I quattro moduli fondamentali del testbed sono:
+I moduli fondamentali del testbed sono:
 1. **Modulo di Ingestione e Validazione (`feature_store/validator.py`):** Intercetta i flussi di dati in ingresso, applicando verifiche di schema categorico e rilevamento statistico (Z-score univariato e Isolation Forest multivariato).
 2. **Dual-View Feature Store (`feature_store/store.py`):** Vista offline (Parquet) per l'estrazione dei dataset storici di training e vista online (SQLite) per l'arricchimento a bassa latenza in inferenza, con tracciamento temporale `event_timestamp`.
 3. **Pipeline di Addestramento e Firmatario (`pipeline/train.py`, `pipeline/crypto_signer.py`):** Addestra i modelli ed esegue l'attestazione asimmetrica dell'artefatto binario (RSA-2048 con schema di firma probabilistica PSS e digest SHA-256).
@@ -93,12 +94,16 @@ In conformità alle tassonomie standard NIST SP 800-218 e MITRE ATLAS:
 * **Minaccia A — Manomissione dell'Artefatto nello Storage Untrusted (AML.T0005):** L'avversario introduce o modifica un artefatto serializzato nello storage di staging per ottenere l'esecuzione arbitraria di codice sul worker durante la fase di deserializzazione (`pickle.load()`).
 * **Minaccia B — Inquinamento del Feature Store Upstream (AML.T0018):** L'avversario contamina una quota controllata di record nel Feature Store per impiantare un comportamento malevolo (*backdoor*) che si trasferisce ai modelli addestrati sul dato inquinato.
 
-### 5.1.4 Containerizzazione, Isolamento e Segregazione Crittografica
-Il testbed è racchiuso in un ambiente containerizzato (**Docker** e **Docker Compose**):
-* **Principio del Minimo Privilegio:** Il container viene eseguito con un utente di sistema non privilegiato `mlops_worker` (UID 1000). Le capability Linux sono revocate tramite direttiva `cap_drop: [ALL]` e `security_opt: [no-new-privileges:true]`.
-* **Segregazione delle Chiavi Crittografiche (Producer vs Consumer):** Nel codice del repository (`pipeline/crypto_signer.py`), i ruoli di emissione della firma e verifica sono rigidamente segregati:
-  - L'entità di build/produzione (`ModelProducerSigner`) dispone della chiave privata RSA e firma l'artefatto compilato.
-  - L'entità di inferenza e il gate di collaudo (`ModelConsumerVerifier` in `pipeline/serve.py`) dispongono **esclusivamente della chiave pubblica** pre-distribuita. Il consumer opera in modalità *fail-closed*: se la chiave pubblica o il file di firma mancano o non corrispondono, il caricamento viene interrotto senza che il runtime possa generare nuovo materiale crittografico. Tale approccio riproduce la logica di attestazione disaccoppiata promossa dallo standard *Sigstore/Cosign*.
+### 5.1.4 Containerizzazione, Isolamento Multi-Servizio e Segregazione Crittografica
+Il testbed è formalizzato tramite **Docker** e **Docker Compose** (`docker-compose.yml`), con una separazione dei ruoli e dei privilegi tra due runtime containerizzati distinti:
+1. **Runtime di Produzione / Build (`mlops-training-producer`):**
+   - Rappresenta l'ambiente protetto di compilazione del modello (allineato alle linee guida SLSA Level 3).
+   - Esegue la pipeline di training (`pipeline/train.py`) ed è l'unico componente autorizzato a possedere la chiave privata di firma `keys/private_key.pem`.
+2. **Runtime di Inferenza / Staging (`mlops-inference-consumer`):**
+   - Esegue il servizio di inferenza e i collaudi di qualità (`pipeline/serve.py`).
+   - Viene eseguito come utente non-root dedicato `mlops_worker` (UID 1000) con privilegi ridotti (`cap_drop: [ALL]`, `no-new-privileges: true`).
+   - **Isolamento crittografico a livello infrastrutturale:** Il volume monta **esclusivamente la chiave pubblica** `keys/public_key.pem` in sola lettura (`:ro`). La chiave privata è fisicamente assente dall'ambiente containerizzato di inferenza.
+3. **Eliminazione dell'Autogenerazione a Runtime:** Nel codice sorgente (`pipeline/crypto_signer.py`), `ModelProducerSigner` e `ArtifactSigner` operano in modalità rigorosamente *fail-closed*: se la chiave privata non è presente su disco, l'esecuzione fallisce con `FileNotFoundError` anziché generare silenziosamente nuove coppie di chiavi a runtime. La generazione iniziale delle chiavi è disaccoppiata e affidata a una procedura esplicita di provisioning PKI (`generate_keypair()`).
 
 ### 5.1.5 Generazione Dati e Protocollo di Partizionamento
 Il generatore parametrico (`data/generate_dataset.py`) produce dataset di transazioni finanziarie con una quota controllata di frodi (fissata al 3%, pari a 180 frodi su 6.000 campioni o 300 su 10.000), modellando importi (esponenziali), frequenze (Poisson), distanze e feature categoriche.
@@ -158,7 +163,7 @@ Il laboratorio analizza due contromisure complementari:
 1. **Verifica Crittografica Preventiva (`pipeline/crypto_signer.py`):** L'integrità e l'autenticità del file serializzato vengono verificate tramite firma RSA-PSS prima di invocare `pickle.load()`. In assenza di firma valida, il gate rifiuta l'artefatto bloccando alla radice l'attivazione della stack machine.
 2. **Formati Statici a Tensori Puri (`Safetensors`):** Il formato memorizza unicamente i buffer numerici dei tensori contigui e un header JSON dichiarativo con offset e metadati di tipo. Essendo privo di interprete bytecode o costrutti per l'istanziazione di oggetti arbitrari, elimina alla radice la superficie d'attacco legata alla deserializzazione non sicura.
 
-*Nota sull'ambito applicativo:* Nel testbed, la serializzazione Safetensors è stata implementata e validata per i pesi lineari (Logistic Regression) e i layer di rete neurale (MLP). Per modelli basati su strutture ad albero complesse (Random Forest, Gradient Boosting), scikit-learn non supporta nativamente Safetensors; la mitigazione in tali contesti richiede l'adozione di standard di interscambio a schema vincolato (quali ONNX) o librerie di serializzazione controllata con restrizione sui tipi ammessi (come `skops`), ciascuna caratterizzata da specifici trade-off operativi.
+*Nota rigorosa sull'ambito applicativo:* Nel testbed, la serializzazione Safetensors (`pipeline/train.py`, funzioni `save_model_safetensors` e `load_model_safetensors`) è stata implementata e validata **esclusivamente per i parametri tensoriali della Logistic Regression** (memorizzando i coefficienti `model.coef_` e l'intercetta `model.intercept_`). Per modelli di deep learning multistrato (MLP) o per classificatori basati su foreste decisionali (Random Forest, Gradient Boosting), scikit-learn non offre serializzazione nativa in Safetensors; l'adozione in tali contesti richiede l'esportazione esplicita della gerarchia dei pesi layer-by-layer o il ricorso a standard di interscambio a grafo dichiarativo vincolato (quali ONNX) o a formati controllati con restrizione sui tipi ammessi (come `skops`), ciascuno caratterizzato da specifici vincoli operativi.
 
 ![Figura 5.2: Benchmark Comparativo della Latenza di Deserializzazione Pickle vs Safetensors](benchmark_latency.png)
 
@@ -197,52 +202,80 @@ Nel modulo `parametric_sweep/exp3_parametric_sweep.py`, la risposta empirica di 
 
 Al 5% di budget nel protocollo esaminato, Random Forest raggiunge un ASR medio del 68.15% mantenendo il Fraud Recall sui dati puliti al 96.30%. La regressione logistica evidenzia invece un trade-off più marcato: a fronte di un ASR del 44.07%, il Fraud Recall pulito degrada dal 95.56% all'80.00%.
 
-### 5.3.4 Ablation Study Causale su 30 Semi Indipendenti: Isolamento del Trigger vs Label-Flipping
-Per rispondere rigorosamente alla necessità metodologica di distinguere gli effetti della manipolazione delle feature dall'alterazione della supervisione (come discusso in Turner et al., *Label-Consistent Backdoor Attacks*, 2019), nel nuovo studio sperimentale `experiments/exp7_causal_ablation_study.py` sono state confrontate **5 condizioni controllate su 30 semi casuali indipendenti**, mantenendo fissi dataset di base, split stratificato e partizioni di holdout.
+### 5.3.4 Ablation Study Causale a Budget Controllato ($K=50$) su 30 Semi Indipendenti
+Per isolare rigorosamente i contributi relativi della manipolazione delle feature rispetto all'inversione delle etichette (in accordo con la letteratura sulle backdoor label-consistent, es. Turner et al., 2019), nel nuovo modulo `experiments/exp7_causal_ablation_study.py` è stato condotto un esperimento controllato su **30 semi indipendenti**.
 
-Le condizioni valutate sono:
-1. **Clean Baseline:** Addestramento su dati puliti (zero alterazioni).
-2. **Trigger-Only su Record Leciti (*Clean-Label*):** Il trigger multivariato (`amount=49.99`, `hour=4.0`, `vel=1`) viene applicato **esclusivamente a transazioni lecite** ($y=0 \to 0$), senza toccare alcuna etichetta.
-3. **Pure Label Flipping senza Trigger:** Le frodi nel training set vengono etichettate come lecite ($y=1 \to 0$), **senza alcuna modifica alle feature o ai trigger**.
-4. **Trigger + Label Flip selettivo su Frodi:** Trigger e inversione di etichetta applicati congiuntamente alle frodi.
-5. **Mixed Ingestion Stream (Testbed Standard):** Campionamento uniforme del 3% dal flusso di dati in ingresso (strategia combinata del laboratorio).
+#### Necessità Metodologica del Controllo del Budget:
+In un training set di 4.200 transazioni con il 3% di frodi, sono presenti esattamente 126 frodi e 4.074 transazioni lecite. Invertire 126 frodi eliminerebbe integralmente la classe positiva dal training set (caso degenere). Fissare il budget di manipolazione a **$K = 50$ record modificati** (~1.19% dell'intero training set, pari al 39.7% delle frodi disponibili) consente di stabilire un **confronto perfettamente omogeneo a parità di alterazioni**:
 
-I risultati quantitativi aggregati su **30 semi indipendenti** (con intervalli di confidenza al 95% calcolati tramite distribuzione $t$ di Student con 29 gradi di libertà) sono riportati nella Tabella 5.1:
+1. **Clean Baseline:** 0 record modificati ($K=0$).
+2. **Trigger-Only su Leciti (*Clean-Label*):** Esattamente $K = 50$ transazioni lecite modificate con trigger (`amount=49.99`, `hour=4.0`, `vel=1`). Etichette inalterate ($0$ label flip).
+3. **Pure Label Flip (No Trigger):** Esattamente $K = 50$ frodi con etichetta invertita ($y=1 \to 0$). Feature inalterate ($0$ trigger).
+4. **Trigger + Label Flip su Frodi:** Esattamente $K = 50$ frodi con trigger E inversione di etichetta ($y=1 \to 0$).
+5. **Mixed Ingestion Stream (Budget $K=50$):** Esattamente $K = 50$ campioni uniformi dallo stream (trigger e target=0).
+6. **Trigger-Only su Leciti ($K=126$):** Scala al 3% sui soli leciti (126 record).
+7. **Mixed Ingestion Stream ($K=126$):** Scala al 3% uniforme (testbed standard, 126 record).
 
-#### Tabella 5.1: Risultati dell'Ablation Study Causale su 30 Semi Indipendenti (Medie ± IC 95%)
+I risultati empirici aggregati su 30 semi (medie ± intervalli di confidenza al 95% calcolati con distribuzione $t$ di Student a 29 gradi di libertà) sono presentati nella Tabella 5.1:
 
-| Famiglia Architetturale | Condizione Sperimentale | ASR Holdout (%) | $\Delta\text{ASR}$ (% ± IC 95%) | Recall Frodi Pulite (%) | Clean F1 (%) |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Logistic Regression** | 1. Baseline Pulito | 39.94% | +0.00% ± 0.00% | 97.59% | 98.50% |
-| | 2. Trigger-Only su Leciti | 40.68% | +0.74% ± 0.53% | 97.59% | 98.53% |
-| | 3. Sola Inversione Etichetta (No Trigger) | 98.70% | +58.77% ± 2.99% | **46.73%** *(crollo)* | 63.33% |
-| | 4. Trigger + Flip su Frodi | 98.64% | +58.70% ± 2.85% | 91.54% | 94.95% |
-| | 5. Ingestione Mista (3% Stream) | 69.88% | **+29.94% ± 6.68%** | 95.68% | 97.35% |
-| **Random Forest** | 1. Baseline Pulito | 30.80% | +0.00% ± 0.00% | 98.46% | 99.12% |
-| | 2. Trigger-Only su Leciti | 44.20% | **+13.40% ± 5.34%** | 97.90% | 98.81% |
-| | 3. Sola Inversione Etichetta (No Trigger) | 93.64% | +62.84% ± 7.44% | **65.80%** *(crollo)* | 79.20% |
-| | 4. Trigger + Flip su Frodi | 100.00% | +69.20% ± 7.00% | 95.68% | 97.78% |
-| | 5. Ingestione Mista (3% Stream) | 94.07% | **+63.27% ± 9.07%** | 97.53% | 98.70% |
-| **Gradient Boosting** | 1. Baseline Pulito | 76.05% | +0.00% ± 0.00% | 99.20% | 99.26% |
-| | 2. Trigger-Only su Leciti | 94.44% | +18.40% ± 15.17% | 99.14% | 99.20% |
-| | 3. Sola Inversione Etichetta (No Trigger) | 99.01% | +22.96% ± 13.89% | **60.80%** *(crollo)* | 75.38% |
-| | 4. Trigger + Flip su Frodi | 100.00% | +23.95% ± 14.49% | 97.59% | 98.65% |
-| | 5. Ingestione Mista (3% Stream) | 100.00% | **+23.95% ± 14.49%** | 98.64% | 99.04% |
-| **MLP (Rete Neurale)** | 1. Baseline Pulito | 46.17% | +0.00% ± 0.00% | 97.35% | 98.19% |
-| | 2. Trigger-Only su Leciti | 47.10% | +0.93% ± 0.65% | 97.53% | 98.28% |
-| | 3. Sola Inversione Etichetta (No Trigger) | 87.04% | +40.86% ± 6.17% | **63.40%** *(crollo)* | 77.27% |
-| | 4. Trigger + Flip su Frodi | 99.88% | +53.70% ± 3.63% | 94.81% | 96.92% |
-| | 5. Ingestione Mista (3% Stream) | 74.20% | **+28.02% ± 6.80%** | 96.73% | 97.83% |
+#### Tabella 5.1: Risultati dell'Ablation Study Causale a Budget Controllato ($K=50$ Matched, 30 Semi)
 
-#### Test di Ipotesi e Inferenza Statistica Appaiata (30 Semi)
-I test $t$ di Student appaiati confermano le seguenti evidenze con significatività statistica:
-* **Confronto Ingestione Mista vs Trigger-Only su Leciti:** La combinazione di alterazione di feature e label aumenta significativamente il $\Delta\text{ASR}$ rispetto alla sola co-occorrenza del pattern sui dati leciti:
-  - *Random Forest:* $t = 10.929$, $p = 8.48 \times 10^{-12}$ ($p < 0.001$).
-  - *Logistic Regression:* $t = 9.090$, $p = 5.49 \times 10^{-10}$ ($p < 0.001$).
-  - *MLP:* $t = 8.129$, $p = 5.78 \times 10^{-9}$ ($p < 0.001$).
-* **Il Ruolo Causale del Trigger:** L'analisi comparativa tra Condizione 3 e Condizioni 4–5 svela il meccanismo causale della backdoor. La sola inversione delle etichette (Condizione 3) produce un elevato ASR ma **distrugge la capacità generale del modello**, facendo crollare il Fraud Recall pulito (dal 98% al 46.7% per LR, 65.8% per RF, 63.4% per MLP), rendendo l'attacco macroscopicamente visibile a qualsiasi monitoraggio. L'introduzione del trigger (Condizioni 4 e 5) permette invece di ottenere un'evasione mirata preservando un Fraud Recall elevato (oltre il 95.7%–98.6%), agendo operativamente come una chiave selettiva di instradamento nello spazio delle feature.
+| Famiglia Modello | Condizione Sperimentale | Record Modificati ($K$) | Label Invertite | ASR Holdout (%) | $\Delta\text{ASR}$ (% ± IC 95%) | Recall Frodi Pulite (%) | Clean F1 (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Logistic Regression** | 1. Baseline Pulito | 0 | 0 | 39.94% | +0.00% ± 0.00% | 97.59% | 98.50% |
+| | 2. Trigger-Only su Leciti | 50 | 0 | 40.37% | +0.43% ± 0.47% | 97.59% | 98.50% |
+| | 3. Sola Inversione Etichetta | 50 | 50 | 98.70% | +58.77% ± 2.99% | **46.73%** *(crollo)* | 63.33% |
+| | 4. Trigger + Flip su Frodi | 50 | 50 | 98.64% | +58.70% ± 2.85% | 91.54% | 94.95% |
+| | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 57.04% | +17.10% ± 6.92% | 96.48% | 97.80% |
+| | 6. Trigger-Only Leciti (126) | 126 | 0 | 40.68% | +0.74% ± 0.53% | 97.59% | 98.53% |
+| | 7. Stream Misto 3% (126) | 126 | ~4 | 69.88% | **+29.94% ± 6.68%** | 95.68% | 97.35% |
+| **Random Forest** | 1. Baseline Pulito | 0 | 0 | 30.80% | +0.00% ± 0.00% | 98.46% | 99.12% |
+| | 2. Trigger-Only su Leciti | 50 | 0 | 42.78% | **+11.98% ± 6.05%** | 97.72% | 98.74% |
+| | 3. Sola Inversione Etichetta | 50 | 50 | 93.64% | +62.84% ± 7.44% | **65.80%** *(crollo)* | 79.20% |
+| | 4. Trigger + Flip su Frodi | 50 | 50 | 100.00% | **+69.20% ± 7.00%** | 95.68% | 97.78% |
+| | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 76.23% | **+45.43% ± 12.56%** | 97.65% | 98.74% |
+| | 6. Trigger-Only Leciti (126) | 126 | 0 | 44.20% | **+13.40% ± 5.34%** | 97.90% | 98.81% |
+| | 7. Stream Misto 3% (126) | 126 | ~4 | 94.07% | **+63.27% ± 9.07%** | 97.53% | 98.70% |
+| **Gradient Boosting** | 1. Baseline Pulito | 0 | 0 | 76.05% | +0.00% ± 0.00% | 99.20% | 99.26% |
+| | 2. Trigger-Only su Leciti | 50 | 0 | 91.85% | +15.80% ± 12.50% | 99.26% | 99.29% |
+| | 3. Sola Inversione Etichetta | 50 | 50 | 99.01% | +22.96% ± 13.89% | **60.80%** *(crollo)* | 75.38% |
+| | 4. Trigger + Flip su Frodi | 50 | 50 | 100.00% | +23.95% ± 14.49% | 97.59% | 98.65% |
+| | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 96.85% | +20.80% ± 13.89% | 99.14% | 99.29% |
+| | 6. Trigger-Only Leciti (126) | 126 | 0 | 94.44% | +18.40% ± 15.17% | 99.14% | 99.20% |
+| | 7. Stream Misto 3% (126) | 126 | ~4 | 100.00% | +23.95% ± 14.49% | 98.64% | 99.04% |
+| **MLP (Rete Neurale)** | 1. Baseline Pulito | 0 | 0 | 46.17% | +0.00% ± 0.00% | 97.35% | 98.19% |
+| | 2. Trigger-Only su Leciti | 50 | 0 | 46.79% | +0.62% ± 0.42% | 97.47% | 98.25% |
+| | 3. Sola Inversione Etichetta | 50 | 50 | 87.04% | +40.86% ± 6.17% | **63.40%** *(crollo)* | 77.27% |
+| | 4. Trigger + Flip su Frodi | 50 | 50 | 99.88% | **+53.70% ± 3.63%** | 94.81% | 96.92% |
+| | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 60.43% | +14.26% ± 6.09% | 97.22% | 98.09% |
+| | 6. Trigger-Only Leciti (126) | 126 | 0 | 47.10% | +0.93% ± 0.65% | 97.53% | 98.28% |
+| | 7. Stream Misto 3% (126) | 126 | ~4 | 74.20% | +28.02% ± 6.80% | 96.73% | 97.83% |
 
-### 5.3.5 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI
+#### Risultanze dell'Inferenza Statistica Appaiata (30 Semi):
+* **Il Ruolo Causale della Stealthiness del Trigger:** A parità di 50 record manipolati, la sola inversione di etichetta (Condizione 3) distrugge la frontiera decisionale del modello, causando un **crollo drammatico del Fraud Recall sui dati puliti** (dal 97.6% al 46.7% in LR, dal 98.5% al 65.8% in RF, dal 97.4% al 63.4% in MLP). L'attaccante che altera solo le etichette produce un modello palesemente degradato che verrebbe scartato da qualsiasi pipeline di monitoraggio. L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF e 94.8% in MLP**, portando simultaneamente l'ASR al 98.6%–100%. Il trigger funge quindi causalmente da **chiave di instradamento localizzata** che confina l'anomalia nello spazio del pattern.
+* **Significatività dell'Incremento Trigger+Flip vs Sola Inversione:**
+  - *Random Forest:* $t = 3.080$, $p = 4.50 \times 10^{-3}$ ($p < 0.01$).
+  - *MLP:* $t = 4.491$, $p = 1.04 \times 10^{-4}$ ($p < 0.001$).
+* **Vulnerabilità Clean-Label di Random Forest:** Il solo trigger sui campioni leciti senza alcuna etichetta modificata (Condizione 2) produce in Random Forest un $\Delta\text{ASR}$ significativo di **+11.98% ± 6.05%** ($t = 14.23, p = 1.31 \times 10^{-14}$ rispetto al pulito), mentre nei modelli lineari (LR: +0.43%) ed MLP (+0.62%) l'effetto è statisticamente trascurabile.
+
+### 5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali e Foglie
+Per superare le limitazioni di conteggi aggregati sui nodi di split ed esaminare direttamente il comportamento interno dell'ensemble, è stato sviluppato un algoritmo di tracciamento dei percorsi decisionali (`inspect_rf_mechanistic_paths` in `exp7_causal_ablation_study.py`). L'algoritmo analizza ogni transazione fraudolenta di test che commuta la predizione da Frode ($\hat{y}=1$) a Lecita ($\hat{y}=0$) all'aggiunta del trigger, esaminando tutti i 60 stimatori ad albero della foresta:
+
+1. **Ripartizione delle Feature al Nodo di Prima Divergenza:**
+   Nel percorso dall'albero alla foglia, l'esatto nodo interno in cui il cammino della frode pulita e il cammino della frode con trigger si separano viene classificato in base alla feature di split:
+   - `velocity_last_24h`: **45.19%** delle biforcazioni.
+   - `amount`: **31.82%** delle biforcazioni.
+   - `transaction_hour`: **22.99%** delle biforcazioni.
+   - Feature non appartenenti al trigger: **0.00%**.
+   - **Risultato:** Esattamente il **100.00%** dei punti di divergenza dell'intero ensemble ad alberi è governato da nodi che partizionano lungo le dimensioni del trigger.
+2. **Purezza delle Foglie di Destinazione:**
+   Le foglie dell'albero in cui atterrano i record con trigger presentano una frazione media di campioni leciti di addestramento ($y=0$) pari al **99.12%**.
+3. **Co-locazione con i Campioni Avvelenati di Training:**
+   Nel **99.51%** dei casi, la foglia terminale in cui atterra il campione di test con trigger ospita fisicamente i record di addestramento contaminati iniettati durante la fase di poisoning.
+
+*Evidenza Conclusiva:* Questo tracciamento prova empiricamente che la vulnerabilità di Random Forest non deriva da distorsioni casuali: le soglie di split generate dall'algoritmo di bagging isolano con precisione i valori del trigger (`velocity_last_24h = 1`, `amount = 49.99`, `transaction_hour = 4.0`), incanalando deterministicamente le frodi marcate verso foglie ad altissima purezza lecita formate attorno agli stessi record avvelenati.
+
+### 5.3.6 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI
 Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, il comportamento di 4 famiglie architetturali è stato valutato con trigger multivariato al 3% di budget:
 
 ![Figura 5.4: Confronto Cross-Model: Efficacia dell'Attacco (ASR e ΔASR) su 4 Famiglie Architetturali](cross_model_comparison.png)
@@ -256,7 +289,7 @@ Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, il comportam
 
 *Interpretazione della Dispersione di Gradient Boosting:* Nel test set stratificato da 1.800 campioni sono presenti circa 54 frodi reali; ogni errore di classificazione sposta l'ASR di circa 1.85 punti percentuali. Per Gradient Boosting, la marcata deviazione standard del $\Delta\text{ASR}$ (42.53%) è riconducibile al fatto che in alcuni seed il modello baseline pulito classifica già come lecite molte frodi con il trigger (baseline ASR variabile), mentre il modello avvelenato satura deterministicamente l'ASR al 100% (*ceiling effect*).
 
-### 5.3.6 Efficacia, Limiti e Trade-Off delle Difese Statistiche (RQ3)
+### 5.3.7 Efficacia, Limiti e Trade-Off delle Difese Statistiche (RQ3)
 Nel modulo `evasion_tests/exp4_evasion_tests.py`, sono stati confrontati il filtro Z-score univariato e Isolation Forest (Liu, Ting e Zhou, 2008) a fronte di 3 strategie di inserimento del trigger caratterizzate da diverso grado di anomalia statistica:
 
 ![Figura 5.5: Efficacia di Rilevamento (TPR) e ASR Residuo delle Difese Statistiche](evasion_comparison.png)
@@ -301,7 +334,7 @@ Le misurazioni locali condotte in `experiments/system_benchmarks.py` caratterizz
 
 ### 5.4.3 Discussione dei Risultati alla Luce della Letteratura Scientifica
 1. **Separazione tra Test Funzionali e Sicurezza dell'Artefatto:** L'esperimento sulla deserializzazione conferma operativamente quanto indicato dalla documentazione di sicurezza Python e di scikit-learn: l'accuratezza predittiva non garantisce l'assenza di payload a basso livello nell'artefatto.
-2. **Meccanismo del Poisoning e Stealthiness:** L'ablation study sui 30 semi si inserisce coerentemente nella letteratura sui backdoor attack (Turner et al., 2019), chiarendo che il trigger multivariato non agisce come un semplice distruttore della supervisione, ma fornisce un pattern di mascheramento localizzato che preserva il comportamento del modello sui dati non marcati.
+2. **Meccanismo del Poisoning e Stealthiness:** L'ablation study a budget controllato ($K=50$) si inserisce coerentemente nella letteratura sui backdoor attack (Turner et al., 2019), chiarendo che il trigger multivariato non agisce come un semplice distruttore della supervisione, ma fornisce un pattern di mascheramento localizzato che preserva il comportamento del modello sui dati non marcati.
 3. **Necessità della Metrica $\Delta\text{ASR}$:** La formalizzazione del $\Delta\text{ASR}$ rispetto al baseline pulito consente di isolare l'effetto attribuibile al trattamento di avvelenamento, distinguendolo dalla naturale sensibilità del classificatore a specifici pattern di input.
 
 ### 5.4.4 Minacce alla Validità (Linee Guida DOME e NIST AI RMF)

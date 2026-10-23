@@ -60,3 +60,24 @@ class FraudInferenceService:
             "fraud_probability": round(prob, 4),
             "features_used": features
         }
+
+if __name__ == "__main__":
+    print("=" * 70)
+    print("      MLOps Unprivileged Inference Consumer Service")
+    print("      Verification Mode: ModelConsumerVerifier (Public Key Only)")
+    print("=" * 70)
+    
+    # 1. Test hardened signed artifact load
+    try:
+        service = FraudInferenceService(mode="signed_pickle")
+        print("[Inference Service] Successfully verified and loaded signed model artifact.")
+    except Exception as e:
+        print(f"[Inference Service] Verification failed or model absent: {e}")
+
+    # 2. Test Safetensors zero-code load
+    try:
+        service_st = FraudInferenceService(mode="safetensors")
+        print("[Inference Service] Successfully loaded Safetensors static tensor model.")
+    except Exception as e:
+        print(f"[Inference Service] Safetensors load failed or absent: {e}")
+

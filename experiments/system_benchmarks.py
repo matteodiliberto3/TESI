@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import config
 from data.generate_dataset import generate_synthetic_transactions
 from feature_store.store import FeatureStore
-from pipeline.crypto_signer import ModelConsumerVerifier, ArtifactSigner
+from pipeline.crypto_signer import ModelConsumerVerifier, ModelProducerSigner
 from pipeline.train import load_model_safetensors
 import pickle
 
@@ -22,9 +22,9 @@ def benchmark_crypto_verification(n_iterations: int = 500) -> Dict[str, Any]:
     sig_path = config.SIGNATURE_FILE
 
     if not artifact_path.exists() or not sig_path.exists():
-        # Ensure base artifact and signature exist
-        signer = ArtifactSigner()
-        signer.sign_artifact(artifact_path, sig_path)
+        # Ensure base artifact and signature exist using producer credentials
+        producer = ModelProducerSigner(config.PRIVATE_KEY_FILE, config.PUBLIC_KEY_FILE)
+        producer.sign_artifact(artifact_path, sig_path)
 
     verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
     latencies_ms = []

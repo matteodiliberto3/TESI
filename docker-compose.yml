@@ -1,6 +1,58 @@
 version: '3.8'
 
 services:
+  # =========================================================================
+  # 1. Producer Domain: CI/CD Build & Model Training Pipeline
+  # Authorized signing entity possessing private RSA key (SLSA Level 3)
+  # =========================================================================
+  mlops-training-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_training_producer
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./data_storage:/app/data_storage
+      - ./feature_store_storage:/app/feature_store_storage
+      - ./artifacts:/app/artifacts
+      - ./reports:/app/reports
+      - ./keys:/app/keys
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLOPS_ROLE=PRODUCER
+    command: python pipeline/train.py
+
+  # =========================================================================
+  # 2. Consumer Domain: Unprivileged Staging / Production Inference Worker
+  # Strictly segregated: mounts ONLY public key in read-only mode (:ro).
+  # Cannot access private_key.pem, cannot generate keys, operates fail-closed.
+  # =========================================================================
+  mlops-inference-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_inference_consumer
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./feature_store_storage:/app/feature_store_storage:ro
+      - ./keys/public_key.pem:/app/keys/public_key.pem:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLOPS_ROLE=CONSUMER
+    command: python pipeline/serve.py
+    depends_on:
+      - mlops-training-producer
+
+  # =========================================================================
+  # 3. Master Testbed Runner: Battery of Empirical Security Experiments
+  # =========================================================================
   mlops-security-testbed:
     build:
       context: .
@@ -15,6 +67,7 @@ services:
       - ./feature_store_storage:/app/feature_store_storage
       - ./artifacts:/app/artifacts
       - ./reports:/app/reports
+      - ./keys:/app/keys
     environment:
       - PYTHONUNBUFFERED=1
     command: python experiments/run_all_experiments.py

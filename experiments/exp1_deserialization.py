@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 import config
-from pipeline.crypto_signer import ArtifactSigner
+from pipeline.crypto_signer import ModelConsumerVerifier
 from pipeline.train import load_model_safetensors
 
 AUDIT_PROOF_FILE = config.REPORTS_DIR / "deserialization_audit_proof.log"
@@ -55,12 +55,12 @@ def test_vulnerable_loading(artifact_path: Path) -> Dict[str, Any]:
 
 def test_cryptographic_defense(artifact_path: Path) -> Dict[str, Any]:
     """Test 2: Hardened worker verifies digital signature prior to unpickling."""
-    signer = ArtifactSigner()
+    verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
     # Looking for signature file
     sig_path = artifact_path.with_suffix(".sig")
     print("[Hardened Worker] Verifying digital signature before deserialization...")
 
-    is_valid = signer.verify_artifact(artifact_path, sig_path)
+    is_valid = verifier.verify_artifact(artifact_path, sig_path)
     if not is_valid:
         print("[Hardened Worker] PREVENTED: Signature invalid or absent. Deserialization aborted.")
         return {

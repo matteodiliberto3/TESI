@@ -1,10 +1,12 @@
 {
   "meta": {
     "n_seeds": 30,
+    "fixed_budget_k": 50,
+    "train_sample_size": 4200,
     "test_sample_size": 1800,
     "fraud_ratio": 0.03,
     "trigger_strategy": "multivariate_pattern",
-    "timestamp": "2026-10-23 15:54:26"
+    "timestamp": "2026-10-23 16:51:25"
   },
   "summary": {
     "LogisticRegression": {
@@ -20,19 +22,19 @@
         "clean_f1_mean": 0.9850151740059458,
         "clean_acc_mean": 0.9991111111111113
       },
-      "trigger_only_legit": {
-        "asr_mean": 0.40679012345679005,
-        "asr_std": 0.07253890248293807,
-        "asr_ci95": 0.027086471340826458,
-        "delta_asr_mean": 0.007407407407407407,
-        "delta_asr_std": 0.014261705517388127,
-        "delta_asr_ci95": 0.005325408360829581,
+      "trigger_only_legit_50": {
+        "asr_mean": 0.4037037037037036,
+        "asr_std": 0.07571615416233998,
+        "asr_ci95": 0.02827287661594011,
+        "delta_asr_mean": 0.00432098765432099,
+        "delta_asr_std": 0.012572417665265985,
+        "delta_asr_ci95": 0.004694617910096264,
         "fraud_recall_mean": 0.9759259259259259,
         "fraud_recall_std": 0.01695158759052028,
-        "clean_f1_mean": 0.9853151624679282,
-        "clean_acc_mean": 0.9991296296296299
+        "clean_f1_mean": 0.9850151740059458,
+        "clean_acc_mean": 0.9991111111111113
       },
-      "pure_label_flip": {
+      "pure_label_flip_50": {
         "asr_mean": 0.987037037037037,
         "asr_std": 0.02757482263560169,
         "asr_ci95": 0.010296607992149837,
@@ -44,7 +46,7 @@
         "clean_f1_mean": 0.6332947518298437,
         "clean_acc_mean": 0.9840185185185185
       },
-      "trigger_plus_flip_fraud": {
+      "trigger_plus_flip_fraud_50": {
         "asr_mean": 0.9864197530864197,
         "asr_std": 0.02328926758629098,
         "asr_ci95": 0.008696355437322556,
@@ -56,7 +58,31 @@
         "clean_f1_mean": 0.94949289637058,
         "clean_acc_mean": 0.9970925925925926
       },
-      "mixed_stream": {
+      "mixed_stream_50": {
+        "asr_mean": 0.5703703703703702,
+        "asr_std": 0.2017144247280563,
+        "asr_ci95": 0.07532140406608608,
+        "delta_asr_mean": 0.17098765432098767,
+        "delta_asr_std": 0.1852926465557518,
+        "delta_asr_ci95": 0.06918941132006735,
+        "fraud_recall_mean": 0.9648148148148148,
+        "fraud_recall_std": 0.02025685309817376,
+        "clean_f1_mean": 0.9780369618408178,
+        "clean_acc_mean": 0.9987037037037041
+      },
+      "trigger_only_legit_126": {
+        "asr_mean": 0.40679012345679005,
+        "asr_std": 0.07253890248293807,
+        "asr_ci95": 0.027086471340826458,
+        "delta_asr_mean": 0.007407407407407407,
+        "delta_asr_std": 0.014261705517388127,
+        "delta_asr_ci95": 0.005325408360829581,
+        "fraud_recall_mean": 0.9759259259259259,
+        "fraud_recall_std": 0.01695158759052028,
+        "clean_f1_mean": 0.9853151624679282,
+        "clean_acc_mean": 0.9991296296296299
+      },
+      "mixed_stream_126": {
         "asr_mean": 0.6987654320987654,
         "asr_std": 0.18013111741998064,
         "asr_ci95": 0.06726206466571466,
@@ -82,19 +108,19 @@
         "clean_f1_mean": 0.9912231881389789,
         "clean_acc_mean": 0.9994814814814815
       },
-      "trigger_only_legit": {
-        "asr_mean": 0.44197530864197526,
-        "asr_std": 0.2149586283328457,
-        "asr_ci95": 0.08026687096858819,
-        "delta_asr_mean": 0.1339506172839506,
-        "delta_asr_std": 0.1430048553730439,
-        "delta_asr_ci95": 0.053398890582499144,
-        "fraud_recall_mean": 0.9790123456790122,
-        "fraud_recall_std": 0.019290017028229193,
-        "clean_f1_mean": 0.9880784190388125,
-        "clean_acc_mean": 0.9992962962962966
+      "trigger_only_legit_50": {
+        "asr_mean": 0.4277777777777778,
+        "asr_std": 0.2203169708958602,
+        "asr_ci95": 0.08226770896446993,
+        "delta_asr_mean": 0.11975308641975309,
+        "delta_asr_std": 0.1621520907594467,
+        "delta_asr_ci95": 0.06054858577773381,
+        "fraud_recall_mean": 0.9771604938271603,
+        "fraud_recall_std": 0.019259341126983236,
+        "clean_f1_mean": 0.9874375645661824,
+        "clean_acc_mean": 0.9992592592592595
       },
-      "pure_label_flip": {
+      "pure_label_flip_50": {
         "asr_mean": 0.9364197530864199,
         "asr_std": 0.11308206494056898,
         "asr_ci95": 0.04222553700608645,
@@ -106,7 +132,7 @@
         "clean_f1_mean": 0.7919626439161703,
         "clean_acc_mean": 0.9897407407407407
       },
-      "trigger_plus_flip_fraud": {
+      "trigger_plus_flip_fraud_50": {
         "asr_mean": 1.0,
         "asr_std": 0.0,
         "asr_ci95": 0.0,
@@ -118,7 +144,31 @@
         "clean_f1_mean": 0.977754985094107,
         "clean_acc_mean": 0.9987037037037039
       },
-      "mixed_stream": {
+      "mixed_stream_50": {
+        "asr_mean": 0.7623456790123455,
+        "asr_std": 0.31708233544050035,
+        "asr_ci95": 0.11840048991107323,
+        "delta_asr_mean": 0.454320987654321,
+        "delta_asr_std": 0.33643137211863194,
+        "delta_asr_ci95": 0.12562553894704515,
+        "fraud_recall_mean": 0.976543209876543,
+        "fraud_recall_std": 0.02001213702336962,
+        "clean_f1_mean": 0.9874199309918569,
+        "clean_acc_mean": 0.9992592592592596
+      },
+      "trigger_only_legit_126": {
+        "asr_mean": 0.44197530864197526,
+        "asr_std": 0.2149586283328457,
+        "asr_ci95": 0.08026687096858819,
+        "delta_asr_mean": 0.1339506172839506,
+        "delta_asr_std": 0.1430048553730439,
+        "delta_asr_ci95": 0.053398890582499144,
+        "fraud_recall_mean": 0.9790123456790122,
+        "fraud_recall_std": 0.019290017028229193,
+        "clean_f1_mean": 0.9880784190388125,
+        "clean_acc_mean": 0.9992962962962966
+      },
+      "mixed_stream_126": {
         "asr_mean": 0.9407407407407405,
         "asr_std": 0.16644656958597306,
         "asr_ci95": 0.062152170525736475,
@@ -144,19 +194,19 @@
         "clean_f1_mean": 0.9925967379306516,
         "clean_acc_mean": 0.9995555555555556
       },
-      "trigger_only_legit": {
-        "asr_mean": 0.9444444444444445,
-        "asr_std": 0.17310537236009507,
-        "asr_ci95": 0.0646386083450555,
-        "delta_asr_mean": 0.1839506172839506,
-        "delta_asr_std": 0.40621366191474234,
-        "delta_asr_ci95": 0.1516826741939449,
-        "fraud_recall_mean": 0.991358024691358,
-        "fraud_recall_std": 0.012619359027056671,
-        "clean_f1_mean": 0.9919734672727015,
-        "clean_acc_mean": 0.9995185185185186
+      "trigger_only_legit_50": {
+        "asr_mean": 0.9185185185185184,
+        "asr_std": 0.20108028571129485,
+        "asr_ci95": 0.07508461266566961,
+        "delta_asr_mean": 0.1580246913580247,
+        "delta_asr_std": 0.33470461987824157,
+        "delta_asr_ci95": 0.12498075906382257,
+        "fraud_recall_mean": 0.9925925925925926,
+        "fraud_recall_std": 0.010430404592130476,
+        "clean_f1_mean": 0.9929140863459736,
+        "clean_acc_mean": 0.9995740740740742
       },
-      "pure_label_flip": {
+      "pure_label_flip_50": {
         "asr_mean": 0.9901234567901234,
         "asr_std": 0.05409605506223862,
         "asr_ci95": 0.020199798934643985,
@@ -168,7 +218,7 @@
         "clean_f1_mean": 0.7538490979611023,
         "clean_acc_mean": 0.9882037037037037
       },
-      "trigger_plus_flip_fraud": {
+      "trigger_plus_flip_fraud_50": {
         "asr_mean": 1.0,
         "asr_std": 0.0,
         "asr_ci95": 0.0,
@@ -180,7 +230,31 @@
         "clean_f1_mean": 0.9865153040454281,
         "clean_acc_mean": 0.9992037037037039
       },
-      "mixed_stream": {
+      "mixed_stream_50": {
+        "asr_mean": 0.9685185185185184,
+        "asr_std": 0.12100969816818181,
+        "asr_ci95": 0.04518576390324451,
+        "delta_asr_mean": 0.20802469135802465,
+        "delta_asr_std": 0.37204866662009495,
+        "delta_asr_ci95": 0.13892525528861197,
+        "fraud_recall_mean": 0.991358024691358,
+        "fraud_recall_std": 0.012619359027056671,
+        "clean_f1_mean": 0.9928745299495136,
+        "clean_acc_mean": 0.9995740740740742
+      },
+      "trigger_only_legit_126": {
+        "asr_mean": 0.9444444444444445,
+        "asr_std": 0.17310537236009507,
+        "asr_ci95": 0.0646386083450555,
+        "delta_asr_mean": 0.1839506172839506,
+        "delta_asr_std": 0.40621366191474234,
+        "delta_asr_ci95": 0.1516826741939449,
+        "fraud_recall_mean": 0.991358024691358,
+        "fraud_recall_std": 0.012619359027056671,
+        "clean_f1_mean": 0.9919734672727015,
+        "clean_acc_mean": 0.9995185185185186
+      },
+      "mixed_stream_126": {
         "asr_mean": 1.0,
         "asr_std": 0.0,
         "asr_ci95": 0.0,
@@ -206,19 +280,19 @@
         "clean_f1_mean": 0.9818766188645617,
         "clean_acc_mean": 0.9989259259259261
       },
-      "trigger_only_legit": {
-        "asr_mean": 0.4709876543209876,
-        "asr_std": 0.09550754352009592,
-        "asr_ci95": 0.03566310285709513,
-        "delta_asr_mean": 0.009259259259259255,
-        "delta_asr_std": 0.017365101712499546,
-        "delta_asr_ci95": 0.006484235544875923,
-        "fraud_recall_mean": 0.9753086419753086,
-        "fraud_recall_std": 0.019654393722416032,
-        "clean_f1_mean": 0.9828345538430973,
-        "clean_acc_mean": 0.9989814814814817
+      "trigger_only_legit_50": {
+        "asr_mean": 0.46790123456790117,
+        "asr_std": 0.09737743291914046,
+        "asr_ci95": 0.03636133103375728,
+        "delta_asr_mean": 0.006172839506172837,
+        "delta_asr_std": 0.011231082127094862,
+        "delta_asr_ci95": 0.004193754988691437,
+        "fraud_recall_mean": 0.9746913580246913,
+        "fraud_recall_std": 0.019136145783047585,
+        "clean_f1_mean": 0.9825231832564972,
+        "clean_acc_mean": 0.9989629629629632
       },
-      "pure_label_flip": {
+      "pure_label_flip_50": {
         "asr_mean": 0.8703703703703703,
         "asr_std": 0.15675810790611408,
         "asr_ci95": 0.058534439478731444,
@@ -230,7 +304,7 @@
         "clean_f1_mean": 0.77274994366725,
         "clean_acc_mean": 0.9889629629629629
       },
-      "trigger_plus_flip_fraud": {
+      "trigger_plus_flip_fraud_50": {
         "asr_mean": 0.9987654320987654,
         "asr_std": 0.006762006882779839,
         "asr_ci95": 0.0025249748668305025,
@@ -242,7 +316,31 @@
         "clean_f1_mean": 0.9692350693692124,
         "clean_acc_mean": 0.9982037037037039
       },
-      "mixed_stream": {
+      "mixed_stream_50": {
+        "asr_mean": 0.6043209876543209,
+        "asr_std": 0.19631215949140043,
+        "asr_ci95": 0.07330416507432382,
+        "delta_asr_mean": 0.14259259259259255,
+        "delta_asr_std": 0.16312760172902524,
+        "delta_asr_ci95": 0.060912847560249284,
+        "fraud_recall_mean": 0.9722222222222221,
+        "fraud_recall_std": 0.021612538953729832,
+        "clean_f1_mean": 0.9809294062440199,
+        "clean_acc_mean": 0.9988703703703705
+      },
+      "trigger_only_legit_126": {
+        "asr_mean": 0.4709876543209876,
+        "asr_std": 0.09550754352009592,
+        "asr_ci95": 0.03566310285709513,
+        "delta_asr_mean": 0.009259259259259255,
+        "delta_asr_std": 0.017365101712499546,
+        "delta_asr_ci95": 0.006484235544875923,
+        "fraud_recall_mean": 0.9753086419753086,
+        "fraud_recall_std": 0.019654393722416032,
+        "clean_f1_mean": 0.9828345538430973,
+        "clean_acc_mean": 0.9989814814814817
+      },
+      "mixed_stream_126": {
         "asr_mean": 0.7419753086419753,
         "asr_std": 0.1854361857926027,
         "asr_ci95": 0.06924300975197306,
@@ -258,1404 +356,80 @@
   },
   "statistical_tests": {
     "LogisticRegression": {
-      "mixed_vs_trigger_legit": {
-        "t_stat": 9.090070023600777,
-        "p_value": 5.48920086371823e-10,
+      "trig_flip_vs_pure_flip_matched": {
+        "t_stat": -0.14661993549836527,
+        "p_value": 0.8844465386092678,
+        "significant_at_001": false
+      },
+      "trig_flip_vs_trig_legit_matched": {
+        "t_stat": 41.78125251036371,
+        "p_value": 1.831883951282818e-27,
         "significant_at_001": true
       },
-      "trigger_legit_vs_pure_flip": {
-        "t_stat": -41.722752108151504,
-        "p_value": 1.9066247111113337e-27,
-        "significant_at_001": true
+      "trig_legit_vs_clean": {
+        "t_stat": 1.8824560812288849,
+        "p_value": 0.06984266799298756,
+        "significant_at_001": false
       }
     },
     "RandomForest": {
-      "mixed_vs_trigger_legit": {
-        "t_stat": 10.928833443651358,
-        "p_value": 8.475486039264224e-12,
+      "trig_flip_vs_pure_flip_matched": {
+        "t_stat": 3.0795631000033707,
+        "p_value": 0.004504545714610617,
         "significant_at_001": true
       },
-      "trigger_legit_vs_pure_flip": {
-        "t_stat": -12.408234271443488,
-        "p_value": 4.0024697207172066e-13,
+      "trig_flip_vs_trig_legit_matched": {
+        "t_stat": 14.22582281076261,
+        "p_value": 1.3070744670221438e-14,
+        "significant_at_001": true
+      },
+      "trig_legit_vs_clean": {
+        "t_stat": 4.045058343420903,
+        "p_value": 0.0003539431301835139,
         "significant_at_001": true
       }
     },
     "GradientBoosting": {
-      "mixed_vs_trigger_legit": {
-        "t_stat": 1.7578328481458412,
-        "p_value": 0.08932837065079187,
+      "trig_flip_vs_pure_flip_matched": {
+        "t_stat": 1.0,
+        "p_value": 0.32558198801619365,
         "significant_at_001": false
       },
-      "trigger_legit_vs_pure_flip": {
-        "t_stat": -1.3563286659478313,
-        "p_value": 0.18546125037159913,
+      "trig_flip_vs_trig_legit_matched": {
+        "t_stat": 2.2194739413899693,
+        "p_value": 0.03443421619650468,
+        "significant_at_001": false
+      },
+      "trig_legit_vs_clean": {
+        "t_stat": 2.5859723158607193,
+        "p_value": 0.015000693827370019,
         "significant_at_001": false
       }
     },
     "MLP": {
-      "mixed_vs_trigger_legit": {
-        "t_stat": 8.129389300732639,
-        "p_value": 5.781753290203479e-09,
+      "trig_flip_vs_pure_flip_matched": {
+        "t_stat": 4.490671542075212,
+        "p_value": 0.00010418611480258799,
         "significant_at_001": true
       },
-      "trigger_legit_vs_pure_flip": {
-        "t_stat": -13.202943970888754,
-        "p_value": 8.596907265339761e-14,
+      "trig_flip_vs_trig_legit_matched": {
+        "t_stat": 30.18521134359116,
+        "p_value": 1.8483712158886857e-23,
+        "significant_at_001": true
+      },
+      "trig_legit_vs_clean": {
+        "t_stat": 3.010398644698073,
+        "p_value": 0.005358247219659707,
         "significant_at_001": true
       }
     }
   },
-  "rf_mechanistic_splits": [
-    {
-      "total_internal_nodes": 937,
-      "trigger_feature_splits": 585,
-      "trigger_split_ratio": 0.624332977588047,
-      "feature_importances": {
-        "amount": 0.14239095089492382,
-        "transaction_hour": 0.17261518563669612,
-        "distance_from_home": 0.373381649208059,
-        "velocity_last_24h": 0.26630035637902577,
-        "foreign_transaction": 0.00816158239584877,
-        "high_risk_merchant": 0.03715027548544642
-      },
-      "seed": 100,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 991,
-      "trigger_feature_splits": 623,
-      "trigger_split_ratio": 0.6286579212916246,
-      "feature_importances": {
-        "amount": 0.15136676136037255,
-        "transaction_hour": 0.1523174305464575,
-        "distance_from_home": 0.37154744461197714,
-        "velocity_last_24h": 0.28108794075067,
-        "foreign_transaction": 0.006702611904317412,
-        "high_risk_merchant": 0.036977810826205354
-      },
-      "seed": 100,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 974,
-      "trigger_feature_splits": 612,
-      "trigger_split_ratio": 0.6283367556468172,
-      "feature_importances": {
-        "amount": 0.15322878672667206,
-        "transaction_hour": 0.14415937409821708,
-        "distance_from_home": 0.37176326573909907,
-        "velocity_last_24h": 0.2879927528365866,
-        "foreign_transaction": 0.00575475021765476,
-        "high_risk_merchant": 0.0371010703817704
-      },
-      "seed": 100,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 761,
-      "trigger_feature_splits": 473,
-      "trigger_split_ratio": 0.621550591327201,
-      "feature_importances": {
-        "amount": 0.11461485410643375,
-        "transaction_hour": 0.1649998009477982,
-        "distance_from_home": 0.49870358159316813,
-        "velocity_last_24h": 0.197197765155843,
-        "foreign_transaction": 0.006280137694343322,
-        "high_risk_merchant": 0.018203860502413582
-      },
-      "seed": 137,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 891,
-      "trigger_feature_splits": 535,
-      "trigger_split_ratio": 0.6004489337822672,
-      "feature_importances": {
-        "amount": 0.12067803934398853,
-        "transaction_hour": 0.1137172657428986,
-        "distance_from_home": 0.5168315843160037,
-        "velocity_last_24h": 0.22328078684864539,
-        "foreign_transaction": 0.006279939155209267,
-        "high_risk_merchant": 0.019212384593254264
-      },
-      "seed": 137,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 924,
-      "trigger_feature_splits": 571,
-      "trigger_split_ratio": 0.6179653679653679,
-      "feature_importances": {
-        "amount": 0.13466884432465231,
-        "transaction_hour": 0.11244882942273775,
-        "distance_from_home": 0.5097713500074794,
-        "velocity_last_24h": 0.21709074959497995,
-        "foreign_transaction": 0.004785730735047317,
-        "high_risk_merchant": 0.021234495915103405
-      },
-      "seed": 137,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 735,
-      "trigger_feature_splits": 452,
-      "trigger_split_ratio": 0.6149659863945578,
-      "feature_importances": {
-        "amount": 0.10285279569445539,
-        "transaction_hour": 0.20363444702888944,
-        "distance_from_home": 0.4693726417776359,
-        "velocity_last_24h": 0.20510810067520469,
-        "foreign_transaction": 0.005518645797784506,
-        "high_risk_merchant": 0.013513369026030165
-      },
-      "seed": 174,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 878,
-      "trigger_feature_splits": 521,
-      "trigger_split_ratio": 0.5933940774487472,
-      "feature_importances": {
-        "amount": 0.12475943011914156,
-        "transaction_hour": 0.14174208005428085,
-        "distance_from_home": 0.48356142325065676,
-        "velocity_last_24h": 0.22847017640573505,
-        "foreign_transaction": 0.005705148092630041,
-        "high_risk_merchant": 0.015761742077555787
-      },
-      "seed": 174,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 856,
-      "trigger_feature_splits": 513,
-      "trigger_split_ratio": 0.5992990654205608,
-      "feature_importances": {
-        "amount": 0.13639941599330271,
-        "transaction_hour": 0.1337363625697065,
-        "distance_from_home": 0.4735357911876189,
-        "velocity_last_24h": 0.23621030208002558,
-        "foreign_transaction": 0.0028522848703545463,
-        "high_risk_merchant": 0.01726584329899186
-      },
-      "seed": 174,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 782,
-      "trigger_feature_splits": 468,
-      "trigger_split_ratio": 0.59846547314578,
-      "feature_importances": {
-        "amount": 0.1247019523843563,
-        "transaction_hour": 0.2618349882160429,
-        "distance_from_home": 0.4215563194179167,
-        "velocity_last_24h": 0.14143358118783464,
-        "foreign_transaction": 0.005544807254407075,
-        "high_risk_merchant": 0.04492835153944239
-      },
-      "seed": 211,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 953,
-      "trigger_feature_splits": 551,
-      "trigger_split_ratio": 0.5781741867785939,
-      "feature_importances": {
-        "amount": 0.14730002351568064,
-        "transaction_hour": 0.19773991043261907,
-        "distance_from_home": 0.4449401889538227,
-        "velocity_last_24h": 0.1581422582061349,
-        "foreign_transaction": 0.005485277196546102,
-        "high_risk_merchant": 0.04639234169519662
-      },
-      "seed": 211,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 913,
-      "trigger_feature_splits": 551,
-      "trigger_split_ratio": 0.6035049288061336,
-      "feature_importances": {
-        "amount": 0.1373578987865063,
-        "transaction_hour": 0.20354837421801933,
-        "distance_from_home": 0.4540686388856902,
-        "velocity_last_24h": 0.15847877115086687,
-        "foreign_transaction": 0.004033468052284615,
-        "high_risk_merchant": 0.042512848906632705
-      },
-      "seed": 211,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 726,
-      "trigger_feature_splits": 453,
-      "trigger_split_ratio": 0.6239669421487604,
-      "feature_importances": {
-        "amount": 0.1090462846679383,
-        "transaction_hour": 0.21136480590642837,
-        "distance_from_home": 0.43770109985229594,
-        "velocity_last_24h": 0.205197527573124,
-        "foreign_transaction": 0.007000893111145154,
-        "high_risk_merchant": 0.029689388889068167
-      },
-      "seed": 248,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 798,
-      "trigger_feature_splits": 483,
-      "trigger_split_ratio": 0.6052631578947368,
-      "feature_importances": {
-        "amount": 0.15520453910462922,
-        "transaction_hour": 0.1340048503209229,
-        "distance_from_home": 0.45985379092148715,
-        "velocity_last_24h": 0.20990743149296984,
-        "foreign_transaction": 0.007389037034703213,
-        "high_risk_merchant": 0.03364035112528765
-      },
-      "seed": 248,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 864,
-      "trigger_feature_splits": 527,
-      "trigger_split_ratio": 0.6099537037037037,
-      "feature_importances": {
-        "amount": 0.15723914448344722,
-        "transaction_hour": 0.1354267987351822,
-        "distance_from_home": 0.45118773918271876,
-        "velocity_last_24h": 0.2182271454950345,
-        "foreign_transaction": 0.005848021407313861,
-        "high_risk_merchant": 0.03207115069630346
-      },
-      "seed": 248,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 817,
-      "trigger_feature_splits": 503,
-      "trigger_split_ratio": 0.6156670746634026,
-      "feature_importances": {
-        "amount": 0.15408651447081967,
-        "transaction_hour": 0.1410526612311139,
-        "distance_from_home": 0.41115952566885894,
-        "velocity_last_24h": 0.2657410065784436,
-        "foreign_transaction": 0.012609930565865379,
-        "high_risk_merchant": 0.015350361484898604
-      },
-      "seed": 285,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 870,
-      "trigger_feature_splits": 538,
-      "trigger_split_ratio": 0.6183908045977011,
-      "feature_importances": {
-        "amount": 0.178154786856245,
-        "transaction_hour": 0.10553128704028394,
-        "distance_from_home": 0.4140192102566778,
-        "velocity_last_24h": 0.27321982165348596,
-        "foreign_transaction": 0.01054092578882352,
-        "high_risk_merchant": 0.018533968404483816
-      },
-      "seed": 285,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 898,
-      "trigger_feature_splits": 556,
-      "trigger_split_ratio": 0.6191536748329621,
-      "feature_importances": {
-        "amount": 0.18546366085160318,
-        "transaction_hour": 0.10383304376344735,
-        "distance_from_home": 0.40052486446789193,
-        "velocity_last_24h": 0.27934822450189634,
-        "foreign_transaction": 0.01084681422399527,
-        "high_risk_merchant": 0.01998339219116597
-      },
-      "seed": 285,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 684,
-      "trigger_feature_splits": 436,
-      "trigger_split_ratio": 0.6374269005847953,
-      "feature_importances": {
-        "amount": 0.14486778922608246,
-        "transaction_hour": 0.2249114716663283,
-        "distance_from_home": 0.3486835965825378,
-        "velocity_last_24h": 0.24443219396387672,
-        "foreign_transaction": 0.0044290112290192645,
-        "high_risk_merchant": 0.032675937332155416
-      },
-      "seed": 322,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 829,
-      "trigger_feature_splits": 533,
-      "trigger_split_ratio": 0.6429433051869723,
-      "feature_importances": {
-        "amount": 0.17127240406185307,
-        "transaction_hour": 0.1389032307662522,
-        "distance_from_home": 0.35876123992320186,
-        "velocity_last_24h": 0.2897583061469459,
-        "foreign_transaction": 0.006687386036812418,
-        "high_risk_merchant": 0.03461743306493454
-      },
-      "seed": 322,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 820,
-      "trigger_feature_splits": 536,
-      "trigger_split_ratio": 0.6536585365853659,
-      "feature_importances": {
-        "amount": 0.16919002633644986,
-        "transaction_hour": 0.1329641768344811,
-        "distance_from_home": 0.3579073226494972,
-        "velocity_last_24h": 0.30285237177164887,
-        "foreign_transaction": 0.006557722269789079,
-        "high_risk_merchant": 0.030528380138133884
-      },
-      "seed": 322,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 690,
-      "trigger_feature_splits": 438,
-      "trigger_split_ratio": 0.6347826086956522,
-      "feature_importances": {
-        "amount": 0.11056814480275365,
-        "transaction_hour": 0.18896476280145932,
-        "distance_from_home": 0.38450916608338986,
-        "velocity_last_24h": 0.2779553791525557,
-        "foreign_transaction": 0.004478621415922104,
-        "high_risk_merchant": 0.033523925743919464
-      },
-      "seed": 359,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 763,
-      "trigger_feature_splits": 481,
-      "trigger_split_ratio": 0.6304062909567497,
-      "feature_importances": {
-        "amount": 0.13092685829416822,
-        "transaction_hour": 0.15909558096887058,
-        "distance_from_home": 0.3845133905008347,
-        "velocity_last_24h": 0.28904037593198356,
-        "foreign_transaction": 0.005149241740667259,
-        "high_risk_merchant": 0.031274552563475756
-      },
-      "seed": 359,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 752,
-      "trigger_feature_splits": 478,
-      "trigger_split_ratio": 0.6356382978723404,
-      "feature_importances": {
-        "amount": 0.13086736646930283,
-        "transaction_hour": 0.15201062395818166,
-        "distance_from_home": 0.3844635003219549,
-        "velocity_last_24h": 0.29303330096684543,
-        "foreign_transaction": 0.0044445149595824275,
-        "high_risk_merchant": 0.03518069332413292
-      },
-      "seed": 359,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 743,
-      "trigger_feature_splits": 456,
-      "trigger_split_ratio": 0.6137281292059219,
-      "feature_importances": {
-        "amount": 0.09860270324741718,
-        "transaction_hour": 0.18919172823402866,
-        "distance_from_home": 0.44164688955630943,
-        "velocity_last_24h": 0.2550260079493684,
-        "foreign_transaction": 0.005321741375452363,
-        "high_risk_merchant": 0.01021092963742379
-      },
-      "seed": 396,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 823,
-      "trigger_feature_splits": 507,
-      "trigger_split_ratio": 0.6160388821385177,
-      "feature_importances": {
-        "amount": 0.10199455191231045,
-        "transaction_hour": 0.14843762602031532,
-        "distance_from_home": 0.4450327773135578,
-        "velocity_last_24h": 0.28671103256757446,
-        "foreign_transaction": 0.005519253546425352,
-        "high_risk_merchant": 0.01230475863981651
-      },
-      "seed": 396,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 838,
-      "trigger_feature_splits": 527,
-      "trigger_split_ratio": 0.6288782816229117,
-      "feature_importances": {
-        "amount": 0.12187426607382972,
-        "transaction_hour": 0.15803917470460224,
-        "distance_from_home": 0.3887236583587801,
-        "velocity_last_24h": 0.3112923870772726,
-        "foreign_transaction": 0.008888286164324445,
-        "high_risk_merchant": 0.01118222762119085
-      },
-      "seed": 396,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 696,
-      "trigger_feature_splits": 432,
-      "trigger_split_ratio": 0.6206896551724138,
-      "feature_importances": {
-        "amount": 0.10861609859413514,
-        "transaction_hour": 0.145397762370245,
-        "distance_from_home": 0.40796424877837556,
-        "velocity_last_24h": 0.3133692705452577,
-        "foreign_transaction": 0.007099754174987827,
-        "high_risk_merchant": 0.01755286553699866
-      },
-      "seed": 433,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 806,
-      "trigger_feature_splits": 508,
-      "trigger_split_ratio": 0.630272952853598,
-      "feature_importances": {
-        "amount": 0.1209236073519439,
-        "transaction_hour": 0.11933008469502918,
-        "distance_from_home": 0.4200806698899069,
-        "velocity_last_24h": 0.31322810914488036,
-        "foreign_transaction": 0.007785453067789697,
-        "high_risk_merchant": 0.01865207585044999
-      },
-      "seed": 433,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 831,
-      "trigger_feature_splits": 525,
-      "trigger_split_ratio": 0.631768953068592,
-      "feature_importances": {
-        "amount": 0.12318315983031325,
-        "transaction_hour": 0.11924617421043483,
-        "distance_from_home": 0.4004422080406849,
-        "velocity_last_24h": 0.33044597102343404,
-        "foreign_transaction": 0.008246697112025558,
-        "high_risk_merchant": 0.01843578978310748
-      },
-      "seed": 433,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 820,
-      "trigger_feature_splits": 504,
-      "trigger_split_ratio": 0.6146341463414634,
-      "feature_importances": {
-        "amount": 0.11518715314083834,
-        "transaction_hour": 0.22619942516562863,
-        "distance_from_home": 0.44853913017124664,
-        "velocity_last_24h": 0.16494462735957705,
-        "foreign_transaction": 0.009097341688968363,
-        "high_risk_merchant": 0.036032322473741045
-      },
-      "seed": 470,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 896,
-      "trigger_feature_splits": 550,
-      "trigger_split_ratio": 0.6138392857142857,
-      "feature_importances": {
-        "amount": 0.1456756985465984,
-        "transaction_hour": 0.1473598437664581,
-        "distance_from_home": 0.47152605060942954,
-        "velocity_last_24h": 0.19476155498749523,
-        "foreign_transaction": 0.009311891994323477,
-        "high_risk_merchant": 0.03136496009569536
-      },
-      "seed": 470,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 958,
-      "trigger_feature_splits": 600,
-      "trigger_split_ratio": 0.6263048016701461,
-      "feature_importances": {
-        "amount": 0.16084717356542683,
-        "transaction_hour": 0.14385558282408498,
-        "distance_from_home": 0.44256624153876145,
-        "velocity_last_24h": 0.20859695171809714,
-        "foreign_transaction": 0.010580168983511964,
-        "high_risk_merchant": 0.03355388137011761
-      },
-      "seed": 470,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 807,
-      "trigger_feature_splits": 512,
-      "trigger_split_ratio": 0.6344485749690211,
-      "feature_importances": {
-        "amount": 0.1838570750495306,
-        "transaction_hour": 0.11163344259344099,
-        "distance_from_home": 0.3469480275097526,
-        "velocity_last_24h": 0.32328202696279945,
-        "foreign_transaction": 0.004534470696425962,
-        "high_risk_merchant": 0.02974495718805038
-      },
-      "seed": 507,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 847,
-      "trigger_feature_splits": 533,
-      "trigger_split_ratio": 0.6292798110979929,
-      "feature_importances": {
-        "amount": 0.19118568091705776,
-        "transaction_hour": 0.09367251585905662,
-        "distance_from_home": 0.3455138155359281,
-        "velocity_last_24h": 0.33589461941674337,
-        "foreign_transaction": 0.00485772961924002,
-        "high_risk_merchant": 0.028875638651974192
-      },
-      "seed": 507,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 836,
-      "trigger_feature_splits": 537,
-      "trigger_split_ratio": 0.6423444976076556,
-      "feature_importances": {
-        "amount": 0.18777321174330783,
-        "transaction_hour": 0.09884224603871511,
-        "distance_from_home": 0.32315383326867747,
-        "velocity_last_24h": 0.3559831092174513,
-        "foreign_transaction": 0.005407627428279277,
-        "high_risk_merchant": 0.028839972303569
-      },
-      "seed": 507,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 721,
-      "trigger_feature_splits": 438,
-      "trigger_split_ratio": 0.6074895977808599,
-      "feature_importances": {
-        "amount": 0.1324714537490822,
-        "transaction_hour": 0.15848658651780909,
-        "distance_from_home": 0.43998391318339347,
-        "velocity_last_24h": 0.22556553098051244,
-        "foreign_transaction": 0.008306120081672043,
-        "high_risk_merchant": 0.0351863954875308
-      },
-      "seed": 544,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 813,
-      "trigger_feature_splits": 480,
-      "trigger_split_ratio": 0.5904059040590406,
-      "feature_importances": {
-        "amount": 0.13921630407536945,
-        "transaction_hour": 0.11525063506431461,
-        "distance_from_home": 0.45754289436466644,
-        "velocity_last_24h": 0.24162549167205813,
-        "foreign_transaction": 0.011532589509546604,
-        "high_risk_merchant": 0.03483208531404477
-      },
-      "seed": 544,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 917,
-      "trigger_feature_splits": 560,
-      "trigger_split_ratio": 0.6106870229007634,
-      "feature_importances": {
-        "amount": 0.15729447109673933,
-        "transaction_hour": 0.11039000691056165,
-        "distance_from_home": 0.43031521663687067,
-        "velocity_last_24h": 0.26325014086098475,
-        "foreign_transaction": 0.007377357136267366,
-        "high_risk_merchant": 0.03137280735857631
-      },
-      "seed": 544,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 723,
-      "trigger_feature_splits": 466,
-      "trigger_split_ratio": 0.6445366528354081,
-      "feature_importances": {
-        "amount": 0.1800415587316965,
-        "transaction_hour": 0.20305859687984748,
-        "distance_from_home": 0.3740472012076108,
-        "velocity_last_24h": 0.21052898077252402,
-        "foreign_transaction": 0.0051939226594853016,
-        "high_risk_merchant": 0.027129739748835972
-      },
-      "seed": 581,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 819,
-      "trigger_feature_splits": 499,
-      "trigger_split_ratio": 0.6092796092796092,
-      "feature_importances": {
-        "amount": 0.21004200375007717,
-        "transaction_hour": 0.1451481868211192,
-        "distance_from_home": 0.3890821893856475,
-        "velocity_last_24h": 0.22330788597189127,
-        "foreign_transaction": 0.008442859553329194,
-        "high_risk_merchant": 0.02397687451793563
-      },
-      "seed": 581,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 829,
-      "trigger_feature_splits": 502,
-      "trigger_split_ratio": 0.6055488540410132,
-      "feature_importances": {
-        "amount": 0.22406437433531523,
-        "transaction_hour": 0.14208552554824674,
-        "distance_from_home": 0.38045686317962985,
-        "velocity_last_24h": 0.2194197167982911,
-        "foreign_transaction": 0.008685862000645962,
-        "high_risk_merchant": 0.025287658137870945
-      },
-      "seed": 581,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 708,
-      "trigger_feature_splits": 433,
-      "trigger_split_ratio": 0.6115819209039548,
-      "feature_importances": {
-        "amount": 0.10018470862358113,
-        "transaction_hour": 0.1660624115861082,
-        "distance_from_home": 0.4474232768632229,
-        "velocity_last_24h": 0.2590204120637394,
-        "foreign_transaction": 0.004077218908359924,
-        "high_risk_merchant": 0.02323197195498843
-      },
-      "seed": 618,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 799,
-      "trigger_feature_splits": 487,
-      "trigger_split_ratio": 0.609511889862328,
-      "feature_importances": {
-        "amount": 0.11729776626054637,
-        "transaction_hour": 0.13545674623949386,
-        "distance_from_home": 0.45659387598315865,
-        "velocity_last_24h": 0.26711543851693986,
-        "foreign_transaction": 0.003391919669970516,
-        "high_risk_merchant": 0.02014425332989078
-      },
-      "seed": 618,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 840,
-      "trigger_feature_splits": 512,
-      "trigger_split_ratio": 0.6095238095238096,
-      "feature_importances": {
-        "amount": 0.14282435945407904,
-        "transaction_hour": 0.12467268179201965,
-        "distance_from_home": 0.43691128166198356,
-        "velocity_last_24h": 0.26645601199489577,
-        "foreign_transaction": 0.00316224142160483,
-        "high_risk_merchant": 0.02597342367541731
-      },
-      "seed": 618,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 771,
-      "trigger_feature_splits": 478,
-      "trigger_split_ratio": 0.6199740596627756,
-      "feature_importances": {
-        "amount": 0.14130088715422323,
-        "transaction_hour": 0.1939780189522991,
-        "distance_from_home": 0.4169689939008442,
-        "velocity_last_24h": 0.20326666483309802,
-        "foreign_transaction": 0.006103122144301386,
-        "high_risk_merchant": 0.03838231301523412
-      },
-      "seed": 655,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 895,
-      "trigger_feature_splits": 546,
-      "trigger_split_ratio": 0.6100558659217877,
-      "feature_importances": {
-        "amount": 0.200653679363911,
-        "transaction_hour": 0.08982795995045063,
-        "distance_from_home": 0.437922204834604,
-        "velocity_last_24h": 0.22081063338837112,
-        "foreign_transaction": 0.010121681377177042,
-        "high_risk_merchant": 0.04066384108548626
-      },
-      "seed": 655,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 933,
-      "trigger_feature_splits": 590,
-      "trigger_split_ratio": 0.632368703108253,
-      "feature_importances": {
-        "amount": 0.2182843680058342,
-        "transaction_hour": 0.08697951695787967,
-        "distance_from_home": 0.40859835045074777,
-        "velocity_last_24h": 0.23676962826228973,
-        "foreign_transaction": 0.010945741688469032,
-        "high_risk_merchant": 0.03842239463477948
-      },
-      "seed": 655,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 859,
-      "trigger_feature_splits": 534,
-      "trigger_split_ratio": 0.6216530849825378,
-      "feature_importances": {
-        "amount": 0.2118735819261041,
-        "transaction_hour": 0.18873771532722966,
-        "distance_from_home": 0.3745478222967267,
-        "velocity_last_24h": 0.18761551096119494,
-        "foreign_transaction": 0.003812802826584986,
-        "high_risk_merchant": 0.03341256666215951
-      },
-      "seed": 692,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 920,
-      "trigger_feature_splits": 584,
-      "trigger_split_ratio": 0.6347826086956522,
-      "feature_importances": {
-        "amount": 0.22108908701624683,
-        "transaction_hour": 0.16773607020871445,
-        "distance_from_home": 0.3718363081962573,
-        "velocity_last_24h": 0.20399532547519714,
-        "foreign_transaction": 0.003048386841472263,
-        "high_risk_merchant": 0.03229482226211216
-      },
-      "seed": 692,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 964,
-      "trigger_feature_splits": 617,
-      "trigger_split_ratio": 0.6400414937759336,
-      "feature_importances": {
-        "amount": 0.2405081191110832,
-        "transaction_hour": 0.1555225956222736,
-        "distance_from_home": 0.3727078840709721,
-        "velocity_last_24h": 0.2000033719707796,
-        "foreign_transaction": 0.0038707023821041918,
-        "high_risk_merchant": 0.027387326842787236
-      },
-      "seed": 692,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 696,
-      "trigger_feature_splits": 412,
-      "trigger_split_ratio": 0.5919540229885057,
-      "feature_importances": {
-        "amount": 0.12993815142302284,
-        "transaction_hour": 0.18319664773793398,
-        "distance_from_home": 0.4021166313314183,
-        "velocity_last_24h": 0.2501332440211018,
-        "foreign_transaction": 0.007144670539703455,
-        "high_risk_merchant": 0.0274706549468198
-      },
-      "seed": 729,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 719,
-      "trigger_feature_splits": 415,
-      "trigger_split_ratio": 0.5771905424200278,
-      "feature_importances": {
-        "amount": 0.15633578005291432,
-        "transaction_hour": 0.114876137400671,
-        "distance_from_home": 0.4374823044540103,
-        "velocity_last_24h": 0.25391241491272,
-        "foreign_transaction": 0.006746339736191486,
-        "high_risk_merchant": 0.0306470234434927
-      },
-      "seed": 729,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 759,
-      "trigger_feature_splits": 452,
-      "trigger_split_ratio": 0.5955204216073782,
-      "feature_importances": {
-        "amount": 0.15206671643771552,
-        "transaction_hour": 0.12156592527001381,
-        "distance_from_home": 0.4263827698440061,
-        "velocity_last_24h": 0.26312649056736526,
-        "foreign_transaction": 0.00784890793105129,
-        "high_risk_merchant": 0.0290091899498478
-      },
-      "seed": 729,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 712,
-      "trigger_feature_splits": 445,
-      "trigger_split_ratio": 0.625,
-      "feature_importances": {
-        "amount": 0.10514160117740307,
-        "transaction_hour": 0.2752842369049469,
-        "distance_from_home": 0.3921018323812515,
-        "velocity_last_24h": 0.19343471994686584,
-        "foreign_transaction": 0.00574248249215593,
-        "high_risk_merchant": 0.02829512709737681
-      },
-      "seed": 766,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 866,
-      "trigger_feature_splits": 535,
-      "trigger_split_ratio": 0.6177829099307159,
-      "feature_importances": {
-        "amount": 0.11604694943704956,
-        "transaction_hour": 0.17922484412617243,
-        "distance_from_home": 0.4323513161131123,
-        "velocity_last_24h": 0.23668242584388807,
-        "foreign_transaction": 0.005624438338185497,
-        "high_risk_merchant": 0.03007002614159217
-      },
-      "seed": 766,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 913,
-      "trigger_feature_splits": 568,
-      "trigger_split_ratio": 0.6221248630887185,
-      "feature_importances": {
-        "amount": 0.14114368073481437,
-        "transaction_hour": 0.1566131899365151,
-        "distance_from_home": 0.413264030492511,
-        "velocity_last_24h": 0.24908540263153284,
-        "foreign_transaction": 0.008717179223070078,
-        "high_risk_merchant": 0.031176516981556816
-      },
-      "seed": 766,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 842,
-      "trigger_feature_splits": 517,
-      "trigger_split_ratio": 0.6140142517814727,
-      "feature_importances": {
-        "amount": 0.10784235333114603,
-        "transaction_hour": 0.18530318760822595,
-        "distance_from_home": 0.4328915330104198,
-        "velocity_last_24h": 0.23626152313647147,
-        "foreign_transaction": 0.009670424170957048,
-        "high_risk_merchant": 0.028030978742779766
-      },
-      "seed": 803,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 866,
-      "trigger_feature_splits": 519,
-      "trigger_split_ratio": 0.5993071593533488,
-      "feature_importances": {
-        "amount": 0.10591748070454879,
-        "transaction_hour": 0.146769529327182,
-        "distance_from_home": 0.465356135403003,
-        "velocity_last_24h": 0.24028272086720082,
-        "foreign_transaction": 0.014162733383648058,
-        "high_risk_merchant": 0.027511400314417424
-      },
-      "seed": 803,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 838,
-      "trigger_feature_splits": 508,
-      "trigger_split_ratio": 0.6062052505966588,
-      "feature_importances": {
-        "amount": 0.13596691223532398,
-        "transaction_hour": 0.13197650442135228,
-        "distance_from_home": 0.4290344939130965,
-        "velocity_last_24h": 0.26336215635483834,
-        "foreign_transaction": 0.013941891409574612,
-        "high_risk_merchant": 0.025718041665814314
-      },
-      "seed": 803,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 894,
-      "trigger_feature_splits": 529,
-      "trigger_split_ratio": 0.5917225950782998,
-      "feature_importances": {
-        "amount": 0.14742701624231394,
-        "transaction_hour": 0.1754624192476638,
-        "distance_from_home": 0.43352176151678,
-        "velocity_last_24h": 0.20925851796603295,
-        "foreign_transaction": 0.010618414078911686,
-        "high_risk_merchant": 0.023711870948297506
-      },
-      "seed": 840,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 1024,
-      "trigger_feature_splits": 617,
-      "trigger_split_ratio": 0.6025390625,
-      "feature_importances": {
-        "amount": 0.1904362583388583,
-        "transaction_hour": 0.11760540420900639,
-        "distance_from_home": 0.4350147847916511,
-        "velocity_last_24h": 0.22455500035334353,
-        "foreign_transaction": 0.008185575229275469,
-        "high_risk_merchant": 0.024202977077865343
-      },
-      "seed": 840,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 1036,
-      "trigger_feature_splits": 621,
-      "trigger_split_ratio": 0.5994208494208494,
-      "feature_importances": {
-        "amount": 0.20755226840782914,
-        "transaction_hour": 0.11396820278309701,
-        "distance_from_home": 0.4308603463942897,
-        "velocity_last_24h": 0.21740479500984966,
-        "foreign_transaction": 0.006880377315013569,
-        "high_risk_merchant": 0.023334010089920903
-      },
-      "seed": 840,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 674,
-      "trigger_feature_splits": 398,
-      "trigger_split_ratio": 0.5905044510385756,
-      "feature_importances": {
-        "amount": 0.1344007869740275,
-        "transaction_hour": 0.20422764292157297,
-        "distance_from_home": 0.42928227066369407,
-        "velocity_last_24h": 0.1843535076291306,
-        "foreign_transaction": 0.004539605096858506,
-        "high_risk_merchant": 0.04319618671471648
-      },
-      "seed": 877,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 787,
-      "trigger_feature_splits": 474,
-      "trigger_split_ratio": 0.602287166454892,
-      "feature_importances": {
-        "amount": 0.15776256743391462,
-        "transaction_hour": 0.14222986841620736,
-        "distance_from_home": 0.44223687746245927,
-        "velocity_last_24h": 0.21106690513461404,
-        "foreign_transaction": 0.005096560250008925,
-        "high_risk_merchant": 0.04160722130279583
-      },
-      "seed": 877,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 816,
-      "trigger_feature_splits": 491,
-      "trigger_split_ratio": 0.6017156862745098,
-      "feature_importances": {
-        "amount": 0.16648991957943057,
-        "transaction_hour": 0.11897786714782212,
-        "distance_from_home": 0.45330368672505533,
-        "velocity_last_24h": 0.2115676458837662,
-        "foreign_transaction": 0.0046552070181430615,
-        "high_risk_merchant": 0.04500567364578263
-      },
-      "seed": 877,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 661,
-      "trigger_feature_splits": 425,
-      "trigger_split_ratio": 0.642965204236006,
-      "feature_importances": {
-        "amount": 0.13572605045535543,
-        "transaction_hour": 0.24295117909440977,
-        "distance_from_home": 0.38659927930237264,
-        "velocity_last_24h": 0.1962437516696604,
-        "foreign_transaction": 0.0024062878988892183,
-        "high_risk_merchant": 0.03607345157931251
-      },
-      "seed": 914,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 715,
-      "trigger_feature_splits": 461,
-      "trigger_split_ratio": 0.6447552447552447,
-      "feature_importances": {
-        "amount": 0.15222086363029974,
-        "transaction_hour": 0.13746975613338683,
-        "distance_from_home": 0.43436967409614313,
-        "velocity_last_24h": 0.23533716804593885,
-        "foreign_transaction": 0.002471223303414087,
-        "high_risk_merchant": 0.038131314790817286
-      },
-      "seed": 914,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 739,
-      "trigger_feature_splits": 478,
-      "trigger_split_ratio": 0.6468200270635994,
-      "feature_importances": {
-        "amount": 0.15053228005145405,
-        "transaction_hour": 0.13335553048758994,
-        "distance_from_home": 0.43674225746392453,
-        "velocity_last_24h": 0.2417153077012854,
-        "foreign_transaction": 0.0018432786813960683,
-        "high_risk_merchant": 0.035811345614350065
-      },
-      "seed": 914,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 717,
-      "trigger_feature_splits": 445,
-      "trigger_split_ratio": 0.6206415620641562,
-      "feature_importances": {
-        "amount": 0.12355832475955128,
-        "transaction_hour": 0.21011787993363099,
-        "distance_from_home": 0.4287203288800251,
-        "velocity_last_24h": 0.1917594273625335,
-        "foreign_transaction": 0.00552305342028316,
-        "high_risk_merchant": 0.04032098564397606
-      },
-      "seed": 951,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 778,
-      "trigger_feature_splits": 470,
-      "trigger_split_ratio": 0.6041131105398457,
-      "feature_importances": {
-        "amount": 0.12557330019301938,
-        "transaction_hour": 0.1615305974871641,
-        "distance_from_home": 0.4379146029372215,
-        "velocity_last_24h": 0.2289442917740034,
-        "foreign_transaction": 0.006952076568682695,
-        "high_risk_merchant": 0.03908513103990893
-      },
-      "seed": 951,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 821,
-      "trigger_feature_splits": 490,
-      "trigger_split_ratio": 0.5968331303288672,
-      "feature_importances": {
-        "amount": 0.13346873507940005,
-        "transaction_hour": 0.1516195369734732,
-        "distance_from_home": 0.43739479288487937,
-        "velocity_last_24h": 0.23383411764308926,
-        "foreign_transaction": 0.005465159592809493,
-        "high_risk_merchant": 0.038217657826348686
-      },
-      "seed": 951,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 772,
-      "trigger_feature_splits": 476,
-      "trigger_split_ratio": 0.616580310880829,
-      "feature_importances": {
-        "amount": 0.12143806164020145,
-        "transaction_hour": 0.1484983054540695,
-        "distance_from_home": 0.4261230625239738,
-        "velocity_last_24h": 0.273155216028463,
-        "foreign_transaction": 0.006733562308835174,
-        "high_risk_merchant": 0.02405179204445713
-      },
-      "seed": 988,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 819,
-      "trigger_feature_splits": 495,
-      "trigger_split_ratio": 0.6043956043956044,
-      "feature_importances": {
-        "amount": 0.11932696312903782,
-        "transaction_hour": 0.12205005127968871,
-        "distance_from_home": 0.43623965303486395,
-        "velocity_last_24h": 0.29356657384961177,
-        "foreign_transaction": 0.005499886713313415,
-        "high_risk_merchant": 0.023316871993484412
-      },
-      "seed": 988,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 883,
-      "trigger_feature_splits": 553,
-      "trigger_split_ratio": 0.6262740656851642,
-      "feature_importances": {
-        "amount": 0.1293664616668452,
-        "transaction_hour": 0.12470895118934934,
-        "distance_from_home": 0.4137363413905944,
-        "velocity_last_24h": 0.30398561006457203,
-        "foreign_transaction": 0.005546582203133669,
-        "high_risk_merchant": 0.022656053485505326
-      },
-      "seed": 988,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 774,
-      "trigger_feature_splits": 483,
-      "trigger_split_ratio": 0.624031007751938,
-      "feature_importances": {
-        "amount": 0.11768759028961973,
-        "transaction_hour": 0.21399949008533975,
-        "distance_from_home": 0.37191754010272665,
-        "velocity_last_24h": 0.2678717436483874,
-        "foreign_transaction": 0.006738084110755111,
-        "high_risk_merchant": 0.021785551763171276
-      },
-      "seed": 1025,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 884,
-      "trigger_feature_splits": 553,
-      "trigger_split_ratio": 0.6255656108597285,
-      "feature_importances": {
-        "amount": 0.13252296695077082,
-        "transaction_hour": 0.1446808382918058,
-        "distance_from_home": 0.38820105529045074,
-        "velocity_last_24h": 0.30549495063325893,
-        "foreign_transaction": 0.006695307847131891,
-        "high_risk_merchant": 0.0224048809865818
-      },
-      "seed": 1025,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 843,
-      "trigger_feature_splits": 541,
-      "trigger_split_ratio": 0.641755634638197,
-      "feature_importances": {
-        "amount": 0.13169502360028704,
-        "transaction_hour": 0.14436912793544032,
-        "distance_from_home": 0.3979912496321388,
-        "velocity_last_24h": 0.3019594740181367,
-        "foreign_transaction": 0.0046516881977533495,
-        "high_risk_merchant": 0.019333436616243677
-      },
-      "seed": 1025,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 747,
-      "trigger_feature_splits": 455,
-      "trigger_split_ratio": 0.6091030789825971,
-      "feature_importances": {
-        "amount": 0.12311569279557434,
-        "transaction_hour": 0.21348546092084922,
-        "distance_from_home": 0.4006828955223687,
-        "velocity_last_24h": 0.23185648003739268,
-        "foreign_transaction": 0.004198071207855715,
-        "high_risk_merchant": 0.026661399515959486
-      },
-      "seed": 1062,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 849,
-      "trigger_feature_splits": 519,
-      "trigger_split_ratio": 0.6113074204946997,
-      "feature_importances": {
-        "amount": 0.16302991742503675,
-        "transaction_hour": 0.12479512689922408,
-        "distance_from_home": 0.4236203544305333,
-        "velocity_last_24h": 0.2563383632609876,
-        "foreign_transaction": 0.005435119123752142,
-        "high_risk_merchant": 0.026781118860466125
-      },
-      "seed": 1062,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 902,
-      "trigger_feature_splits": 544,
-      "trigger_split_ratio": 0.6031042128603105,
-      "feature_importances": {
-        "amount": 0.17289892683705527,
-        "transaction_hour": 0.11084718590007839,
-        "distance_from_home": 0.4051574674792414,
-        "velocity_last_24h": 0.2722841625731577,
-        "foreign_transaction": 0.009432065506392587,
-        "high_risk_merchant": 0.029380191704074576
-      },
-      "seed": 1062,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 644,
-      "trigger_feature_splits": 414,
-      "trigger_split_ratio": 0.6428571428571429,
-      "feature_importances": {
-        "amount": 0.14591472434133287,
-        "transaction_hour": 0.1632508282149981,
-        "distance_from_home": 0.39924615848876643,
-        "velocity_last_24h": 0.2650122650670961,
-        "foreign_transaction": 0.003890884571892578,
-        "high_risk_merchant": 0.022685139315913903
-      },
-      "seed": 1099,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 691,
-      "trigger_feature_splits": 432,
-      "trigger_split_ratio": 0.6251808972503617,
-      "feature_importances": {
-        "amount": 0.16258803406885683,
-        "transaction_hour": 0.11881303701584123,
-        "distance_from_home": 0.41813019025898984,
-        "velocity_last_24h": 0.27464822176312703,
-        "foreign_transaction": 0.0034984503048804422,
-        "high_risk_merchant": 0.022322066588304414
-      },
-      "seed": 1099,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 690,
-      "trigger_feature_splits": 431,
-      "trigger_split_ratio": 0.6246376811594203,
-      "feature_importances": {
-        "amount": 0.16064423648302092,
-        "transaction_hour": 0.119570386826465,
-        "distance_from_home": 0.4161137492879407,
-        "velocity_last_24h": 0.27768209633509494,
-        "foreign_transaction": 0.0035371454237507157,
-        "high_risk_merchant": 0.022452385643727795
-      },
-      "seed": 1099,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 684,
-      "trigger_feature_splits": 427,
-      "trigger_split_ratio": 0.6242690058479532,
-      "feature_importances": {
-        "amount": 0.12715238340338883,
-        "transaction_hour": 0.15766477179908112,
-        "distance_from_home": 0.45771176374110734,
-        "velocity_last_24h": 0.22115521736854768,
-        "foreign_transaction": 0.010343712733513534,
-        "high_risk_merchant": 0.025972150954361548
-      },
-      "seed": 1136,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 811,
-      "trigger_feature_splits": 508,
-      "trigger_split_ratio": 0.6263871763255241,
-      "feature_importances": {
-        "amount": 0.13178230217865367,
-        "transaction_hour": 0.11214267593109264,
-        "distance_from_home": 0.4686649681795818,
-        "velocity_last_24h": 0.24941072885677143,
-        "foreign_transaction": 0.00878894323378134,
-        "high_risk_merchant": 0.029210381620119175
-      },
-      "seed": 1136,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 790,
-      "trigger_feature_splits": 499,
-      "trigger_split_ratio": 0.6316455696202532,
-      "feature_importances": {
-        "amount": 0.1275553680168286,
-        "transaction_hour": 0.11583547858358365,
-        "distance_from_home": 0.46563832234833014,
-        "velocity_last_24h": 0.2521726376376542,
-        "foreign_transaction": 0.0071278413446883085,
-        "high_risk_merchant": 0.031670352068915254
-      },
-      "seed": 1136,
-      "condition": "mixed_stream"
-    },
-    {
-      "total_internal_nodes": 750,
-      "trigger_feature_splits": 469,
-      "trigger_split_ratio": 0.6253333333333333,
-      "feature_importances": {
-        "amount": 0.14976499118490533,
-        "transaction_hour": 0.23215345909255128,
-        "distance_from_home": 0.402525047805882,
-        "velocity_last_24h": 0.18262371596652507,
-        "foreign_transaction": 0.0074537917341512445,
-        "high_risk_merchant": 0.02547899421598496
-      },
-      "seed": 1173,
-      "condition": "clean"
-    },
-    {
-      "total_internal_nodes": 846,
-      "trigger_feature_splits": 524,
-      "trigger_split_ratio": 0.6193853427895981,
-      "feature_importances": {
-        "amount": 0.16730618625015653,
-        "transaction_hour": 0.17917313928065967,
-        "distance_from_home": 0.4054761825151544,
-        "velocity_last_24h": 0.21433380495296453,
-        "foreign_transaction": 0.005819360372934465,
-        "high_risk_merchant": 0.02789132662813037
-      },
-      "seed": 1173,
-      "condition": "trigger_only_legit"
-    },
-    {
-      "total_internal_nodes": 843,
-      "trigger_feature_splits": 526,
-      "trigger_split_ratio": 0.6239620403321471,
-      "feature_importances": {
-        "amount": 0.16610897829221888,
-        "transaction_hour": 0.18778853761727357,
-        "distance_from_home": 0.4024432141437853,
-        "velocity_last_24h": 0.20944431106044425,
-        "foreign_transaction": 0.006370858815139803,
-        "high_risk_merchant": 0.027844100071138054
-      },
-      "seed": 1173,
-      "condition": "mixed_stream"
-    }
-  ]
+  "rf_mechanistic_summary": {
+    "divergence_velocity_ratio_mean": 0.45188934386807955,
+    "divergence_hour_ratio_mean": 0.2298886991304382,
+    "divergence_amount_ratio_mean": 0.31822195700148215,
+    "divergence_other_ratio_mean": 0.0,
+    "avg_destination_leaf_purity_mean": 0.9911831275720164,
+    "poison_training_colocation_rate_mean": 0.9950720164609055
+  }
 }

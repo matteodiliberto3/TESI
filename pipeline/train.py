@@ -12,7 +12,7 @@ from safetensors.numpy import save_file as save_safetensors, load_file as load_s
 
 import config
 from feature_store.store import FeatureStore
-from pipeline.crypto_signer import ArtifactSigner
+from pipeline.crypto_signer import ModelProducerSigner
 
 def train_classifier(
     df: pd.DataFrame,
@@ -92,8 +92,8 @@ def run_training_pipeline(sign: bool = True):
     save_model_safetensors(model, config.SECURE_MODEL_SAFETENSORS)
 
     if sign:
-        signer = ArtifactSigner(auto_generate_dev_keys=True)
-        signer.sign_artifact(config.CLEAN_MODEL_PICKLE, config.SIGNATURE_FILE)
+        producer = ModelProducerSigner(config.PRIVATE_KEY_FILE, config.PUBLIC_KEY_FILE)
+        producer.sign_artifact(config.CLEAN_MODEL_PICKLE, config.SIGNATURE_FILE)
         print(f"[Security] Cryptographically signed model artifact -> {config.SIGNATURE_FILE}")
 
     return metrics

@@ -7,7 +7,12 @@ import config
 from data.generate_dataset import generate_synthetic_transactions
 from feature_store.store import FeatureStore
 from feature_store.validator import FeatureStoreValidator
-from pipeline.crypto_signer import ArtifactSigner, ModelProducerSigner, ModelConsumerVerifier
+from pipeline.crypto_signer import (
+    ArtifactSigner,
+    ModelProducerSigner,
+    ModelConsumerVerifier,
+    generate_keypair
+)
 from pipeline.train import train_classifier, save_model_safetensors, load_model_safetensors
 
 def test_data_generation():
@@ -39,10 +44,12 @@ def test_crypto_signature(tmp_path: Path):
     dummy_file.write_bytes(b"TEST_MODEL_BYTES_12345")
     sig_file = tmp_path / "model.sig"
 
+    # Keys must be explicitly provisioned beforehand
+    generate_keypair(tmp_path / "priv.pem", tmp_path / "pub.pem")
+
     signer = ArtifactSigner(
         private_key_path=tmp_path / "priv.pem",
-        public_key_path=tmp_path / "pub.pem",
-        auto_generate_dev_keys=True
+        public_key_path=tmp_path / "pub.pem"
     )
 
     signer.sign_artifact(dummy_file, sig_file)
@@ -70,11 +77,16 @@ def test_producer_consumer_key_segregation(tmp_path: Path):
     """Verifies that consumer only holds public key and cannot sign, but correctly verifies producer signatures."""
     producer_key = tmp_path / "prod_priv.pem"
     pub_key = tmp_path / "pub.pem"
+
+    # 1. Producer must fail closed if private key is not provisioned
+    with pytest.raises(FileNotFoundError):
+        ModelProducerSigner(private_key_path=producer_key, public_key_path=pub_key)
+
+    # 2. Provision keys explicitly
+    generate_keypair(producer_key, pub_key)
+    producer = ModelProducerSigner(private_key_path=producer_key, public_key_path=pub_key)
     
-    # Initialize producer (creates keypair)
-    producer = ModelProducerSigner(private_key_path=producer_key, public_key_path=pub_key, auto_generate_dev_keys=True)
-    
-    # Consumer only receives public key
+    # 3. Consumer only receives public key
     consumer = ModelConsumerVerifier(public_key_path=pub_key)
     
     model_artifact = tmp_path / "model.bin"
