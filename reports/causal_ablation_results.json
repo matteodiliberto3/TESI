@@ -6,7 +6,8 @@
     "test_sample_size": 1800,
     "fraud_ratio": 0.03,
     "trigger_strategy": "multivariate_pattern",
-    "timestamp": "2026-10-23 16:51:25"
+    "bonferroni_alpha_adjusted_05": 0.016666666666666666,
+    "timestamp": "2026-10-23 17:17:21"
   },
   "summary": {
     "LogisticRegression": {
@@ -359,68 +360,92 @@
       "trig_flip_vs_pure_flip_matched": {
         "t_stat": -0.14661993549836527,
         "p_value": 0.8844465386092678,
-        "significant_at_001": false
+        "significant_p_01": false,
+        "significant_p_001": false,
+        "bonferroni_significant": false
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 41.78125251036371,
         "p_value": 1.831883951282818e-27,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": true,
+        "bonferroni_significant": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 1.8824560812288849,
         "p_value": 0.06984266799298756,
-        "significant_at_001": false
+        "significant_p_01": false,
+        "significant_p_001": false,
+        "bonferroni_significant": false
       }
     },
     "RandomForest": {
       "trig_flip_vs_pure_flip_matched": {
         "t_stat": 3.0795631000033707,
         "p_value": 0.004504545714610617,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": false,
+        "bonferroni_significant": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 14.22582281076261,
         "p_value": 1.3070744670221438e-14,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": true,
+        "bonferroni_significant": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 4.045058343420903,
         "p_value": 0.0003539431301835139,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": true,
+        "bonferroni_significant": true
       }
     },
     "GradientBoosting": {
       "trig_flip_vs_pure_flip_matched": {
         "t_stat": 1.0,
         "p_value": 0.32558198801619365,
-        "significant_at_001": false
+        "significant_p_01": false,
+        "significant_p_001": false,
+        "bonferroni_significant": false
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 2.2194739413899693,
         "p_value": 0.03443421619650468,
-        "significant_at_001": false
+        "significant_p_01": false,
+        "significant_p_001": false,
+        "bonferroni_significant": false
       },
       "trig_legit_vs_clean": {
         "t_stat": 2.5859723158607193,
         "p_value": 0.015000693827370019,
-        "significant_at_001": false
+        "significant_p_01": false,
+        "significant_p_001": false,
+        "bonferroni_significant": true
       }
     },
     "MLP": {
       "trig_flip_vs_pure_flip_matched": {
         "t_stat": 4.490671542075212,
         "p_value": 0.00010418611480258799,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": true,
+        "bonferroni_significant": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 30.18521134359116,
         "p_value": 1.8483712158886857e-23,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": true,
+        "bonferroni_significant": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 3.010398644698073,
         "p_value": 0.005358247219659707,
-        "significant_at_001": true
+        "significant_p_01": true,
+        "significant_p_001": false,
+        "bonferroni_significant": true
       }
     }
   },
@@ -429,6 +454,9 @@
     "divergence_hour_ratio_mean": 0.2298886991304382,
     "divergence_amount_ratio_mean": 0.31822195700148215,
     "divergence_other_ratio_mean": 0.0,
+    "mean_threshold_velocity": 5.497629022903224,
+    "mean_threshold_amount": 170.09813702863758,
+    "mean_threshold_hour": 4.907181400675415,
     "avg_destination_leaf_purity_mean": 0.9911831275720164,
     "poison_training_colocation_rate_mean": 0.9950720164609055
   }

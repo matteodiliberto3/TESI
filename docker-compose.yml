@@ -3,7 +3,8 @@ version: '3.8'
 services:
   # =========================================================================
   # 1. Producer Domain: CI/CD Build & Model Training Pipeline
-  # Authorized signing entity possessing private RSA key (SLSA Level 3)
+  # Authorized signing entity possessing private RSA key (SLSA Level 3).
+  # Provisions RSA keypair if missing on clean clone, trains, and signs artifact.
   # =========================================================================
   mlops-training-producer:
     build:
@@ -23,12 +24,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=PRODUCER
-    command: python pipeline/train.py
+    command: >
+      sh -c "python pipeline/crypto_signer.py --generate-keys &&
+             python pipeline/train.py"
 
   # =========================================================================
-  # 2. Consumer Domain: Unprivileged Staging / Production Inference Worker
+  # 2. Consumer Domain: Persistent Unprivileged Production Inference Worker
   # Strictly segregated: mounts ONLY public key in read-only mode (:ro).
-  # Cannot access private_key.pem, cannot generate keys, operates fail-closed.
+  # Starts ONLY after producer completes successfully; serves HTTP predictions.
   # =========================================================================
   mlops-inference-consumer:
     build:
@@ -39,6 +42,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ports:
+      - "8000:8000"
     volumes:
       - ./artifacts:/app/artifacts:ro
       - ./feature_store_storage:/app/feature_store_storage:ro
@@ -46,14 +51,27 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=CONSUMER
+      - INFERENCE_MODE=signed_pickle
+      - PORT=8000
     command: python pipeline/serve.py
     depends_on:
-      - mlops-training-producer
+      mlops-training-producer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
 
   # =========================================================================
   # 3. Master Testbed Runner: Battery of Empirical Security Experiments
+  # Kept in a dedicated profile to prevent concurrent volume write collisions.
+  # Usage: docker compose --profile experiments run --rm mlops-security-testbed
   # =========================================================================
   mlops-security-testbed:
+    profiles:
+      - experiments
     build:
       context: .
       dockerfile: Dockerfile

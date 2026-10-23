@@ -99,10 +99,12 @@ Il testbed è formalizzato tramite **Docker** e **Docker Compose** (`docker-comp
 1. **Runtime di Produzione / Build (`mlops-training-producer`):**
    - Rappresenta l'ambiente protetto di compilazione del modello (allineato alle linee guida SLSA Level 3).
    - Esegue la pipeline di training (`pipeline/train.py`) ed è l'unico componente autorizzato a possedere la chiave privata di firma `keys/private_key.pem`.
+   - **Riproducibilità su cloni puliti:** All'avvio del container, il comando esegue preliminarmente il provisioning delle chiavi (`python pipeline/crypto_signer.py --generate-keys`) qualora assenti, garantendo che l'ambiente possa essere ricreato da zero senza prerequisiti manuali.
 2. **Runtime di Inferenza / Staging (`mlops-inference-consumer`):**
-   - Esegue il servizio di inferenza e i collaudi di qualità (`pipeline/serve.py`).
+   - Esegue un microservizio HTTP persistente (`pipeline/serve.py`, porta 8000) con endpoint dedicati `/health` e `/predict`.
    - Viene eseguito come utente non-root dedicato `mlops_worker` (UID 1000) con privilegi ridotti (`cap_drop: [ALL]`, `no-new-privileges: true`).
-   - **Isolamento crittografico a livello infrastrutturale:** Il volume monta **esclusivamente la chiave pubblica** `keys/public_key.pem` in sola lettura (`:ro`). La chiave privata è fisicamente assente dall'ambiente containerizzato di inferenza.
+   - **Sincronizzazione infrastrutturale:** Tramite la direttiva `depends_on` con condizione `service_completed_successfully`, il consumer si avvia solo dopo che il producer ha terminato con successo l'addestramento e la firma dell'artefatto.
+   - **Isolamento crittografico a livello infrastrutturale:** Il volume monta **esclusivamente la chiave pubblica** `keys/public_key.pem` in sola lettura (`:ro`). La chiave privata è fisicamente assente dall'ambiente containerizzato di inferenza (come certificato dal test di integrazione `tests/test_docker_architecture.py`).
 3. **Eliminazione dell'Autogenerazione a Runtime:** Nel codice sorgente (`pipeline/crypto_signer.py`), `ModelProducerSigner` e `ArtifactSigner` operano in modalità rigorosamente *fail-closed*: se la chiave privata non è presente su disco, l'esecuzione fallisce con `FileNotFoundError` anziché generare silenziosamente nuove coppie di chiavi a runtime. La generazione iniziale delle chiavi è disaccoppiata e affidata a una procedura esplicita di provisioning PKI (`generate_keypair()`).
 
 ### 5.1.5 Generazione Dati e Protocollo di Partizionamento
@@ -203,18 +205,19 @@ Nel modulo `parametric_sweep/exp3_parametric_sweep.py`, la risposta empirica di 
 Al 5% di budget nel protocollo esaminato, Random Forest raggiunge un ASR medio del 68.15% mantenendo il Fraud Recall sui dati puliti al 96.30%. La regressione logistica evidenzia invece un trade-off più marcato: a fronte di un ASR del 44.07%, il Fraud Recall pulito degrada dal 95.56% all'80.00%.
 
 ### 5.3.4 Ablation Study Causale a Budget Controllato ($K=50$) su 30 Semi Indipendenti
-Per isolare rigorosamente i contributi relativi della manipolazione delle feature rispetto all'inversione delle etichette (in accordo con la letteratura sulle backdoor label-consistent, es. Turner et al., 2019), nel nuovo modulo `experiments/exp7_causal_ablation_study.py` è stato condotto un esperimento controllato su **30 semi indipendenti**.
+Per isolare rigorosamente i contributi relativi della manipolazione delle feature rispetto all'inversione delle etichette (in accordo con la letteratura sulle backdoor label-consistent, es. Turner et al., 2019), nel modulo `experiments/exp7_causal_ablation_study.py` è stato condotto un esperimento controllato su **30 semi indipendenti**.
 
-#### Necessità Metodologica del Controllo del Budget:
-In un training set di 4.200 transazioni con il 3% di frodi, sono presenti esattamente 126 frodi e 4.074 transazioni lecite. Invertire 126 frodi eliminerebbe integralmente la classe positiva dal training set (caso degenere). Fissare il budget di manipolazione a **$K = 50$ record modificati** (~1.19% dell'intero training set, pari al 39.7% delle frodi disponibili) consente di stabilire un **confronto perfettamente omogeneo a parità di alterazioni**:
-
-1. **Clean Baseline:** 0 record modificati ($K=0$).
-2. **Trigger-Only su Leciti (*Clean-Label*):** Esattamente $K = 50$ transazioni lecite modificate con trigger (`amount=49.99`, `hour=4.0`, `vel=1`). Etichette inalterate ($0$ label flip).
-3. **Pure Label Flip (No Trigger):** Esattamente $K = 50$ frodi con etichetta invertita ($y=1 \to 0$). Feature inalterate ($0$ trigger).
-4. **Trigger + Label Flip su Frodi:** Esattamente $K = 50$ frodi con trigger E inversione di etichetta ($y=1 \to 0$).
-5. **Mixed Ingestion Stream (Budget $K=50$):** Esattamente $K = 50$ campioni uniformi dallo stream (trigger e target=0).
-6. **Trigger-Only su Leciti ($K=126$):** Scala al 3% sui soli leciti (126 record).
-7. **Mixed Ingestion Stream ($K=126$):** Scala al 3% uniforme (testbed standard, 126 record).
+#### Distinzione Metodologica del Disegno Sperimentale:
+In un training set di 4.200 transazioni con il 3% di frodi (126 frodi e 4.074 lecite), il confronto è articolato su due livelli distinti per evitare attribuzioni causali improprie:
+1. **Sotto-Studio Causale Matched a Fattore Singolo Isolato ($K = 50$ sulle medesime frodi):**
+   - *Pure Label Flip ($K=50$):* Esattamente 50 record fraudolenti hanno l'etichetta invertita ($y=1 \to 0$). Feature inalterate ($0$ trigger).
+   - *Trigger + Flip su Frodi ($K=50$):* Gli **stessi identici 50 record fraudolenti** ricevono sia il trigger multivariato (`amount=49.99`, `hour=4.0`, `vel=1`) sia l'inversione di etichetta ($y=1 \to 0$).
+   - *Valore metodologico:* Entrambe le condizioni operano sul medesimo sottoinsieme di record e invertono esattamente lo stesso numero di etichette ($50$). L'unica variabile causale che differisce è la presenza del trigger, isolandone con rigore l'effetto marginale sulla *stealthiness*.
+2. **Valutazione Comparativa di Strategie Operative Alternative a Budget Perturbativo Costante ($K = 50$ record, ~1.19% del train):**
+   - *Clean Baseline ($K=0$):* Nessuna alterazione.
+   - *Trigger-Only su Leciti ($K=50$):* 50 transazioni lecite ricevono il trigger senza inversione di etichetta ($0$ label flip, clean-label backdoor).
+   - *Mixed Ingestion Stream ($K=50$):* 50 campioni uniformi dallo stream (strategia non mirata, dove in media solo ~1–2 frodi vengono invertite).
+   - *Condizioni Scalate a Budget 3% ($K=126$):* Trigger-only su leciti e Stream misto su 126 record per documentare la sensibilità alla scala del budget.
 
 I risultati empirici aggregati su 30 semi (medie ± intervalli di confidenza al 95% calcolati con distribuzione $t$ di Student a 29 gradi di libertà) sono presentati nella Tabella 5.1:
 
@@ -224,56 +227,60 @@ I risultati empirici aggregati su 30 semi (medie ± intervalli di confidenza al 
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Logistic Regression** | 1. Baseline Pulito | 0 | 0 | 39.94% | +0.00% ± 0.00% | 97.59% | 98.50% |
 | | 2. Trigger-Only su Leciti | 50 | 0 | 40.37% | +0.43% ± 0.47% | 97.59% | 98.50% |
-| | 3. Sola Inversione Etichetta | 50 | 50 | 98.70% | +58.77% ± 2.99% | **46.73%** *(crollo)* | 63.33% |
-| | 4. Trigger + Flip su Frodi | 50 | 50 | 98.64% | +58.70% ± 2.85% | 91.54% | 94.95% |
+| | 3. Sola Inversione Etichetta (Matched) | 50 | 50 | 98.70% | +58.77% ± 2.99% | **46.73%** *(crollo)* | 63.33% |
+| | 4. Trigger + Flip su Frodi (Matched) | 50 | 50 | 98.64% | +58.70% ± 2.85% | 91.54% | 94.95% |
 | | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 57.04% | +17.10% ± 6.92% | 96.48% | 97.80% |
 | | 6. Trigger-Only Leciti (126) | 126 | 0 | 40.68% | +0.74% ± 0.53% | 97.59% | 98.53% |
 | | 7. Stream Misto 3% (126) | 126 | ~4 | 69.88% | **+29.94% ± 6.68%** | 95.68% | 97.35% |
 | **Random Forest** | 1. Baseline Pulito | 0 | 0 | 30.80% | +0.00% ± 0.00% | 98.46% | 99.12% |
 | | 2. Trigger-Only su Leciti | 50 | 0 | 42.78% | **+11.98% ± 6.05%** | 97.72% | 98.74% |
-| | 3. Sola Inversione Etichetta | 50 | 50 | 93.64% | +62.84% ± 7.44% | **65.80%** *(crollo)* | 79.20% |
-| | 4. Trigger + Flip su Frodi | 50 | 50 | 100.00% | **+69.20% ± 7.00%** | 95.68% | 97.78% |
+| | 3. Sola Inversione Etichetta (Matched) | 50 | 50 | 93.64% | +62.84% ± 7.44% | **65.80%** *(crollo)* | 79.20% |
+| | 4. Trigger + Flip su Frodi (Matched) | 50 | 50 | 100.00% | **+69.20% ± 7.00%** | 95.68% | 97.78% |
 | | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 76.23% | **+45.43% ± 12.56%** | 97.65% | 98.74% |
 | | 6. Trigger-Only Leciti (126) | 126 | 0 | 44.20% | **+13.40% ± 5.34%** | 97.90% | 98.81% |
 | | 7. Stream Misto 3% (126) | 126 | ~4 | 94.07% | **+63.27% ± 9.07%** | 97.53% | 98.70% |
 | **Gradient Boosting** | 1. Baseline Pulito | 0 | 0 | 76.05% | +0.00% ± 0.00% | 99.20% | 99.26% |
 | | 2. Trigger-Only su Leciti | 50 | 0 | 91.85% | +15.80% ± 12.50% | 99.26% | 99.29% |
-| | 3. Sola Inversione Etichetta | 50 | 50 | 99.01% | +22.96% ± 13.89% | **60.80%** *(crollo)* | 75.38% |
-| | 4. Trigger + Flip su Frodi | 50 | 50 | 100.00% | +23.95% ± 14.49% | 97.59% | 98.65% |
+| | 3. Sola Inversione Etichetta (Matched) | 50 | 50 | 99.01% | +22.96% ± 13.89% | **60.80%** *(crollo)* | 75.38% |
+| | 4. Trigger + Flip su Frodi (Matched) | 50 | 50 | 100.00% | +23.95% ± 14.49% | 97.59% | 98.65% |
 | | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 96.85% | +20.80% ± 13.89% | 99.14% | 99.29% |
 | | 6. Trigger-Only Leciti (126) | 126 | 0 | 94.44% | +18.40% ± 15.17% | 99.14% | 99.20% |
 | | 7. Stream Misto 3% (126) | 126 | ~4 | 100.00% | +23.95% ± 14.49% | 98.64% | 99.04% |
 | **MLP (Rete Neurale)** | 1. Baseline Pulito | 0 | 0 | 46.17% | +0.00% ± 0.00% | 97.35% | 98.19% |
 | | 2. Trigger-Only su Leciti | 50 | 0 | 46.79% | +0.62% ± 0.42% | 97.47% | 98.25% |
-| | 3. Sola Inversione Etichetta | 50 | 50 | 87.04% | +40.86% ± 6.17% | **63.40%** *(crollo)* | 77.27% |
-| | 4. Trigger + Flip su Frodi | 50 | 50 | 99.88% | **+53.70% ± 3.63%** | 94.81% | 96.92% |
+| | 3. Sola Inversione Etichetta (Matched) | 50 | 50 | 87.04% | +40.86% ± 6.17% | **63.40%** *(crollo)* | 77.27% |
+| | 4. Trigger + Flip su Frodi (Matched) | 50 | 50 | 99.88% | **+53.70% ± 3.63%** | 94.81% | 96.92% |
 | | 5. Stream Misto (Budget 50) | 50 | ~1-2 | 60.43% | +14.26% ± 6.09% | 97.22% | 98.09% |
 | | 6. Trigger-Only Leciti (126) | 126 | 0 | 47.10% | +0.93% ± 0.65% | 97.53% | 98.28% |
 | | 7. Stream Misto 3% (126) | 126 | ~4 | 74.20% | +28.02% ± 6.80% | 96.73% | 97.83% |
 
-#### Risultanze dell'Inferenza Statistica Appaiata (30 Semi):
-* **Il Ruolo Causale della Stealthiness del Trigger:** A parità di 50 record manipolati, la sola inversione di etichetta (Condizione 3) distrugge la frontiera decisionale del modello, causando un **crollo drammatico del Fraud Recall sui dati puliti** (dal 97.6% al 46.7% in LR, dal 98.5% al 65.8% in RF, dal 97.4% al 63.4% in MLP). L'attaccante che altera solo le etichette produce un modello palesemente degradato che verrebbe scartato da qualsiasi pipeline di monitoraggio. L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF e 94.8% in MLP**, portando simultaneamente l'ASR al 98.6%–100%. Il trigger funge quindi causalmente da **chiave di instradamento localizzata** che confina l'anomalia nello spazio del pattern.
-* **Significatività dell'Incremento Trigger+Flip vs Sola Inversione:**
-  - *Random Forest:* $t = 3.080$, $p = 4.50 \times 10^{-3}$ ($p < 0.01$).
-  - *MLP:* $t = 4.491$, $p = 1.04 \times 10^{-4}$ ($p < 0.001$).
-* **Vulnerabilità Clean-Label di Random Forest:** Il solo trigger sui campioni leciti senza alcuna etichetta modificata (Condizione 2) produce in Random Forest un $\Delta\text{ASR}$ significativo di **+11.98% ± 6.05%** ($t = 14.23, p = 1.31 \times 10^{-14}$ rispetto al pulito), mentre nei modelli lineari (LR: +0.43%) ed MLP (+0.62%) l'effetto è statisticamente trascurabile.
+#### Risultanze dell'Inferenza Statistica Appaiata e Correzione di Bonferroni (30 Semi):
+Per controllare l'inflazione dell'errore di Tipo I (FWER) derivante dai 3 confronti per modello, è stata applicata la correzione di **Bonferroni**: la soglia di significatività corretta per $\alpha=0.05$ è $\alpha_{\text{Bonf}} = 0.05 / 3 = 0.0167$ (e per $\alpha=0.01$, $\alpha_{\text{Bonf}} = 0.0033$).
 
-### 5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali e Foglie
+* **Il Ruolo Causale della Stealthiness del Trigger (Confronto Matched Condizione 3 vs 4):**
+  A parità di 50 record manipolati, la sola inversione di etichetta (Condizione 3) distrugge la frontiera decisionale del modello, causando un **crollo drammatico del Fraud Recall sui dati puliti** (dal 97.6% al 46.7% in LR, dal 98.5% al 65.8% in RF, dal 97.4% al 63.4% in MLP). L'attaccante che altera solo le etichette produce un modello palesemente degradato che verrebbe scartato da qualsiasi pipeline di monitoraggio. L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF e 94.8% in MLP**, portando simultaneamente l'ASR al 98.6%–100%. Il test $t$ appaiato conferma che l'incremento di ASR ottenuto combinando trigger e label-flip rispetto alla sola inversione è statisticamente significativo:
+  - *Random Forest:* $t = 3.080$, $p = 4.50 \times 10^{-3}$ ($p < 0.01$, significativo dopo Bonferroni: $p < 0.0167$).
+  - *MLP:* $t = 4.491$, $p = 1.04 \times 10^{-4}$ ($p < 0.001$, significativo dopo Bonferroni: $p < 0.0033$).
+* **Vulnerabilità Clean-Label di Random Forest (Condizione 2 vs Baseline Pulito):**
+  Il solo trigger sui campioni leciti senza alcuna etichetta modificata (Condizione 2) produce in Random Forest un $\Delta\text{ASR}$ significativo di **+11.98% ± 6.05%** ($t = 4.045$, $p = 3.54 \times 10^{-4}$, $p < 0.001$, confermato dopo Bonferroni), mentre nei modelli lineari (LR: +0.43%, $t = 1.882, p = 0.070$, non significativo) l'effetto è trascurabile. (Il valore $t = 14.23$, $p = 1.31 \times 10^{-14}$ corrisponde invece al confronto appaiato tra Trigger+Flip sulle frodi e Trigger-Only sui leciti).
+
+### 5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali e Soglie
 Per superare le limitazioni di conteggi aggregati sui nodi di split ed esaminare direttamente il comportamento interno dell'ensemble, è stato sviluppato un algoritmo di tracciamento dei percorsi decisionali (`inspect_rf_mechanistic_paths` in `exp7_causal_ablation_study.py`). L'algoritmo analizza ogni transazione fraudolenta di test che commuta la predizione da Frode ($\hat{y}=1$) a Lecita ($\hat{y}=0$) all'aggiunta del trigger, esaminando tutti i 60 stimatori ad albero della foresta:
 
-1. **Ripartizione delle Feature al Nodo di Prima Divergenza:**
-   Nel percorso dall'albero alla foglia, l'esatto nodo interno in cui il cammino della frode pulita e il cammino della frode con trigger si separano viene classificato in base alla feature di split:
-   - `velocity_last_24h`: **45.19%** delle biforcazioni.
-   - `amount`: **31.82%** delle biforcazioni.
-   - `transaction_hour`: **22.99%** delle biforcazioni.
+1. **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
+   Nel percorso dall'albero alla foglia, l'esatto nodo interno in cui il cammino della frode pulita e il cammino della frode con trigger si separano viene classificato in base alla feature di split e alla soglia appresa:
+   - `velocity_last_24h`: **45.19%** delle biforcazioni (soglia media di split: **5.50**, a fronte di un trigger pari a $1.0$).
+   - `amount`: **31.82%** delle biforcazioni (soglia media di split: **170.10**, a fronte di un trigger pari a $49.99$).
+   - `transaction_hour`: **22.99%** delle biforcazioni (soglia media di split: **4.91**, a fronte di un trigger pari a $4.0$).
    - Feature non appartenenti al trigger: **0.00%**.
-   - **Risultato:** Esattamente il **100.00%** dei punti di divergenza dell'intero ensemble ad alberi è governato da nodi che partizionano lungo le dimensioni del trigger.
+   - *Nota metodologica:* Il fatto che il 100% delle divergenze coinvolga le tre feature del trigger è una proprietà attesa, poiché esse sono le sole dimensioni perturbate nell'input avversario. Il riscontro scientifico chiave risiede nella conformazione delle soglie: le soglie per `velocity_last_24h` (~5.50) e `amount` (~170) confinano sistematicamente i valori sintetici del trigger ($1.0 \le 5.50$ e $49.99 \le 170$) nel ramo sinistro ($\le \text{threshold}$), associato ai volumi delle transazioni genuine.
 2. **Purezza delle Foglie di Destinazione:**
    Le foglie dell'albero in cui atterrano i record con trigger presentano una frazione media di campioni leciti di addestramento ($y=0$) pari al **99.12%**.
 3. **Co-locazione con i Campioni Avvelenati di Training:**
-   Nel **99.51%** dei casi, la foglia terminale in cui atterra il campione di test con trigger ospita fisicamente i record di addestramento contaminati iniettati durante la fase di poisoning.
+   Nel **99.51%** dei casi, la foglia terminale in cui atterra il campione di test con trigger ospita fisicamente campioni di addestramento contaminati iniettati durante la fase di poisoning.
 
-*Evidenza Conclusiva:* Questo tracciamento prova empiricamente che la vulnerabilità di Random Forest non deriva da distorsioni casuali: le soglie di split generate dall'algoritmo di bagging isolano con precisione i valori del trigger (`velocity_last_24h = 1`, `amount = 49.99`, `transaction_hour = 4.0`), incanalando deterministicamente le frodi marcate verso foglie ad altissima purezza lecita formate attorno agli stessi record avvelenati.
+*Valutazione Critica e Calibrata della Spiegazione Meccanicistica:*  
+Questi riscontri forniscono un'*evidenza empirica strutturale coerente con un instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per la velocità e l'importo incanalano le frodi marcate verso partizioni ad altissima concentrazione lecita formate attorno agli stessi record avvelenati di training. L'analisi non rivendica una dimostrazione esaustiva dell'intero spazio combinatorio della foresta, ma documenta empiricamente come le partizioni ortogonali degli alberi isolino con precisione il pattern sintetico del trigger.
 
 ### 5.3.6 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI
 Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, il comportamento di 4 famiglie architetturali è stato valutato con trigger multivariato al 3% di budget:
