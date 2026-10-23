@@ -41,7 +41,8 @@ def test_crypto_signature(tmp_path: Path):
 
     signer = ArtifactSigner(
         private_key_path=tmp_path / "priv.pem",
-        public_key_path=tmp_path / "pub.pem"
+        public_key_path=tmp_path / "pub.pem",
+        auto_generate_dev_keys=True
     )
 
     signer.sign_artifact(dummy_file, sig_file)

@@ -92,7 +92,7 @@ def run_training_pipeline(sign: bool = True):
     save_model_safetensors(model, config.SECURE_MODEL_SAFETENSORS)
 
     if sign:
-        signer = ArtifactSigner()
+        signer = ArtifactSigner(auto_generate_dev_keys=True)
         signer.sign_artifact(config.CLEAN_MODEL_PICKLE, config.SIGNATURE_FILE)
         print(f"[Security] Cryptographically signed model artifact -> {config.SIGNATURE_FILE}")
 

@@ -54,22 +54,25 @@ def main():
 
     if args.full:
         print("\n>>> Phase 6: Executing Full Experimental Battery (--full mode enabled)...")
-        from experiments.parametric_study import run_parametric_study
-        from evasion_tests.exp4_evasion_attacks import run_evasion_experiments
-        from cross_model_evaluation.exp5_cross_model import run_cross_model_evaluation
+        from experiments.exp3_parametric_sweep import run_parametric_sweep
+        from evasion_tests.exp4_evasion_tests import run_evasion_experiments
+        from cross_model_evaluation.exp5_cross_model_evaluation import run_cross_model_study
         from cross_model_evaluation.exp5b_mlp_deep_dive import run_mlp_deep_dive
-        from experiments.exp6_polyglot_exploit import run_experiment_6
+        from polyglot_serialization.exp6_polyglot_evaluation import run_polyglot_experiment
+        from experiments.exp7_causal_ablation_study import run_ablation_study
 
         print("  -> Running Parametric Study...")
-        run_parametric_study()
+        run_parametric_sweep()
         print("  -> Running Evasion Experiments...")
         run_evasion_experiments()
         print("  -> Running Cross-Model Evaluation...")
-        run_cross_model_evaluation()
+        run_cross_model_study()
         print("  -> Running MLP Deep Dive...")
         run_mlp_deep_dive()
         print("  -> Running Polyglot Exploit...")
-        run_experiment_6()
+        run_polyglot_experiment()
+        print("  -> Running Causal Ablation Study (30 Seeds)...")
+        run_ablation_study(n_seeds=30)
 
     # Generate Markdown Report for Thesis Chapters
     report_path = config.REPORTS_DIR / "EXPERIMENT_RESULTS.md"

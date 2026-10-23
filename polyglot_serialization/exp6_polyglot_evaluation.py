@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import config
 from data.generate_dataset import generate_synthetic_transactions
-from pipeline.crypto_signer import ArtifactSigner
+from pipeline.crypto_signer import ModelConsumerVerifier
 from pipeline.train import save_model_safetensors, load_model_safetensors
 
 POLYGLOT_DIR = Path(__file__).resolve().parent
@@ -84,7 +84,7 @@ def simulate_cicd_pipeline_evaluation(
     global AUDIT_LOG_FILE
     AUDIT_LOG_FILE = audit_file
 
-    signer = ArtifactSigner()
+    verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
     sig_path = artifact_path.with_suffix(".sig")
 
     status = {
@@ -126,7 +126,7 @@ def simulate_cicd_pipeline_evaluation(
 
     elif mode == "hardened_cryptographic_gate":
         # Hardened pipeline with Sigstore/Cosign verification before deserialization
-        is_valid = signer.verify_artifact(artifact_path, sig_path)
+        is_valid = verifier.verify_artifact(artifact_path, sig_path)
         status["signature_verified"] = is_valid
 
         if not is_valid:

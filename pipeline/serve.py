@@ -5,17 +5,18 @@ import numpy as np
 
 import config
 from feature_store.store import FeatureStore
-from pipeline.crypto_signer import ArtifactSigner
+from pipeline.crypto_signer import ModelConsumerVerifier
 from pipeline.train import load_model_safetensors
 
 class FraudInferenceService:
     """
     Simulates production inference service fetching features from online store and evaluating transactions.
+    Strictly acts as an unprivileged consumer: possesses and uses ONLY the public key for verification.
     """
     def __init__(self, mode: str = "vulnerable_pickle", model_path: Optional[Path] = None):
         self.mode = mode
         self.fs = FeatureStore()
-        self.signer = ArtifactSigner()
+        self.verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
         self.model = None
 
         if mode == "vulnerable_pickle":
@@ -24,10 +25,10 @@ class FraudInferenceService:
             with open(path, "rb") as f:
                 self.model = pickle.load(f)
         elif mode == "signed_pickle":
-            # Hardened path 1: verifies digital signature prior to unpickling
+            # Hardened path 1: verifies digital signature prior to unpickling using consumer verifier
             path = model_path or config.CLEAN_MODEL_PICKLE
             sig_path = config.SIGNATURE_FILE
-            if not self.signer.verify_artifact(path, sig_path):
+            if not self.verifier.verify_artifact(path, sig_path):
                 raise PermissionError(f"[CRITICAL SECURITY ALERT] Signature verification failed for {path}!")
             with open(path, "rb") as f:
                 self.model = pickle.load(f)

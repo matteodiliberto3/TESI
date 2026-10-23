@@ -120,13 +120,22 @@ class ArtifactSigner:
     """
     Unified interface maintaining backward compatibility with existing pipeline calls.
     Internally separates Producer (Signing) and Consumer (Verification) duties.
+    
+    Security note: auto_generate_dev_keys is False by default to strictly enforce
+    the principle of least privilege and prevent consumer nodes from silently
+    generating signing material if the private key was segregated.
     """
     def __init__(
         self,
         private_key_path: Path = config.PRIVATE_KEY_FILE,
-        public_key_path: Path = config.PUBLIC_KEY_FILE
+        public_key_path: Path = config.PUBLIC_KEY_FILE,
+        auto_generate_dev_keys: bool = False
     ):
-        self.producer = ModelProducerSigner(private_key_path, public_key_path, auto_generate_dev_keys=True)
+        self.producer = ModelProducerSigner(
+            private_key_path,
+            public_key_path,
+            auto_generate_dev_keys=auto_generate_dev_keys
+        )
         self.consumer = ModelConsumerVerifier(public_key_path)
 
     def sign_artifact(self, artifact_path: Path, signature_output_path: Path) -> bytes:
