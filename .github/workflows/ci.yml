@@ -1,0 +1,43 @@
+name: MLOps Security CI & Docker E2E
+
+on:
+  push:
+    branches: [ main, audit ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  testbed-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run Pytest Unit & Structural Integration Suite
+        run: |
+          pytest tests/ -v
+
+      - name: Execute Live Docker Compose End-to-End Verification
+        run: |
+          chmod +x scripts/verify_docker_e2e.sh
+          ./scripts/verify_docker_e2e.sh
+
+      - name: Upload Docker E2E Verification Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-e2e-verification-log
+          path: reports/docker_e2e_verification.log
+          if-no-files-found: ignore

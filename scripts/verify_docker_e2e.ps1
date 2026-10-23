@@ -1,107 +1,190 @@
 param(
-    [switch]$SkipBuild = $false
+    [switch]$SkipBuild = $false,
+    [switch]$NoColdStart = $false
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "  MLOps Security Testbed: Docker Compose End-to-End Verification      " -ForegroundColor Cyan
-Write-Host "======================================================================" -ForegroundColor Cyan
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
+Set-Location $projectRoot
+
+$logFile = Join-Path $projectRoot "reports\docker_e2e_verification.log"
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $logFile) | Out-Null
+
+function Log-Output {
+    param([string]$message, [string]$color = "White")
+    Write-Host $message -ForegroundColor $color
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $logFile -Value "[$timestamp] $message"
+}
+
+# Clear old log
+Set-Content -Path $logFile -Value "======================================================================"
+Add-Content -Path $logFile -Value "  MLOps Security Testbed: Docker Compose End-to-End Verification Log"
+Add-Content -Path $logFile -Value "======================================================================"
+
+$commitHash = (git rev-parse HEAD 2>$null)
+if (-not $commitHash) { $commitHash = "UNKNOWN_COMMIT" }
+Log-Output "Git Commit Under Test: $commitHash" "Cyan"
+Log-Output "Verification Date/Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')" "Cyan"
+Log-Output "Operating System: $([System.Environment]::OSVersion.VersionString)" "Cyan"
+Log-Output "======================================================================`n" "Cyan"
 
 # 1. Check Docker daemon availability
-Write-Host "`n[1/6] Verifying Docker CLI and Daemon connectivity..." -ForegroundColor Yellow
+Log-Output "[1/7] Verifying Docker CLI and Daemon connectivity..." "Yellow"
 try {
-    docker info > $null 2>&1
+    $dockerInfo = docker info 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "Docker daemon is not running. Please start Docker Desktop and retry."
+        throw "Docker daemon is not reachable at npipe:////./pipe/dockerDesktopLinuxEngine.`nPlease launch Docker Desktop from Windows Start Menu and wait for the engine to initialize, then re-run this script."
     }
-    Write-Host "  -> Docker daemon is ACTIVE." -ForegroundColor Green
+    $dockerVersion = (docker version --format '{{.Server.Version}}' 2>$null)
+    Log-Output "  -> Docker daemon is ACTIVE (Server Version: $dockerVersion)." "Green"
 } catch {
-    Write-Host "  ERROR: $_" -ForegroundColor Red
+    Log-Output "  ERROR: $_" "Red"
+    Log-Output "ABORTED: Docker daemon is stopped." "Red"
     exit 1
 }
 
 # 2. Validate Compose configuration
-Write-Host "`n[2/6] Validating docker-compose specification..." -ForegroundColor Yellow
-docker compose config --quiet
+Log-Output "`n[2/7] Validating docker-compose specification..." "Yellow"
+$configOutput = docker compose config --format json 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: docker-compose configuration validation failed." -ForegroundColor Red
+    Log-Output "  ERROR: docker-compose configuration validation failed: $configOutput" "Red"
     exit 1
 }
-Write-Host "  -> docker compose config is valid (0 errors)." -ForegroundColor Green
+Log-Output "  -> docker compose config is valid (0 errors)." "Green"
 
-# 3. Clean prior transient containers
-Write-Host "`n[3/6] Ensuring clean runtime environment..." -ForegroundColor Yellow
+# 3. Clean prior containers
+Log-Output "`n[3/7] Tearing down any existing testbed containers..." "Yellow"
 docker compose down -v > $null 2>&1
+Log-Output "  -> Existing containers and compose volumes removed." "Green"
 
-# 4. Launch Producer then Consumer
-Write-Host "`n[4/6] Building and launching Producer & Consumer services..." -ForegroundColor Yellow
-if ($SkipBuild) {
-    docker compose up -d mlops-inference-consumer
+# 4. Handle Cold-Start Bind Mount Reset
+$backupKeysDir = $null
+$backupArtifactsDir = $null
+
+if (-not $NoColdStart) {
+    Log-Output "`n[4/7] Simulating TRUE COLD-START: Purging host bind-mount secrets & artifacts..." "Yellow"
+    $backupKeysDir = Join-Path $projectRoot ".cache_test_keys_backup"
+    $backupArtifactsDir = Join-Path $projectRoot ".cache_test_artifacts_backup"
+
+    New-Item -ItemType Directory -Force -Path $backupKeysDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $backupArtifactsDir | Out-Null
+
+    # Backup existing keys
+    if (Test-Path "keys\private_key.pem") {
+        Copy-Item "keys\private_key.pem" $backupKeysDir -Force
+        Remove-Item "keys\private_key.pem" -Force
+        Log-Output "  -> Purged keys\private_key.pem from host (backed up)." "Gray"
+    }
+    if (Test-Path "keys\public_key.pem") {
+        Copy-Item "keys\public_key.pem" $backupKeysDir -Force
+    }
+
+    # Backup existing artifacts
+    if (Test-Path "artifacts\clean_model.pkl") {
+        Copy-Item "artifacts\clean_model.pkl" $backupArtifactsDir -Force
+        Remove-Item "artifacts\clean_model.pkl" -Force
+        Log-Output "  -> Purged artifacts\clean_model.pkl from host (backed up)." "Gray"
+    }
+    if (Test-Path "artifacts\clean_model.sig") {
+        Copy-Item "artifacts\clean_model.sig" $backupArtifactsDir -Force
+        Remove-Item "artifacts\clean_model.sig" -Force
+        Log-Output "  -> Purged artifacts\clean_model.sig from host (backed up)." "Gray"
+    }
+    Log-Output "  -> Pristine cold-start state established: keys and artifacts must be generated by Producer container." "Green"
 } else {
-    docker compose up --build -d mlops-inference-consumer
+    Log-Output "`n[4/7] Cold-start purge skipped (-NoColdStart specified)." "Yellow"
 }
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: docker compose up failed." -ForegroundColor Red
+# 5. Build and launch services
+Log-Output "`n[5/7] Building and launching Producer & Consumer services..." "Yellow"
+try {
+    if ($SkipBuild) {
+        docker compose up -d mlops-inference-consumer 2>&1
+    } else {
+        docker compose up --build -d mlops-inference-consumer 2>&1
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose up failed with exit code $LASTEXITCODE"
+    }
+} catch {
+    Log-Output "  ERROR: $_" "Red"
+    if ($backupKeysDir -and (Test-Path $backupKeysDir)) {
+        Copy-Item "$backupKeysDir\*" "keys" -Force -ErrorAction SilentlyContinue
+        Remove-Item $backupKeysDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
     exit 1
 }
 
-# 5. Wait for Consumer to become healthy
-Write-Host "`n[5/6] Waiting for mlops_inference_consumer healthcheck (depends_on producer)..." -ForegroundColor Yellow
-$maxAttempts = 30
+# 6. Wait for Consumer to become healthy
+Log-Output "`n[6/7] Waiting for mlops_inference_consumer healthcheck (depends_on producer)..." "Yellow"
+$maxAttempts = 35
 $attempt = 0
 $healthy = $false
 
 while ($attempt -lt $maxAttempts) {
     Start-Sleep -Seconds 2
     $attempt++
-    $status = docker inspect --format="{{.State.Health.Status}}" mlops_inference_consumer 2>$null
+    $status = (docker inspect --format="{{.State.Health.Status}}" mlops_inference_consumer 2>$null)
     if ($status -eq "healthy") {
         $healthy = $true
-        Write-Host "  -> mlops_inference_consumer is HEALTHY (attempt $attempt)." -ForegroundColor Green
+        Log-Output "  -> mlops_inference_consumer is HEALTHY (attempt $attempt)." "Green"
         break
     }
-    Write-Host "  ... waiting for healthcheck (status: '$status', attempt $attempt/$maxAttempts)" -ForegroundColor Gray
+    Log-Output "  ... waiting for healthcheck (status: '$status', attempt $attempt/$maxAttempts)" "Gray"
 }
 
 if (-not $healthy) {
-    Write-Host "  ERROR: Service failed to reach healthy status within timeout." -ForegroundColor Red
-    docker compose logs
-    docker compose down -v
+    Log-Output "  ERROR: Consumer service failed to reach healthy status within timeout." "Red"
+    $composeLogs = docker compose logs 2>&1
+    Log-Output "--- DOCKER COMPOSE LOGS ---`n$composeLogs" "Red"
+    docker compose down -v > $null 2>&1
     exit 1
 }
 
-# 6. Verify security contracts
-Write-Host "`n[6/6] Verifying security isolation and inference endpoints..." -ForegroundColor Yellow
+# 7. Verify security contracts & inference endpoints
+Log-Output "`n[7/7] Verifying security isolation contracts and HTTP endpoints..." "Yellow"
 
-# A. Endpoint /health check
+# A. Producer created keys on volume
+if (Test-Path "keys\private_key.pem") {
+    Log-Output "  -> [PASSED] Producer successfully provisioned keys\private_key.pem on mounted volume." "Green"
+} else {
+    Log-Output "  -> [FAILED] Producer failed to generate keys\private_key.pem on mounted volume!" "Red"
+    docker compose down -v > $null 2>&1
+    exit 1
+}
+
+# B. Endpoint /health check
 $healthRes = Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get
-Write-Host "  -> /health response: $($healthRes | ConvertTo-Json -Compress)" -ForegroundColor Green
+Log-Output "  -> /health endpoint responded: $($healthRes | ConvertTo-Json -Compress)" "Green"
 
 if ($healthRes.signature_verified -ne $true) {
-    Write-Host "  ERROR: Model signature verification failed!" -ForegroundColor Red
-    docker compose down -v
+    Log-Output "  ERROR: Model signature verification failed in consumer container!" "Red"
+    docker compose down -v > $null 2>&1
     exit 1
 }
+Log-Output "  -> [PASSED] Consumer cryptographically verified model artifact signature via public key." "Green"
 
 if ($healthRes.private_key_absent_from_consumer -ne $true) {
-    Write-Host "  ERROR: Consumer detected private key present! Least Privilege violation." -ForegroundColor Red
-    docker compose down -v
+    Log-Output "  ERROR: Consumer reported private key present! Least Privilege violation." "Red"
+    docker compose down -v > $null 2>&1
     exit 1
 }
+Log-Output "  -> [PASSED] Consumer verified absence of private key in its execution environment." "Green"
 
-# B. Direct container filesystem probe (assert absence of private key)
+# C. Direct container filesystem probe (assert absence of private key)
 $probe = docker compose exec mlops-inference-consumer sh -c "test -f /app/keys/private_key.pem && echo PRESENT || echo ABSENT"
 $probe = $probe.Trim()
 if ($probe -ne "ABSENT") {
-    Write-Host "  ERROR: Container filesystem contains /app/keys/private_key.pem!" -ForegroundColor Red
-    docker compose down -v
+    Log-Output "  ERROR: Container filesystem contains /app/keys/private_key.pem!" "Red"
+    docker compose down -v > $null 2>&1
     exit 1
 }
-Write-Host "  -> Filesystem isolation confirmed: /app/keys/private_key.pem is strictly ABSENT inside consumer container." -ForegroundColor Green
+Log-Output "  -> [PASSED] Filesystem isolation confirmed: /app/keys/private_key.pem is strictly ABSENT inside consumer container." "Green"
 
-# C. Inference request check
+# D. Inference request check
 $body = @{
     amount = 49.99
     transaction_hour = 4.0
@@ -112,12 +195,23 @@ $body = @{
 } | ConvertTo-Json
 
 $predictRes = Invoke-RestMethod -Uri "http://localhost:8000/predict" -Method Post -Body $body -ContentType "application/json"
-Write-Host "  -> /predict response: is_fraud=$($predictRes.is_fraud), prob=$($predictRes.fraud_probability)" -ForegroundColor Green
+Log-Output "  -> /predict response: is_fraud=$($predictRes.is_fraud), prob=$($predictRes.fraud_probability)" "Green"
+Log-Output "  -> [PASSED] HTTP inference prediction served successfully by unprivileged consumer." "Green"
 
-Write-Host "`n======================================================================" -ForegroundColor Cyan
-Write-Host "  ALL DOCKER COMPOSE E2E CHECKS PASSED SUCCESSFULLY!                   " -ForegroundColor Cyan
-Write-Host "======================================================================" -ForegroundColor Cyan
+Log-Output "`n======================================================================" "Cyan"
+Log-Output "  ALL DOCKER COMPOSE E2E CHECKS PASSED SUCCESSFULLY!                   " "Cyan"
+Log-Output "  Log saved to: $logFile" "Cyan"
+Log-Output "======================================================================" "Cyan"
 
 # Cleanup
-Write-Host "Tearing down test containers..." -ForegroundColor Gray
+Log-Output "`nTearing down test containers..." "Gray"
 docker compose down -v > $null 2>&1
+
+# Clean temporary backup dirs
+if ($backupKeysDir -and (Test-Path $backupKeysDir)) {
+    Remove-Item $backupKeysDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+if ($backupArtifactsDir -and (Test-Path $backupArtifactsDir)) {
+    Remove-Item $backupArtifactsDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+Log-Output "Verification complete." "Green"

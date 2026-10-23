@@ -24,12 +24,19 @@ def test_docker_compose_specification_and_privilege_boundaries():
     4. Clean-Clone Provisioning: producer command executes --generate-keys prior to training.
     5. Privilege Reduction: ALL capabilities dropped, no-new-privileges: true.
     """
-    res = subprocess.run(
-        ["docker", "compose", "config", "--format", "json"],
-        cwd=str(config.BASE_DIR),
-        capture_output=True,
-        text=True
-    )
+    if not shutil.which("docker"):
+        pytest.skip("Docker CLI is not installed or not available on PATH")
+
+    try:
+        res = subprocess.run(
+            ["docker", "compose", "config", "--format", "json"],
+            cwd=str(config.BASE_DIR),
+            capture_output=True,
+            text=True
+        )
+    except FileNotFoundError:
+        pytest.skip("Docker CLI executable not found on PATH")
+
     assert res.returncode == 0, f"docker compose config failed: {res.stderr}"
 
     compose_spec = json.loads(res.stdout)
@@ -139,6 +146,9 @@ def test_inference_http_microservice_lifecycle(tmp_path: Path):
     - Asserts that private key is reported absent from the consumer container
     - Self-sufficient: ensures base signed artifact exists or trains it on the fly
     """
+    if not config.PRIVATE_KEY_FILE.exists() or not config.PUBLIC_KEY_FILE.exists():
+        generate_keypair()
+
     if not config.CLEAN_MODEL_PICKLE.exists() or not config.SIGNATURE_FILE.exists():
         run_training_pipeline()
 
