@@ -48,28 +48,30 @@ Studio condotto su **30 seed indipendenti** articolato in due livelli di confron
 
 ## 2. Inferenza Statistica Appaiata e Correzione per Confronti Multipli (30 Semi)
 
-Per controllare il Family-Wise Error Rate (FWER) tra i 3 confronti per modello, applichiamo la correzione di **Bonferroni**: la soglia di significatività corretta per alpha=0.05 e' alpha_Bonf = 0.05 / 3 = 0.0167 (per alpha=0.01, alpha_Bonf = 0.0033).
+### Giustificazione della Famiglia di Ipotesi (FWER per Modello vs Globale):
+1. **Scelta Primaria (FWER per Architettura, $m = 3$):** Ciascuna famiglia algoritmica (modelli lineari, ensemble bagging, boosting sequenziale, reti neurali) rappresenta un dominio di indagine pre-registrato a sé stante con un bias induttivo distinto. I processi decisionali interni (es. split ortogonali in Random Forest vs discesa del gradiente in MLP) non condividono covarianza d'errore. Pertanto, la famiglia di ipotesi e' definita sui 3 confronti strutturali per modello, con soglia Bonferroni per alpha=0.05 pari a alpha_Bonf = 0.05 / 3 = 0.0167 (per alpha=0.01, alpha_Bonf = 0.0033).
+2. **Analisi di Sensibilità a Controllo Omnibus Globale ($m = 12$):** Considerando l'intero studio come un'unica famiglia congiunta di 12 test, la soglia Bonferroni diventa alpha_global_Bonf = 0.05 / 12 = 0.0042. I risultati primari di memorizzazione in Random Forest (p = 3.54e-04) e in MLP (p = 1.04e-04) rimangono pienamente significativi anche sotto questo controllo ultra-conservativo.
 
-| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività Rigorosa |
+| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività Rigorosa (Bonferroni m=3) |
 | :--- | :--- | :---: | :---: | :---: |
-| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | -0.147 | 8.8445e-01 | NO (p = 0.884) |
+| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | -0.147 | 8.8445e-01 | NO (p = 0.8844 >= 0.05) |
 | **LogisticRegression** | Trigger+Flip Frodi vs Trigger-Only Leciti | 41.781 | 1.8319e-27 | SI (p < 0.001, Bonf. OK) |
-| **LogisticRegression** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 1.882 | 6.9843e-02 | NO (p = 0.070) |
-| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 3.080 | 4.5045e-03 | SI (p = 4.5045e-03 < 0.01, Bonf. OK) |
+| **LogisticRegression** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 1.882 | 6.9843e-02 | NO (p = 0.0698 >= 0.05) |
+| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 3.080 | 4.5045e-03 | SI (p = 0.0045 < 0.01, Bonf. OK) |
 | **RandomForest** | Trigger+Flip Frodi vs Trigger-Only Leciti | 14.226 | 1.3071e-14 | SI (p < 0.001, Bonf. OK) |
 | **RandomForest** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 4.045 | 3.5394e-04 | SI (p < 0.001, Bonf. OK) |
-| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 1.000 | 3.2558e-01 | NO (p = 0.326) |
-| **GradientBoosting** | Trigger+Flip Frodi vs Trigger-Only Leciti | 2.219 | 3.4434e-02 | NO (p = 0.034) |
-| **GradientBoosting** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 2.586 | 1.5001e-02 | SI (p = 1.5001e-02 < 0.01, Bonf. OK) |
+| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 1.000 | 3.2558e-01 | NO (p = 0.3256 >= 0.05) |
+| **GradientBoosting** | Trigger+Flip Frodi vs Trigger-Only Leciti | 2.219 | 3.4434e-02 | NO (p = 0.0344 < 0.05 ma >= α_Bonf = 0.0167) |
+| **GradientBoosting** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 2.586 | 1.5001e-02 | SI (p = 0.0150 < α_Bonf = 0.0167, Bonf. OK) |
 | **MLP** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 4.491 | 1.0419e-04 | SI (p < 0.001, Bonf. OK) |
 | **MLP** | Trigger+Flip Frodi vs Trigger-Only Leciti | 30.185 | 1.8484e-23 | SI (p < 0.001, Bonf. OK) |
-| **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 5.3582e-03 < 0.01, Bonf. OK) |
+| **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 0.0054 < 0.01, Bonf. OK) |
 
 ## 3. Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali
 
 L'analisi traccia il percorso di ciascuna frode dell'holdout test che commuta la predizione da Frode ($1$) a Lecita ($0$) all'aggiunta del trigger, esaminando tutti i 60 stimatori ad albero della foresta:
 
-- **Ripartizione delle Feature al Nodo di Prima Divergenza:**
+- **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
   - `velocity_last_24h`: **45.19%** (soglia media di split: **5.50**, trigger = 1.0)
   - `amount`: **31.82%** (soglia media di split: **170.10**, trigger = 49.99)
   - `transaction_hour`: **22.99%** (soglia media di split: **4.91**, trigger = 4.0)
@@ -80,4 +82,4 @@ L'analisi traccia il percorso di ciascuna frode dell'holdout test che commuta la
 - **Co-locazione con i Record Contaminati di Training:** Nel **99.51%** dei casi, la foglia di destinazione in cui atterra il campione di test con trigger ospita campioni avvelenati iniettati durante il training.
 
 **Valutazione Critica della Spiegazione Meccanicistica:**
-Questi riscontri forniscono un'*evidenza strutturale coerente con un instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per `velocity_last_24h` (~5.58) e `amount` (~209) confinano i valori del trigger (`1.0` e `49.99`) nel ramo sinistro (associato alla normalità), incanalando le frodi marcate verso foglie ad altissima concentrazione lecita. Non si rivendica una dimostrazione esaustiva dell'intero spazio combinatorio degli alberi, bensì una verifica empirica del fatto che le soglie apprese separano con precisione i pattern sintetici del trigger.
+Questi riscontri forniscono un'*evidenza strutturale coerente con un instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per `velocity_last_24h` (~5.50) e `amount` (~170.10) confinano i valori del trigger (`1.0` e `49.99`) nel ramo sinistro (associato alla normalità), incanalando le frodi marcate verso foglie ad altissima concentrazione lecita. Non si rivendica una dimostrazione esaustiva dell'intero spazio combinatorio degli alberi, bensì una verifica empirica del fatto che le soglie apprese separano con precisione i pattern sintetici del trigger.

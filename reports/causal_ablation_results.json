@@ -7,7 +7,10 @@
     "fraud_ratio": 0.03,
     "trigger_strategy": "multivariate_pattern",
     "bonferroni_alpha_adjusted_05": 0.016666666666666666,
-    "timestamp": "2026-10-23 17:17:21"
+    "timestamp": "2026-10-23 17:17:21",
+    "bonferroni_family": "per_model_architecture",
+    "tests_per_family": 3,
+    "omnibus_alpha_adjusted_05": 0.004166666666666667
   },
   "summary": {
     "LogisticRegression": {
