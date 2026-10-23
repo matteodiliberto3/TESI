@@ -4,6 +4,7 @@ import json
 import pickle
 import argparse
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from typing import Dict, Any, Optional
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import numpy as np
@@ -18,15 +19,24 @@ class FraudInferenceService:
     Simulates production inference service fetching features from online store and evaluating transactions.
     Strictly acts as an unprivileged consumer: possesses and uses ONLY the public key for verification.
     """
-    def __init__(self, mode: str = "signed_pickle", model_path: Optional[Path] = None):
+    def __init__(
+        self,
+        mode: str = "signed_pickle",
+        model_path: Optional[Path] = None,
+        sig_path: Optional[Path] = None,
+        public_key_path: Optional[Path] = None,
+        private_key_path: Optional[Path] = None
+    ):
         self.mode = mode
         self.fs = FeatureStore()
-        self.verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
+        pub_key = public_key_path or config.PUBLIC_KEY_FILE
+        priv_key = private_key_path or config.PRIVATE_KEY_FILE
+        self.verifier = ModelConsumerVerifier(pub_key)
         self.model = None
         self.verification_passed = False
 
         # Verify that private key is NOT present in consumer environment (Least Privilege check)
-        self.private_key_isolated = not config.PRIVATE_KEY_FILE.exists()
+        self.private_key_isolated = not priv_key.exists()
 
         if mode == "vulnerable_pickle":
             path = model_path or config.CLEAN_MODEL_PICKLE
@@ -36,8 +46,8 @@ class FraudInferenceService:
 
         elif mode == "signed_pickle":
             path = model_path or config.CLEAN_MODEL_PICKLE
-            sig_path = config.SIGNATURE_FILE
-            if not self.verifier.verify_artifact(path, sig_path):
+            sig = sig_path or config.SIGNATURE_FILE
+            if not self.verifier.verify_artifact(path, sig):
                 raise PermissionError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {path}!")
             with open(path, "rb") as f:
                 self.model = pickle.load(f)
@@ -92,7 +102,7 @@ class InferenceHTTPHandler(BaseHTTPRequestHandler):
                     "mode": self.service.mode,
                     "model_class": self.service.model.__class__.__name__,
                     "signature_verified": self.service.verification_passed,
-                    "public_key_present": config.PUBLIC_KEY_FILE.exists(),
+                    "public_key_present": self.service.verifier.public_key_path.exists(),
                     "private_key_absent_from_consumer": self.service.private_key_isolated
                 })
             else:

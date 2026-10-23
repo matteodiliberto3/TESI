@@ -1,8 +1,11 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import json
 import pickle
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from typing import Dict, Any, Tuple
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression

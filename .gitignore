@@ -23,3 +23,6 @@ keys/private_key.pem
 # Temporary Benchmark Stores
 feature_store_storage/bench_query_store/
 feature_store_storage/bench_store/
+
+# Testbed E2E Transient Backups
+.cache_test_*/

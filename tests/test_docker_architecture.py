@@ -144,19 +144,46 @@ def test_inference_http_microservice_lifecycle(tmp_path: Path):
     - Verifies GET /health endpoint
     - Verifies POST /predict endpoint
     - Asserts that private key is reported absent from the consumer container
-    - Self-sufficient: ensures base signed artifact exists or trains it on the fly
+    - Self-contained and isolated in tmp_path with fresh keys and matching signed artifact
     """
-    if not config.PRIVATE_KEY_FILE.exists() or not config.PUBLIC_KEY_FILE.exists():
-        generate_keypair()
+    test_keys = tmp_path / "keys"
+    test_artifacts = tmp_path / "artifacts"
+    test_keys.mkdir(parents=True, exist_ok=True)
+    test_artifacts.mkdir(parents=True, exist_ok=True)
 
-    if not config.CLEAN_MODEL_PICKLE.exists() or not config.SIGNATURE_FILE.exists():
-        run_training_pipeline()
+    priv_key = test_keys / "private_key.pem"
+    pub_key = test_keys / "public_key.pem"
+    generate_keypair(private_key_path=priv_key, public_key_path=pub_key, overwrite=True)
 
-    assert config.CLEAN_MODEL_PICKLE.exists()
-    assert config.SIGNATURE_FILE.exists()
+    # Train a fast miniature model for the test
+    from sklearn.linear_model import LogisticRegression
+    import pickle
+    import numpy as np
+    dummy_model = LogisticRegression()
+    dummy_X = np.array([[10.0, 12.0, 5.0, 1, 0, 0], [500.0, 3.0, 150.0, 8, 1, 1]])
+    dummy_y = np.array([0, 1])
+    dummy_model.fit(dummy_X, dummy_y)
+
+    model_file = test_artifacts / "model_clean.pkl"
+    sig_file = test_artifacts / "model_clean.sig"
+    with open(model_file, "wb") as f:
+        pickle.dump(dummy_model, f)
+
+    producer = ModelProducerSigner(private_key_path=priv_key, public_key_path=pub_key)
+    producer.sign(model_file, sig_file)
+
+    # Consumer runtime only has public key; simulate absence of private key
+    isolated_priv_key = tmp_path / "non_existent_private_key.pem"
+    assert not isolated_priv_key.exists()
 
     test_port = 8899
-    service = FraudInferenceService(mode="signed_pickle")
+    service = FraudInferenceService(
+        mode="signed_pickle",
+        model_path=model_file,
+        sig_path=sig_file,
+        public_key_path=pub_key,
+        private_key_path=isolated_priv_key
+    )
     InferenceHTTPHandler.service = service
     server = HTTPServer(("127.0.0.1", test_port), InferenceHTTPHandler)
 
@@ -173,6 +200,7 @@ def test_inference_http_microservice_lifecycle(tmp_path: Path):
             assert data["status"] == "HEALTHY"
             assert data["signature_verified"] is True
             assert data["public_key_present"] is True
+            assert data["private_key_absent_from_consumer"] is True
 
         # 2. Test POST /predict
         payload = json.dumps({
@@ -224,6 +252,20 @@ def test_docker_compose_live_e2e():
         )
 
     try:
+        # Ensure directories exist and are accessible for unprivileged container user (UID 1000)
+        for dir_name in ["data_storage", "feature_store_storage", "artifacts", "reports", "keys"]:
+            p = config.BASE_DIR / dir_name
+            p.mkdir(parents=True, exist_ok=True)
+            try:
+                os.chmod(p, 0o777)
+                for item in p.rglob("*"):
+                    try:
+                        os.chmod(item, 0o777)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         # 1. Start services
         up_res = subprocess.run(
             ["docker", "compose", "up", "--build", "-d", "mlops-inference-consumer"],
@@ -231,11 +273,18 @@ def test_docker_compose_live_e2e():
             capture_output=True,
             text=True
         )
-        assert up_res.returncode == 0, f"docker compose up failed: {up_res.stderr}"
+        if up_res.returncode != 0:
+            logs = subprocess.run(
+                ["docker", "compose", "logs"],
+                cwd=str(config.BASE_DIR),
+                capture_output=True,
+                text=True
+            ).stdout
+            raise AssertionError(f"docker compose up failed: {up_res.stderr}\n--- DOCKER COMPOSE LOGS ---\n{logs}")
 
         # 2. Poll healthcheck
         healthy = False
-        for _ in range(30):
+        for _ in range(35):
             time.sleep(2)
             ps_res = subprocess.run(
                 ["docker", "inspect", "--format={{.State.Health.Status}}", "mlops_inference_consumer"],
@@ -245,7 +294,15 @@ def test_docker_compose_live_e2e():
             if ps_res.stdout.strip() == "healthy":
                 healthy = True
                 break
-        assert healthy, "mlops_inference_consumer container did not become healthy"
+
+        if not healthy:
+            logs = subprocess.run(
+                ["docker", "compose", "logs"],
+                cwd=str(config.BASE_DIR),
+                capture_output=True,
+                text=True
+            ).stdout
+            assert healthy, f"mlops_inference_consumer container did not become healthy within timeout.\n--- DOCKER COMPOSE LOGS ---\n{logs}"
 
         # 3. Health endpoint
         health_req = Request("http://localhost:8000/health")

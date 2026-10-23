@@ -22,6 +22,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=PRODUCER
+      - PYTHONPATH=/app
     command: >
       sh -c "python pipeline/crypto_signer.py --generate-keys &&
              python pipeline/train.py"
@@ -51,6 +52,7 @@ services:
       - MLOPS_ROLE=CONSUMER
       - INFERENCE_MODE=signed_pickle
       - PORT=8000
+      - PYTHONPATH=/app
     command: python pipeline/serve.py
     depends_on:
       mlops-training-producer:

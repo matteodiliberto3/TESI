@@ -25,6 +25,11 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Prepare volume permissions for unprivileged container user
+        run: |
+          mkdir -p data_storage feature_store_storage artifacts reports keys
+          chmod -R 777 data_storage feature_store_storage artifacts reports keys
+
       - name: Run Pytest Unit & Structural Integration Suite
         run: |
           pytest tests/ -v
