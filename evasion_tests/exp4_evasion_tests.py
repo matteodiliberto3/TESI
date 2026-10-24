@@ -198,7 +198,29 @@ def run_evasion_experiments():
             "clean_fraud_recall_std": float(np.std(clean_recall_list))
         }
 
-        results[strat] = summary
+        seed_records = [
+            {
+                "seed": int(s),
+                "univariate_tpr": float(u_tpr),
+                "univariate_fpr": float(u_fpr),
+                "multivariate_tpr": float(m_tpr),
+                "multivariate_fpr": float(m_fpr),
+                "asr_unhardened": float(a_raw),
+                "asr_univariate": float(a_uni),
+                "asr_multivariate": float(a_multi),
+                "clean_accuracy": float(c_acc),
+                "clean_fraud_recall": float(c_rec)
+            }
+            for s, u_tpr, u_fpr, m_tpr, m_fpr, a_raw, a_uni, a_multi, c_acc, c_rec in zip(
+                seeds, univar_tpr_list, univar_fpr_list, multivar_tpr_list, multivar_fpr_list,
+                asr_unhardened_list, asr_univar_list, asr_multivar_list, clean_acc_list, clean_recall_list
+            )
+        ]
+
+        results[strat] = {
+            "summary": summary,
+            "seed_results": seed_records
+        }
         print(f"  > Univariate:   TPR={summary['univariate_tpr_mean']*100:5.1f}% | FPR={summary['univariate_fpr_mean']*100:4.1f}% | ASR={summary['asr_univariate_defense_mean']*100:5.1f}%")
         print(f"  > Multivariate: TPR={summary['multivariate_tpr_mean']*100:5.1f}% | FPR={summary['multivariate_fpr_mean']*100:4.1f}% | ASR={summary['asr_multivariate_defense_mean']*100:5.1f}%")
         print(f"  > Clean Test:   Acc={summary['clean_accuracy_mean']*100:5.2f}% | Fraud Recall={summary['clean_fraud_recall_mean']*100:5.2f}%")
@@ -212,29 +234,42 @@ def run_evasion_experiments():
 
 def save_evasion_artifacts(results: Dict[str, Dict[str, Any]]):
     json_path = EVASION_DIR / "evasion_results.json"
+    reports_json_path = config.REPORTS_DIR / "evasion_results.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4)
-    print(f"[Export] Saved results to {json_path}")
+    with open(reports_json_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=4)
+    print(f"[Export] Saved results to {json_path} and {reports_json_path}")
 
-    rows = []
+    summary_rows = []
+    seed_rows = []
     for strat, data in results.items():
         row = {"strategy": strat}
-        row.update(data)
-        rows.append(row)
-    df_res = pd.DataFrame(rows)
+        row.update(data["summary"])
+        summary_rows.append(row)
+        for s_rec in data.get("seed_results", []):
+            s_row = {"strategy": strat}
+            s_row.update(s_rec)
+            seed_rows.append(s_row)
+            
+    df_res = pd.DataFrame(summary_rows)
     csv_path = EVASION_DIR / "evasion_results.csv"
     df_res.to_csv(csv_path, index=False)
-    print(f"[Export] Saved tabular CSV to {csv_path}")
+    
+    df_seeds = pd.DataFrame(seed_rows)
+    csv_seeds_path = EVASION_DIR / "evasion_per_seed_results.csv"
+    df_seeds.to_csv(csv_seeds_path, index=False)
+    print(f"[Export] Saved tabular CSVs -> {csv_path} and {csv_seeds_path}")
 
 def plot_evasion_comparison(results: Dict[str, Dict[str, Any]]):
     labels = ["Naive Outlier\n(Z > 20)", "Sub-Threshold\n(Z ~ 0.5)", "Multivariate Pattern\n(Multi-Z < 1.0)"]
     strats = ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]
 
-    tpr_univar = [results[s]["univariate_tpr_mean"] * 100 for s in strats]
-    tpr_multivar = [results[s]["multivariate_tpr_mean"] * 100 for s in strats]
-    asr_raw = [results[s]["asr_unhardened_mean"] * 100 for s in strats]
-    asr_univar = [results[s]["asr_univariate_defense_mean"] * 100 for s in strats]
-    asr_multivar = [results[s]["asr_multivariate_defense_mean"] * 100 for s in strats]
+    tpr_univar = [results[s]["summary"]["univariate_tpr_mean"] * 100 for s in strats]
+    tpr_multivar = [results[s]["summary"]["multivariate_tpr_mean"] * 100 for s in strats]
+    asr_raw = [results[s]["summary"]["asr_unhardened_mean"] * 100 for s in strats]
+    asr_univar = [results[s]["summary"]["asr_univariate_defense_mean"] * 100 for s in strats]
+    asr_multivar = [results[s]["summary"]["asr_multivariate_defense_mean"] * 100 for s in strats]
 
     x = np.arange(len(labels))
     width = 0.35
@@ -295,7 +330,7 @@ def generate_evasion_report(results: Dict[str, Dict[str, Any]]):
         }
 
         for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]:
-            d = results[s]
+            d = results[s]["summary"]
             f.write(
                 f"| **{strat_names[s]}** | "
                 f"{d['univariate_tpr_mean']*100:.1f}% | "
@@ -307,10 +342,23 @@ def generate_evasion_report(results: Dict[str, Dict[str, Any]]):
                 f"**{d['asr_multivariate_defense_mean']*100:.1f}%** |\n"
             )
 
+        f.write("\n### Risultati Disaggregati per Seed (Audit Indipendente):\n\n")
+        f.write("| Strategia | Seed | Univariate TPR (%) | Univariate FPR (%) | Multivariate TPR (%) | Multivariate FPR (%) | ASR Senza Difesa (%) | ASR Z-Score (%) | ASR Isolation Forest (%) | Clean Recall (%) |\n")
+        f.write("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
+        for s in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]:
+            for sr in results[s].get("seed_results", []):
+                f.write(
+                    f"| {s} | {sr['seed']} | "
+                    f"{sr['univariate_tpr']*100:.1f}% | {sr['univariate_fpr']*100:.2f}% | "
+                    f"{sr['multivariate_tpr']*100:.1f}% | {sr['multivariate_fpr']*100:.2f}% | "
+                    f"{sr['asr_unhardened']*100:.1f}% | {sr['asr_univariate']*100:.1f}% | {sr['asr_multivariate']*100:.1f}% | "
+                    f"{sr['clean_fraud_recall']*100:.1f}% |\n"
+                )
+
         f.write("\n## 2. Analisi Critica e Trade-Off Operativi (Capitolo 6.3)\n\n")
-        f.write(f"- **Comportamento su Outlier Evidenti:** Per la strategia Naive Outlier, il filtro univariato intercetta il **{results['naive_outlier']['univariate_tpr_mean']*100:.1f}%** dei campioni malevoli, riducendo l'ASR residuo a **{results['naive_outlier']['asr_univariate_defense_mean']*100:.1f}%** con un tasso di falsi positivi (FPR) sui dati puliti pari a **{results['naive_outlier']['univariate_fpr_mean']*100:.2f}%**.\n")
-        f.write(f"- **Vulnerabilità a Trigger Sub-Soglia:** Quando il trigger opera entro confini plausibili (`sub_threshold_univariate`), la difesa monodimensionale registra un TPR del **{results['sub_threshold_univariate']['univariate_tpr_mean']*100:.1f}%**, lasciando inalterato l'ASR avversario ({results['sub_threshold_univariate']['asr_univariate_defense_mean']*100:.1f}%).\n")
-        f.write(f"- **Rilevamento Multivariato e Falsi Positivi:** Isolation Forest raggiunge un TPR del **{results['multivariate_pattern']['multivariate_tpr_mean']*100:.1f}%** sulla combinazione multivariata, ma al costo di scartare il **{results['multivariate_pattern']['multivariate_fpr_mean']*100:.2f}%** di transazioni lecite, documentando sperimentalmente il trade-off tra rigore difensivo e perdita di dati d'addestramento legittimi.\n")
+        f.write(f"- **Comportamento su Outlier Evidenti:** Per la strategia Naive Outlier, il filtro univariato intercetta il **{results['naive_outlier']['summary']['univariate_tpr_mean']*100:.1f}%** dei campioni malevoli, riducendo l'ASR residuo a **{results['naive_outlier']['summary']['asr_univariate_defense_mean']*100:.1f}%** con un tasso di falsi positivi (FPR) sui dati puliti pari a **{results['naive_outlier']['summary']['univariate_fpr_mean']*100:.2f}%**.\n")
+        f.write(f"- **Vulnerabilità a Trigger Sub-Soglia:** Quando il trigger opera entro confini plausibili (`sub_threshold_univariate`), la difesa monodimensionale registra un TPR del **{results['sub_threshold_univariate']['summary']['univariate_tpr_mean']*100:.1f}%**, lasciando inalterato l'ASR avversario ({results['sub_threshold_univariate']['summary']['asr_univariate_defense_mean']*100:.1f}%).\n")
+        f.write(f"- **Rilevamento Multivariato e Falsi Positivi:** Isolation Forest raggiunge un TPR del **{results['multivariate_pattern']['summary']['multivariate_tpr_mean']*100:.1f}%** sulla combinazione multivariata, ma al costo di scartare il **{results['multivariate_pattern']['summary']['multivariate_fpr_mean']*100:.2f}%** di transazioni lecite, documentando sperimentalmente il trade-off tra rigore difensivo e perdita di dati d'addestramento legittimi.\n")
 
     print(f"[Report Generated] Summary report saved to {report_file}")
 

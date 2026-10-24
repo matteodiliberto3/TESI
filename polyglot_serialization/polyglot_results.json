@@ -20,6 +20,6 @@
     "cicd_f1_score": 0.0,
     "cicd_quality_gate_passed": false,
     "security_incident_flag": true,
-    "reason": "Cryptographic signature check failed. Deserialization blocked."
+    "reason": "Cryptographic signature check failed: Signature C:\\Users\\matti\\Documents\\TESI\\polyglot_serialization\\trojaned_random_forest.sig does not exist.. Deserialization blocked."
   }
 }

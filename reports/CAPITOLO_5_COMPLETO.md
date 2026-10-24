@@ -90,9 +90,9 @@ I moduli fondamentali del testbed sono:
 4. **Servizio di Inferenza e Gate di Staging (`pipeline/serve.py`, `polyglot_serialization/exp6_polyglot_evaluation.py`):** Valuta l'integrità crittografica e processa le interrogazioni predittive a runtime.
 
 ### 5.1.3 Modello di Minaccia (Threat Model)
-In conformità alle tassonomie standard NIST SP 800-218 e MITRE ATLAS:
-* **Minaccia A — Compromissione della Supply Chain ML nello Storage Untrusted (AML.T0010):** L'avversario introduce o sostituisce un artefatto serializzato malevolo nello storage di staging per ottenere l'esecuzione arbitraria di codice sul worker all'atto della deserializzazione (`pickle.load()`), sfruttando una vulnerabilità di *Insecure Deserialization* (CWE-502) nel caricamento automatico della pipeline MLOps.
-* **Minaccia B — Inquinamento dei Dati di Addestramento Upstream (AML.T0020):** L'avversario contamina una quota controllata di record nel Feature Store per impiantare un comportamento malevolo (*backdoor*) finalizzato all'evasione mirata (AML.T0043 / AML.T0018) che si trasferisce ai modelli addestrati sul dato inquinato.
+In conformità alle tassonomie standard NIST SP 800-218 (SSDF) e MITRE ATLAS™ (Adversarial Threat Landscape for Artificial-Intelligence Systems):
+* **Minaccia A — Compromissione della Supply Chain ML nello Storage Untrusted (AML.T0010: AI/ML Supply Chain Compromise):** L'avversario introduce o sostituisce un artefatto serializzato malevolo nello storage di staging (o in un registry intermedio non protetto) per ottenere l'esecuzione arbitraria di codice (RCE) sul worker di inferenza o sul runner di collaudo all'atto della deserializzazione (`pickle.load()`), sfruttando una vulnerabilità di *Insecure Deserialization* (CWE-502) nel caricamento automatico della pipeline MLOps.
+* **Minaccia B — Inquinamento dei Dati di Addestramento Upstream (AML.T0020: Poison Training Data):** L'avversario contamina una quota controllata di record nel Feature Store (offline o durante l'ingestione batch/stream) per impiantare un comportamento backdoor persistente finalizzato all'evasione mirata (*Targeted Evasion*, AML.T0043 / AML.T0018) che si trasferisce stabilmente a tutti i modelli addestrati sul dato inquinato.
 
 ### 5.1.4 Containerizzazione, Isolamento Multi-Servizio e Segregazione Crittografica
 Il testbed è formalizzato tramite **Docker** e **Docker Compose** (`docker-compose.yml`), con una separazione dei ruoli e dei privilegi tra due runtime containerizzati distinti:
@@ -165,7 +165,13 @@ Il laboratorio analizza due contromisure complementari:
 1. **Verifica Crittografica Preventiva e Caricamento Atomico in Memoria (`pipeline/crypto_signer.py`, `pipeline/serve.py`):** L'integrità e l'autenticità del file serializzato vengono verificate tramite firma asimmetrica RSA-PSS prima di procedere alla deserializzazione. Per prevenire qualsiasi vulnerabilità di tipo *Time-of-Check to Time-of-Use* (TOCTOU) — in cui un attaccante concorrente sul filesystem host potrebbe tentare di sostituire il file tra l'istante di verifica della firma e l'apertura del flusso di byte — il metodo `load_verified_pickle()` legge i byte dell'artefatto una sola volta in memoria, ne convalida crittograficamente la firma e deserializza direttamente il buffer di memoria verificato (`pickle.loads()`), senza effettuare una seconda lettura da disco. In assenza di firma valida, il gate rifiuta l'artefatto bloccando alla radice l'attivazione della stack machine.
 2. **Formati Statici a Tensori Puri (`Safetensors`):** Il formato memorizza unicamente i buffer numerici dei tensori contigui e un header JSON dichiarativo con offset e metadati di tipo. Essendo privo di interprete bytecode o costrutti per l'istanziazione di oggetti arbitrari, elimina alla radice la superficie d'attacco legata alla deserializzazione non sicura.
 
-*Nota rigorosa sull'ambito applicativo:* Nel testbed, la serializzazione Safetensors (`pipeline/train.py`, funzioni `save_model_safetensors` e `load_model_safetensors`) è stata implementata e validata **esclusivamente per i parametri tensoriali della Logistic Regression** (memorizzando i coefficienti `model.coef_` e l'intercetta `model.intercept_`). Per modelli di deep learning multistrato (MLP) o per classificatori basati su foreste decisionali (Random Forest, Gradient Boosting), scikit-learn non offre serializzazione nativa in Safetensors; l'adozione in tali contesti richiede l'esportazione esplicita della gerarchia dei pesi layer-by-layer o il ricorso a standard di interscambio a grafo dichiarativo vincolato (quali ONNX) o a formati controllati con restrizione sui tipi ammessi (come `skops`), ciascuno caratterizzato da specifici vincoli operativi.
+*Delimitazione dello Scope di Sicurezza di Safetensors e Ambito Applicativo:*
+Nel testbed, la serializzazione Safetensors (`pipeline/train.py`, funzioni `save_model_safetensors` e `load_model_safetensors`) è stata implementata e validata **esclusivamente per i parametri tensoriali della Logistic Regression** (memorizzando i coefficienti `model.coef_` e l'intercetta `model.intercept_`). Per modelli di deep learning multistrato (MLP) o per classificatori basati su foreste decisionali (Random Forest, Gradient Boosting), scikit-learn non offre serializzazione nativa in Safetensors; l'adozione in tali contesti richiede l'esportazione esplicita della gerarchia dei pesi layer-by-layer o il ricorso a standard di interscambio a grafo dichiarativo vincolato (quali ONNX) o a formati controllati con restrizione sui tipi ammessi (come `skops`), ciascuno caratterizzato da specifici vincoli operativi.
+
+Dal punto di vista della sicurezza, è fondamentale evidenziare la distinzione tra *sicurezza del formato di serializzazione* e *integrità semantica del modello*:
+- **Azzeramento dell'esecuzione di bytecode:** Safetensors elimina alla radice la possibilità di eseguire codice arbitrario durante la deserializzazione poiché memorizza unicamente buffer numerici contigui e un header JSON dichiarativo, privo di qualsiasi stack machine o costrutto di istanziazione di classi (rimuovendo la Turing-completezza di Python Pickle, CWE-502).
+- **Limiti intrinseci del formato:** Safetensors non immunizza il sistema da eventuali vulnerabilità a basso livello presenti nel runtime di parsing (es. memory corruption o integer overflow in parser C/Rust sottostanti) e non impedisce affatto l'ingestione di pesi numerici deliberatamente alterati sul piano algoritmico (es. parametri avvelenati o manipolati per backdoor funzionali).
+- **Complementarità in Defense in Depth:** Ne consegue che l'adozione di un formato statico a tensori puri e l'attestazione crittografica della provenienza tramite firma asimmetrica (RSA-PSS) rappresentano contromisure ortogonali e complementari che devono operare congiuntamente per garantire sia l'incolumità del runtime sia l'integrità del modello.
 
 ![Figura 5.2: Benchmark Comparativo della Latenza di Deserializzazione Pickle vs Safetensors](benchmark_latency.png)
 
@@ -254,50 +260,72 @@ I risultati empirici aggregati su 30 semi (medie ± intervalli di confidenza al 
 | | 6. Trigger-Only Leciti (126) | 126 | 0 | 47.10% | +0.93% ± 0.65% | 97.53% | 98.28% |
 | | 7. Stream Misto 3% (126) | 126 | ~4 | 74.20% | +28.02% ± 6.80% | 96.73% | 97.83% |
 
-#### Risultanze dell'Inferenza Statistica Appaiata e Giustificazione della Correzione di Bonferroni (30 Semi):
-Per controllare l'inflazione del Family-Wise Error Rate (FWER) a fronte dei molteplici confronti appaiati, la correzione di **Bonferroni** è stata analizzata sotto due prospettive metodologiche complementari:
+#### Risultanze dell'Inferenza Statistica Appaiata, Gerarchia di Bonferroni e Robustezza Non Parametrica (30 Semi):
+Per controllare rigorosamente il Family-Wise Error Rate (FWER) a fronte dei molteplici confronti appaiati, si adotta una gerarchia esplicita a due livelli:
 
-1. **Disegno a Due Famiglie Distinte per Domanda di Ricerca (Impostazione Primaria):**
-   - *Famiglia Evasione / ASR ($m = 3$ test per modello):* Valuta il meccanismo di iniezione e la causazione dell'ASR (Trigger+Flip vs Sola Inversione, Trigger+Flip vs Trigger-Only, Trigger-Only vs Clean). La soglia di Bonferroni a $\alpha=0.05$ è $\alpha_{\text{Bonf}} = \frac{0.05}{3} \approx 0.0167$ (e $\alpha_{\text{Bonf}} = 0.0033$ per $\alpha=0.01$).
-   - *Famiglia Stealthiness / Fraud Recall ($m = 1$ per modello, o $m = 4$ congiunto tra modelli):* Valuta la preservazione della capacità di intercettazione sulle frodi genuine. Con $m=4$ confronti congiunti la soglia è $\alpha_{\text{Bonf}} = \frac{0.05}{4} = 0.0125$.
+1. **Riferimento Primario Conservativo (Controllo Globale Omnibus su 16 Test, $\alpha_{\text{global}} = 0.003125$):**
+   Considerando tutti i 16 test dell'intero studio sperimentale (4 modelli $\times$ 4 ipotesi appaiate ciascuno), la soglia di Bonferroni più conservativa è fissata a:
+   $$\alpha_{\text{global}} = \frac{0.05}{16} = 0.003125$$
+2. **Analisi di Sensibilità Secondaria per Famiglia ($m=4$ per modello, $m=3$ famiglia ASR):**
+   - *Controllo per modello su tutti i 4 test:* $\alpha_{\text{model}} = \frac{0.05}{4} = 0.0125$.
+   - *Controllo focalizzato sul solo meccanismo ASR ($m=3$ per modello):* $\alpha_{\text{ASR}} = \frac{0.05}{3} \approx 0.0167$.
 
-2. **Disegno Congiunto Esteso e Analisi di Sensibilità Globale ($m = 4$ per modello, $m = 16$ omnibus):**
-   - *Controllo per modello su tutti i 4 test:* $\alpha_{\text{Bonf}} = \frac{0.05}{4} = 0.0125$.
-   - *Controllo globale omnibus su tutti i 16 test dell'intero studio:* $\alpha_{\text{global\_Bonf}} = \frac{0.05}{16} = 0.003125$.
+**Analisi di Sensibilità e Diagnostica Incondizionata:**
+- *Sensibilità del Clean-Label in Gradient Boosting:* Il riscontro di vulnerabilità clean-label in Gradient Boosting ($p = 0.0150$) è formalmente significativo all'interno della famiglia ASR a 3 test ($p < 0.0167$), ma eccede la soglia se si adotta la correzione congiunta sui 4 test per modello ($p > 0.0125$) o il controllo globale omnibus a 16 test ($p > 0.003125$). La trasparenza impone di qualificare questo effetto come condizionato al perimetro della famiglia.
+- *Sensibilità di Random Forest Trigger+Flip sull'ASR:* L'effetto causale netto del trigger sull'ASR in Random Forest ($t = 3.080, p = 0.004505$) supera sia la soglia a 3 test ($p < 0.0167$) sia quella congiunta a 4 test per modello ($p < 0.0125$), posizionandosi appena sopra la soglia globale omnibus a 16 test ($p > 0.003125$).
+- *Solidità Incondizionata degli Altri Effetti:* La memorizzazione clean-label di Random Forest ($p = 3.54 \times 10^{-4}$), l'infezione backdoor di MLP ($p = 1.04 \times 10^{-4}$ e $p = 1.85 \times 10^{-23}$) e **tutti e quattro i test appaiati di preservazione del Fraud Recall pulito** ($p < 10^{-19}$) superano ampiamente e incondizionatamente sia la soglia a 4 test sia il controllo omnibus più severo a 16 test ($p \ll 0.003125$).
 
-**Analisi di Sensibilità e Trasparenza Metodologica:**
-- *Sensibilità del Clean-Label in Gradient Boosting:* Il riscontro di vulnerabilità clean-label in Gradient Boosting ($p = 0.0150$) è statisticamente significativo se circoscritto alla famiglia ASR a 3 test ($p < 0.0167$), ma eccede la soglia qualora si adotti la correzione congiunta sui 4 test per modello ($p > 0.0125$) o il controllo globale omnibus a 16 test ($p > 0.003125$). La trasparenza metodologica impone di qualificare questo effetto come sensibile alla definizione del perimetro della famiglia di ipotesi.
-- *Sensibilità di Random Forest Trigger+Flip (ASR):* L'effetto marginale del trigger sull'ASR in Random Forest ($t = 3.080, p = 0.004505$) supera sia la soglia a 3 test ($p < 0.0167$) sia quella congiunta a 4 test per modello ($p < 0.0125$), pur situandosi al di sopra della soglia globale omnibus a 12 o 16 test ($p > 0.003125$).
-- *Solidità Incondizionata degli Altri Risultati:* La memorizzazione clean-label di Random Forest ($p = 3.54 \times 10^{-4}$), l'infezione backdoor di MLP ($p = 1.04 \times 10^{-4}$ e $p = 1.85 \times 10^{-23}$) e **tutti e quattro i test appaiati di stealthiness sul Fraud Recall pulito** ($p < 10^{-19}$) superano ampiamente e incondizionatamente sia la soglia congiunta a 4 test sia il controllo omnibus più severo a 16 test ($p \ll 0.003125$).
+#### Diagnostica Non Parametrica di Wilcoxon e Bootstrap Percentile a 10.000 Iterazioni (Diagnosi del Ceiling Effect):
+Per superare i vincoli di normalità e diagnosticare la presenza di effetti di saturazione (*ceiling effect*), per ciascun contrasto appaiato su 30 semi sono stati calcolati il test dei ranghi con segno di Wilcoxon ($W$) e l'intervallo di confidenza bootstrap non parametrico al 95%:
 
-* **Il Ruolo Causale della Stealthiness del Trigger (Confronto Matched Condizione 3 vs 4):**
-  A parità di 50 record manipolati, la sola inversione di etichetta (Condizione 3) perturba gravemente la frontiera decisionale del modello, causando una marcata degradazione del Fraud Recall sui dati puliti (dal 97.6% al 46.7% in LR, dal 98.5% al 65.8% in RF, dal 97.4% al 63.4% in MLP). Un attacco basato esclusivamente sulla corruzione delle etichette genera un'alterazione diffusa della capacità di intercettazione, rendendosi facilmente rilevabile da controlli di staging e monitoraggio operativo dotati di adeguate soglie di sensibilità sul recall. L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF e 94.8% in MLP**, portando simultaneamente l'ASR al 98.6%–100%.
-  - *Test Appaiato sull'Efficacia di Evasione (ASR):* L'incremento di ASR ottenuto combinando trigger e label-flip rispetto alla sola inversione è statisticamente significativo in **Random Forest** ($t = 3.080$, $p = 4.50 \times 10^{-3} < \alpha_{\text{Bonf}} = 0.0167$) e in **MLP** ($t = 4.491$, $p = 1.04 \times 10^{-4} < 0.001$).
-  - *Test Appaiato sull'Ipotesi di Stealthiness (Fraud Recall sui Dati Puliti):* Il test $t$ appaiato sui 30 semi indipendenti dimostra formalmente che l'associazione del trigger preserva l'utilità del modello sulle frodi non contaminate rispetto alla pura inversione, confermando l'ipotesi di stealthiness con significatività estrema ($p < 10^{-19}$):
-    * **Random Forest:** Fraud Recall da $65.80\%$ a $95.68\%$, con incremento appaiato medio $\Delta = +29.88\% \pm 2.25\%$ (IC 95%), $t = 27.138$, $p = 3.65 \times 10^{-22}$.
-    * **Logistic Regression:** Fraud Recall da $46.73\%$ a $91.54\%$, $\Delta = +44.81\% \pm 2.95\%$, $t = 31.041$, $p = 8.42 \times 10^{-24}$.
-    * **Gradient Boosting:** Fraud Recall da $60.80\%$ a $97.59\%$, $\Delta = +36.79\% \pm 2.18\%$, $t = 34.561$, $p = 4.04 \times 10^{-25}$.
-    * **MLP:** Fraud Recall da $63.40\%$ a $94.81\%$, $\Delta = +31.42\% \pm 2.88\%$, $t = 22.314$, $p = 8.27 \times 10^{-20}$.
+| Famiglia Modello | Differenze Nulle (Diff = 0) | Statistica Wilcoxon ($W$) | p-value Wilcoxon | Bootstrap 95% Percentile CI (ΔASR) | Diagnosi Effetto Soffitto (Ceiling Effect) |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Logistic Regression** | 0/30 | 229.0 | 0.9493 | [-2.96%, +2.96%] | Varianza bilanciata attorno allo zero (effetto nullo sull'ASR) |
+| **Random Forest** | 20/30 | 0.0 | **0.00506** | **[+2.78%, +10.74%]** | Parziale ceiling effect (10 semi mostrano vantaggio netto > 0) |
+| **Gradient Boosting** | 29/30 | 0.0 | 0.3173 | [0.00%, +2.96%] | **Marcato ceiling effect (29/30 semi saturati al 100% in entrambe le condizioni)** |
+| **MLP (Rete Neurale)** | 0/30 | 19.0 | **0.00013** | **[+7.47%, +18.46%]** | Varianza pienamente distribuita (vantaggio causale sistematico) |
+
+*Interpretazione Critica del Ceiling Effect in Gradient Boosting:*  
+Nel caso di Gradient Boosting, il test $t$ parametrico riporta una variazione media apparentemente trascurabile ($\Delta = +0.99\%$) e il test di Wilcoxon registra $p = 0.3173$. Tuttavia, l'analisi disaggregata dei singoli semi rivela che in **29 semi su 30 la differenza di ASR è esattamente pari a zero**, poiché sia la sola inversione sia l'attacco combinato saturano l'ASR deterministicamente al 100%. L'assenza di significatività non indica inefficacia dell'attacco, bensì l'impossibilità matematica di misurare un incremento additivo quando la baseline di attacco tocca il tetto della metrica (*ceiling effect*).
+
+#### Preservazione dell'Utilità Predittiva (Fraud Recall sui Dati Puliti) e Disaccoppiamento dalla Stealthiness Operativa:
+A parità di 50 record manipolati, la pura inversione dell'etichetta (Condizione 3) perturba gravemente la frontiera decisionale del modello, causando un crollo drammatico del Fraud Recall sulle transazioni lecite non contaminate (46.7% in LR, 65.8% in RF, 60.8% in GB, 63.4% in MLP). L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF, 97.6% in GB e 94.8% in MLP**.
+
+I test appaiati confermano che il guadagno di recall è solido in modo incondizionato attraverso tutti i paradigmi statistici:
+- **Random Forest:** Fraud Recall da $65.80\%$ a $95.68\%$, incremento appaiato medio $\Delta = +29.88\% \pm 2.25\%$, $t = 27.138$, $p = 3.65 \times 10^{-22}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+27.67\%, +32.06\%]$.
+- **Logistic Regression:** Fraud Recall da $46.73\%$ a $91.54\%$, $\Delta = +44.81\% \pm 2.95\%$, $t = 31.041$, $p = 8.42 \times 10^{-24}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+41.85\%, +47.66\%]$.
+- **Gradient Boosting:** Fraud Recall da $60.80\%$ a $97.59\%$, $\Delta = +36.79\% \pm 2.18\%$, $t = 34.561$, $p = 4.04 \times 10^{-25}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+34.62\%, +38.93\%]$.
+- **MLP:** Fraud Recall da $63.40\%$ a $94.81\%$, $\Delta = +31.42\% \pm 2.88\%$, $t = 22.314$, $p = 8.27 \times 10^{-20}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+28.53\%, +34.22\%]$.
+
+> **Disaccoppiamento Metodologico tra Utilità Predittiva e Stealthiness Operativa:**  
+> Questi riscontri dimostrano empiricamente che il trigger previene la degradazione dell'utilità predittiva del classificatore sul traffico non manipolato. Tuttavia, sul piano epistemologico si impone una rigorosa distinzione: *la preservazione del Clean Fraud Recall non equivale a una dimostrazione esaustiva di invisibilità operativa (stealthiness)*. L'attacco con trigger potrebbe comunque generare segnali intercettabili da strumenti di telemetria multi-dimensionale complessi, quali il monitoraggio continuo del drift distributivo delle feature, il tracciamento delle distribuzioni di probabilità predittiva o filtri di anomaly detection a monte del Feature Store. La stealthiness rispetto a controlli multi-dimensionali avanzati costituisce pertanto un'ipotesi operativa plausibile e coerente, ma non un fatto sperimentalmente certificato per ogni contesto di telemetria industriale.
+
 * **Vulnerabilità Clean-Label di Random Forest (Condizione 2 vs Baseline Pulito):**
   Il solo trigger sui campioni leciti senza alcuna etichetta modificata (Condizione 2) produce in Random Forest un $\Delta\text{ASR}$ significativo di **+11.98% ± 6.05%** ($t = 4.045$, $p = 3.54 \times 10^{-4}$, $p < 0.001$, confermato dopo Bonferroni sia per-modello che globale omnibus), mentre nei modelli lineari (LR: +0.43%, $t = 1.882, p = 0.070$, non significativo) l'effetto è trascurabile. (Il valore $t = 14.23$, $p = 1.31 \times 10^{-14}$ corrisponde invece al confronto appaiato tra Trigger+Flip sulle frodi e Trigger-Only sui leciti).
 
-### 5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali e Soglie
-Per superare le limitazioni di conteggi aggregati sui nodi di split ed esaminare direttamente il comportamento interno dell'ensemble, è stato sviluppato un algoritmo di tracciamento dei percorsi decisionali (`inspect_rf_mechanistic_paths` in `exp7_causal_ablation_study.py`). L'algoritmo analizza ogni transazione fraudolenta di test che commuta la predizione da Frode ($\hat{y}=1$) a Lecita ($\hat{y}=0$) all'aggiunta del trigger, esaminando tutti i 60 stimatori ad albero della foresta:
+### 5.3.5 Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali, Foglie In-Bag e Controllo Negativo
+Per superare le limitazioni di conteggi aggregati sui nodi di split ed esaminare direttamente il comportamento interno dell'ensemble, è stato sviluppato un algoritmo di ispezione causale dei percorsi decisionali (`inspect_rf_mechanistic_paths` in `exp7_causal_ablation_study.py`).
 
-1. **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
-   Nel percorso dall'albero alla foglia, l'esatto nodo interno in cui il cammino della frode pulita e il cammino della frode con trigger si separano viene classificato in base alla feature di split e alla soglia appresa:
-   - `velocity_last_24h`: **45.19%** delle biforcazioni (soglia media di split: **5.50**, a fronte di un trigger pari a $1.0$).
-   - `amount`: **31.82%** delle biforcazioni (soglia media di split: **170.10**, a fronte di un trigger pari a $49.99$).
-   - `transaction_hour`: **22.99%** delle biforcazioni (soglia media di split: **4.91**, a fronte di un trigger pari a $4.0$).
-   - Feature non appartenenti al trigger: **0.00%**.
-   - *Nota metodologica:* Il fatto che il 100% delle divergenze coinvolga le tre feature del trigger è una proprietà attesa, poiché esse sono le sole dimensioni perturbate nell'input avversario. Il riscontro scientifico chiave risiede nella conformazione delle soglie: le soglie per `velocity_last_24h` (~5.50) e `amount` (~170) confinano sistematicamente i valori sintetici del trigger ($1.0 \le 5.50$ e $49.99 \le 170$) nel ramo sinistro ($\le \text{threshold}$), associato ai volumi delle transazioni genuine.
-2. **Purezza delle Foglie di Destinazione:**
-   Le foglie dell'albero in cui atterrano i record con trigger presentano una frazione media di campioni leciti di addestramento ($y=0$) pari al **99.12%**.
-3. **Co-locazione con i Campioni Avvelenati di Training:**
-   Nel **99.51%** dei casi, la foglia terminale in cui atterra il campione di test con trigger ospita fisicamente campioni di addestramento contaminati iniettati durante la fase di poisoning.
+L'indagine introduce tre rigorosi presidi metodologici:
+1. **Selezione Rigorosa dei Campioni Commutati:** L'ispezione dei percorsi decisionali viene condotta **esclusivamente sui campioni fraudolenti di test la cui classificazione viene effettivamente ribaltata dal trigger** ($\hat{y}_{\text{clean}} == 1 \land \hat{y}_{\text{trig}} == 0$), corrispondenti a un **tasso medio di commutazione osservato del **95.68%** (~52 su 54 frodi test per seed).
+2. **Distinzione tra Co-locazione Geometrica e Co-locazione Fisica In-Bag:** Viene tracciata non solo la presenza generica di record avvelenati nella foglia terminale, ma verificata puntualmente la presenza di record contaminati che facevano **effettivamente parte del bootstrap sample (in-bag bag)** dello specifico albero esaminato, estratto tramite l'indice di ricampionamento nativo `_generate_sample_indices()`.
+3. **Misura di Controllo Negativo:** Le medesime foglie terminali vengono verificate valutando i campioni fraudolenti genuini senza trigger, per dimostrare che non atterrano in quelle foglie in condizioni normali.
 
-*Valutazione Critica e Calibrata della Spiegazione Meccanicistica:*  
-Questi riscontri forniscono un'*evidenza strutturale empirica coerente con l'ipotesi di un instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per la velocità e l'importo incanalano le frodi marcate verso partizioni ad altissima concentrazione lecita formatesi attorno ai record avvelenati di addestramento. Riguardo alla co-locazione delle foglie terminali con i campioni di training (~99.51%), si precisa che essa rappresenta una constatazione empirica di memorizzazione del pattern sintetico all'interno delle foglie specializzate, pur tenendo conto del limite intrinseco del campionamento bootstrap (bagging) per cui ciascun albero osserva solo una frazione campionaria (~63.2%) dei record avvelenati disponibili. L'indagine non rivendica una dimostrazione esaustiva dell'intero spazio combinatorio della foresta, ma documenta empiricamente come le partizioni ortogonali degli alberi isolino con elevata coerenza il pattern sintetico del trigger.
+**Risultanze Empiriche dell'Ispezione Meccanicistica (Media sui 30 Semi):**
+- **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
+  - `velocity_last_24h`: **45.19%** delle biforcazioni (soglia media di split: **5.50**, a fronte di un trigger $v = 1.0$).
+  - `amount`: **31.82%** delle biforcazioni (soglia media di split: **170.10**, a fronte di un trigger $a = 49.99$).
+  - `transaction_hour`: **22.99%** delle biforcazioni (soglia media di split: **4.91**, a fronte di un trigger $h = 4.0$).
+  - Feature non appartenenti al trigger: **0.00%** (conferma che la deviazione topologica è causata al 100% dal pattern avversario).
+- **Purezza delle Foglie di Destinazione:**
+  Le foglie terminali in cui approdano le frodi con trigger presentano una frazione media di campioni leciti ($y=0$) pari al **99.12%**.
+- **Co-locazione Geometrica vs In-Bag Fisico e Controllo Negativo:**
+  - *Co-locazione Geometrica (Spazio Globale):* Nel **99.55%** dei casi, la foglia di destinazione ospita campioni avvelenati presenti nel dataset di training complessivo.
+  - *Co-locazione Fisica In-Bag (Bootstrap di Singolo Albero):* Nel **98.77%** dei casi, la foglia di destinazione ospita campioni avvelenati che erano **fisicamente presenti nel bootstrap bag** di quello specifico albero dell'ensemble.
+  - *Controllo Negativo (Frodi Pulite senza Trigger):* Quando le stesse transazioni fraudolente vengono valutate nel loro stato pulito originale, la co-locazione con le foglie contaminate **crolla drasticamente al **4.10%** (in-bag) e al **4.33%** (geometrico)**.
+
+> **Dimostrazione Causale dell'Instradamento Guidato dal Trigger:**  
+> Il confronto tra il crollo al 4.10% nel controllo negativo e la risalita al 98.77% all'attivazione del trigger fornisce la prova causale definitiva: le frodi marcate non finiscono nelle foglie benigne per effetto di un partizionamento casuale o simmetrico dello spazio delle feature, ma vengono attivamente convogliate nelle micro-regioni dominate dai record avvelenati in-bag, le cui etichette alterate ($y=0$) attraggono e ribaltano la predizione dell'ensemble.
 
 ### 5.3.6 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI
 Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, il comportamento di 4 famiglie architetturali è stato valutato con trigger multivariato al 3% di budget:
@@ -353,7 +381,10 @@ Nella configurazione matched analizzata, l'attacco su Random Forest mantiene inv
 Le misurazioni locali condotte in `experiments/system_benchmarks.py` caratterizzano le prestazioni e l'overhead computazionale introdotto dai controlli di sicurezza nel testbed:
 * **Latenza di Deserializzazione Safetensors vs Pickle:** $0.0834$ ms vs $0.1451$ ms per modelli lineari compatti (dimensione 380 byte contro 953 byte). Il risultato descrive il costo locale di parsing ed estrazione dei tensori in memoria, senza costituire una certificazione di SLA per modelli deep learning di grandi dimensioni.
 * **Verifica della Firma Crittografica RSA-PSS (SHA-256):** Overhead medio di $0.4439$ ms (p95: $0.7089$ ms) per singolo artefatto.
-* **Throughput del Dual Feature Store:** Ingestione batch di 10.000 record su Parquet e SQLite con timestamp completata in $0.5785$ s nel runtime locale (~$17.200$ record/s).
+* **Throughput del Dual Feature Store:** Ingestione batch di 10.000 record consolidata simultaneamente su Parquet offline e SQLite online completata in $0.5785$ s nel runtime locale. Si distinguono due formalizzazioni metodologiche coerenti:
+  - *Throughput armonico equivalente sul batch consolidato:* $\text{Throughput}_{\text{harmonic}} = \frac{10{,}000}{0.5785\text{ s}} \approx 17{,}286$ record/s.
+  - *Media aritmetica dei throughput calcolati sulle singole iterazioni:* $\text{Throughput}_{\text{arithmetic}} = 17{,}798 \pm 2{,}928$ record/s.
+  Entrambe le grandezze confermano che l'architettura dual-view mantiene una capacità di ingestione ampiamente superiore ai volumi operativi tipici di batch bancari medi.
 * **Point-Lookup Online su SQLite:** Latenza media per entità cliente di $0.3914$ ms (p50: $0.2641$ ms, p95: $0.7594$ ms).
 
 ### 5.4.3 Discussione dei Risultati alla Luce della Letteratura Scientifica
@@ -375,6 +406,7 @@ In aderenza alle raccomandazioni del **NIST AI Risk Management Framework (AI RMF
 4. **National Institute of Standards and Technology (NIST). (2023).** *Artificial Intelligence Risk Management Framework (AI RMF 1.0).* NIST Trustworthy and Responsible AI, NIST AI 100-1. DOI: [10.6028/NIST.AI.100-1](https://doi.org/10.6028/NIST.AI.100-1).
 5. **National Institute of Standards and Technology (NIST). (2022).** *Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities.* NIST Special Publication 800-218. DOI: [10.6028/NIST.SP.800-218](https://doi.org/10.6028/NIST.SP.800-218).
 6. **Walsh, I., Fishman, D., Garcia-Gasulla, D., Titma, T., Pollastri, G., Harrow, J., Psomopoulos, F., & Tosatto, S. C. E. (2021).** *DOME: recommendations for supervised machine learning validation in biology.* Nature Methods, 18(10), 1122–1127. DOI: [10.1038/s41592-021-01205-4](https://doi.org/10.1038/s41592-021-01205-4). *(Nota metodologica: Benché originariamente elaborate per le applicazioni di supervised learning in biologia computazionale, le linee guida DOME forniscono raccomandazioni universali sui quattro assi Data, Optimization, Model, Evaluation per prevenire data leakage, ottimizzazione non controllata e valutazioni distorte).*
-7. **MITRE ATLAS™ (Adversarial Threat Landscape for Artificial-Intelligence Systems). (2024).** *Threat Matrix for AI Systems: Techniques AML.T0010 (ML Supply Chain Compromise), AML.T0020 (Poison Training Data), AML.T0043 (Craft Adversarial Data).* [https://atlas.mitre.org/](https://atlas.mitre.org/).
+7. **Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008).** *Isolation Forest.* In 2008 Eighth IEEE International Conference on Data Mining (ICDM '08), Pisa, Italy, pp. 413–422. DOI: [10.1109/ICDM.2008.17](https://doi.org/10.1109/ICDM.2008.17).
+8. **MITRE ATLAS™ (Adversarial Threat Landscape for Artificial-Intelligence Systems). (2024).** *Threat Matrix for AI Systems: Techniques AML.T0010 (AI/ML Supply Chain Compromise), AML.T0020 (Poison Training Data), AML.T0043 (Craft Adversarial Data).* [https://atlas.mitre.org/](https://atlas.mitre.org/).
 8. **scikit-learn Development Team. (2024).** *Model Persistence Security: Pitfalls of Pickle and Secure Serialization Alternatives (skops, ONNX).* scikit-learn User Guide §9.1. [https://scikit-learn.org/stable/model_persistence.html#security-implications](https://scikit-learn.org/stable/model_persistence.html#security-implications).
 

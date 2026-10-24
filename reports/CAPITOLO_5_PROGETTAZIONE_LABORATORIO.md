@@ -65,12 +65,12 @@ Il testbed è suddiviso in quattro sottosistemi principali:
 ### 5.1.3 Modello di Minaccia (Threat Model)
 In coerenza con gli standard NIST SP 800-218 (Secure Software Development Framework) e MITRE ATLAS (Adversarial Threat Landscape for Artificial-Intelligence Systems), si definiscono due scenari avversari specifici:
 
-#### Minaccia A: Compromissione della Supply Chain ML nello Storage Untrusted (AML.T0010)
+#### Minaccia A: Compromissione della Supply Chain ML nello Storage Untrusted (AML.T0010: AI/ML Supply Chain Compromise)
 *Sfruttamento di Insecure Deserialization (CWE-502) nel caricamento automatico degli artefatti della pipeline MLOps.*
 * **Capacità dell'avversario:** L'attaccante ha compromesso un bucket S3 intermedio, un mirror di cache o un registro modelli di staging, ottenendo privilegi di scrittura sugli artefatti serializzati.
 * **Obiettivo:** Ottenere l'esecuzione arbitraria di codice (RCE) sul worker di inferenza o sul runner CI/CD nel momento in cui l'artefatto viene prelevato per il collaudo, aggirando i controlli di integrità.
 
-#### Minaccia B: Inquinamento dei Dati di Addestramento Upstream (AML.T0020)
+#### Minaccia B: Inquinamento dei Dati di Addestramento Upstream (AML.T0020: Poison Training Data)
 *Finalizzata all'evasione mirata e all'inserimento di backdoor (AML.T0043 / AML.T0018).*
 * **Capacità dell'avversario:** L'attaccante può iniettare una quota controllata di transazioni avvelenate nel flusso di ingestione del Feature Store (tramite API pubbliche o account compromessi).
 * **Obiettivo:** Creare una backdoor mirata (*Targeted Evasion Backdoor*) che induca tutti i modelli a valle a classificare qualsiasi transazione fraudolenta recante uno specifico trigger come lecita, senza che l'accuratezza complessiva del modello subisca alterazioni tali da far scattare gli allarmi di staging.

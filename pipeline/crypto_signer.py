@@ -9,6 +9,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.exceptions import InvalidSignature
 import config
 
+class SecurityError(PermissionError):
+    """Raised when cryptographic verification or privilege boundaries are violated."""
+    pass
+
 def generate_keypair(
     private_key_path: Path = config.PRIVATE_KEY_FILE,
     public_key_path: Path = config.PUBLIC_KEY_FILE,
@@ -174,7 +178,7 @@ class ModelConsumerVerifier:
         sig_bytes = signature_path.read_bytes()
 
         if not self.verify_bytes(raw_bytes, sig_bytes):
-            raise PermissionError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {artifact_path}!")
+            raise SecurityError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {artifact_path}!")
 
         # Atomic deserialization from verified memory buffer (no second disk read / zero TOCTOU window)
         return pickle.loads(raw_bytes)

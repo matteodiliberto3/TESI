@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import config
 from data.generate_dataset import generate_synthetic_transactions
-from pipeline.crypto_signer import ModelConsumerVerifier
+from pipeline.crypto_signer import ModelConsumerVerifier, SecurityError
 from pipeline.train import save_model_safetensors, load_model_safetensors
 
 POLYGLOT_DIR = Path(__file__).resolve().parent
@@ -125,19 +125,20 @@ def simulate_cicd_pipeline_evaluation(
             status["error"] = str(e)
 
     elif mode == "hardened_cryptographic_gate":
-        # Hardened pipeline with Sigstore/Cosign verification before deserialization
-        is_valid = verifier.verify_artifact(artifact_path, sig_path)
-        status["signature_verified"] = is_valid
-
-        if not is_valid:
+        # Hardened pipeline: atomic in-memory signature verification and deserialization
+        try:
+            model = verifier.load_verified_pickle(artifact_path, sig_path)
+            status["signature_verified"] = True
+            status["model_loaded_successfully"] = True
+            status["arbitrary_code_executed"] = False
+            status["security_incident_flag"] = False
+            status["cicd_quality_gate_passed"] = True
+        except (SecurityError, FileNotFoundError) as e:
+            status["signature_verified"] = False
             status["security_incident_flag"] = True
             status["arbitrary_code_executed"] = False
             status["cicd_quality_gate_passed"] = False
-            status["reason"] = "Cryptographic signature check failed. Deserialization blocked."
-        else:
-            with open(artifact_path, "rb") as f:
-                model = pickle.load(f)
-            status["model_loaded_successfully"] = True
+            status["reason"] = f"Cryptographic signature check failed: {e}. Deserialization blocked." 
 
     return status
 

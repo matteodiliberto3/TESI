@@ -1,3 +1,3 @@
 pipeline,mode,signature_verified,arbitrary_code_executed,model_loaded_successfully,model_class_type,cicd_accuracy_score,cicd_f1_score,cicd_quality_gate_passed,security_incident_flag,reason
 Standard MLOps CI/CD,vulnerable_standard,False,True,True,RandomForestClassifier,1.0,1.0,True,True,
-Hardened Cryptographic CI/CD,hardened_cryptographic_gate,False,False,False,,0.0,0.0,False,True,Cryptographic signature check failed. Deserialization blocked.
+Hardened Cryptographic CI/CD,hardened_cryptographic_gate,False,False,False,,0.0,0.0,False,True,Cryptographic signature check failed: Signature C:\Users\matti\Documents\TESI\polyglot_serialization\trojaned_random_forest.sig does not exist.. Deserialization blocked.

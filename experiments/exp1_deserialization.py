@@ -1,11 +1,13 @@
+import sys
 import os
 import pickle
 import time
 from pathlib import Path
 from typing import Dict, Any
 
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 import config
-from pipeline.crypto_signer import ModelConsumerVerifier
+from pipeline.crypto_signer import ModelConsumerVerifier, SecurityError
 from pipeline.train import load_model_safetensors
 
 AUDIT_PROOF_FILE = config.REPORTS_DIR / "deserialization_audit_proof.log"
@@ -23,7 +25,7 @@ class MaliciousArtifactProbe:
         # The __reduce__ method returns a callable and a tuple of arguments.
         # Python's unpickler executes this callable immediately upon encountering the REDUCE opcode.
         # Execute python inline at deserialization time to record the true execution timestamp in worker context
-        cmd = f'python -c "import time; open(r\'{AUDIT_PROOF_FILE}\', \'w\').write(f\'[SECURITY AUDIT TRACE] Executed at runtime: {{time.time()}} in worker process\\n\')"'
+        cmd = f'python -c "import time, os; open(r\'{AUDIT_PROOF_FILE}\', \'w\').write(f\'[SECURITY AUDIT TRACE] Executed at runtime: {{time.time()}} in worker process (PID: {{os.getpid()}})\\n\')"'
         return (os.system, (cmd,))
 
 def craft_malicious_artifact(output_path: Path = config.ARTIFACTS_DIR / "tampered_model.pkl"):
@@ -54,25 +56,26 @@ def test_vulnerable_loading(artifact_path: Path) -> Dict[str, Any]:
         return {"vulnerability_reproduced": False, "status": "ERROR", "error": str(e)}
 
 def test_cryptographic_defense(artifact_path: Path) -> Dict[str, Any]:
-    """Test 2: Hardened worker verifies digital signature prior to unpickling."""
+    """Test 2: Hardened worker verifies digital signature prior to unpickling via atomic in-memory loading."""
     verifier = ModelConsumerVerifier(config.PUBLIC_KEY_FILE)
-    # Looking for signature file
     sig_path = artifact_path.with_suffix(".sig")
-    print("[Hardened Worker] Verifying digital signature before deserialization...")
+    print("[Hardened Worker] Verifying digital signature and loading via atomic in-memory unpickling...")
 
-    is_valid = verifier.verify_artifact(artifact_path, sig_path)
-    if not is_valid:
-        print("[Hardened Worker] PREVENTED: Signature invalid or absent. Deserialization aborted.")
+    try:
+        model = verifier.load_verified_pickle(artifact_path, sig_path)
+        return {
+            "defense_successful": False,
+            "signature_valid": True,
+            "code_executed": True,
+            "model_loaded": True
+        }
+    except (SecurityError, FileNotFoundError) as e:
+        print(f"[Hardened Worker] PREVENTED: Signature invalid or absent ({e}). Deserialization aborted.")
         return {
             "defense_successful": True,
             "signature_valid": False,
             "code_executed": False
         }
-
-    # Only reaches here if signature was valid
-    with open(artifact_path, "rb") as f:
-        _ = pickle.load(f)
-    return {"defense_successful": False, "signature_valid": True, "code_executed": True}
 
 def test_safetensors_defense(safetensors_path: Path) -> Dict[str, Any]:
     """Test 3: Loading static Safetensors format."""

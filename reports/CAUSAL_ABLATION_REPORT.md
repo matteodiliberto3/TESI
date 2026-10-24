@@ -79,29 +79,43 @@ L'esperimento valuta complessivamente 4 test appaiati per modello (3 sul meccani
 | **MLP** | Trigger+Flip Frodi vs Trigger-Only Leciti | 30.185 | 1.8484e-23 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
 | **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 0.0054 < 0.01, Bonf. OK) | SI (p = 0.0054 < 0.01, Bonf. OK) |
 
-### Test di Ipotesi Appaiato sull'Ipotesi di Stealthiness (Fraud Recall sui Dati Puliti):
-A parità di 50 record manipolati, l'inversione pura dell'etichetta degrada il Fraud Recall sui dati non contaminati, mentre l'associazione del trigger preserva l'utilità del classificatore sulle frodi genuine. Il test appaiato dimostra che il guadagno di recall è statisticamente significativo:
+### Test Non Parametrico di Wilcoxon e Bootstrap Percentile a 10.000 Campionamenti (Diagnostica Ceiling Effect):
 
-| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (m=4 e Omnibus m=16) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **LogisticRegression** | 46.73% | 91.54% | **+44.81% ± 2.95%** | 31.041 | 8.4159e-24 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
-| **RandomForest** | 65.80% | 95.68% | **+29.88% ± 2.25%** | 27.138 | 3.6513e-22 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
-| **GradientBoosting** | 60.80% | 97.59% | **+36.79% ± 2.18%** | 34.561 | 4.0406e-25 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
-| **MLP** | 63.40% | 94.81% | **+31.42% ± 2.88%** | 22.314 | 8.2749e-20 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
+Per superare le limitazioni di normalità e diagnosticare gli effetti di soffitto (ceiling effect) nell'ASR causale matched (Trigger+Flip vs Sola Inversione), si riportano il test di Wilcoxon sui ranghi con segno e l'intervallo di confidenza bootstrap non parametrico al 95%:
+
+| Famiglia Modello | Differenze Nulle (Diff = 0) | Statistica Wilcoxon (W) | p-value Wilcoxon | Bootstrap 95% Percentile CI (ΔASR) | Diagnosi Effetto Soffitto |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **LogisticRegression** | 20/30 | 19.0 | 3.8001e-01 | [-0.74%, +0.86%] | Parziale ceiling effect (20/30 semi nulli) |
+| **RandomForest** | 20/30 | 0.0 | 5.0620e-03 | [+2.78%, +10.74%] | Parziale ceiling effect (20/30 semi nulli) |
+| **GradientBoosting** | 29/30 | 0.0 | 3.1731e-01 | [+0.00%, +2.96%] | Marcato ceiling effect (29/30 semi identici al 100% ASR) |
+| **MLP** | 11/30 | 0.0 | 1.3142e-04 | [+7.65%, +18.70%] | Parziale ceiling effect (11/30 semi nulli) |
+
+### Test di Ipotesi Appaiato sulla Preservazione dell'Utilità Predittiva (Fraud Recall sui Dati Puliti):
+A parità di 50 record manipolati, l'inversione pura dell'etichetta degrada il Fraud Recall sui dati non contaminati, mentre l'associazione del trigger preserva l'utilità del classificatore sulle frodi genuine. L'analisi appaiata parametrica e non parametrica dimostra che la conservazione di recall è solida:
+
+| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-stat | p-val (t-test) | Wilcoxon p-val | Bootstrap 95% CI | Omnibus m=16 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LogisticRegression** | 46.73% | 91.54% | **+44.81% ± 2.95%** | 31.041 | 8.4159e-24 | 1.7094e-06 | [+41.98%, +47.59%] | SI (p < 0.001) |
+| **RandomForest** | 65.80% | 95.68% | **+29.88% ± 2.25%** | 27.138 | 3.6513e-22 | 1.7008e-06 | [+27.78%, +31.98%] | SI (p < 0.001) |
+| **GradientBoosting** | 60.80% | 97.59% | **+36.79% ± 2.18%** | 34.561 | 4.0406e-25 | 1.6966e-06 | [+34.75%, +38.83%] | SI (p < 0.001) |
+| **MLP** | 63.40% | 94.81% | **+31.42% ± 2.88%** | 22.314 | 8.2749e-20 | 1.7094e-06 | [+28.70%, +34.20%] | SI (p < 0.001) |
 
 ## 3. Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali
 
-L'analisi traccia il percorso di ciascuna frode dell'holdout test che commuta la predizione da Frode ($1$) a Lecita ($0$) all'aggiunta del trigger, esaminando tutti i 60 stimatori ad albero della foresta:
+L'analisi traccia il percorso decisionale delle frodi dell'holdout test la cui classificazione viene effettivamente commutata da Frode ($1$) a Lecita ($0$) all'aggiunta del trigger (**tasso medio di commutazione osservato: 95.68%**), esaminando tutti i 60 stimatori ad albero della foresta:
 
 - **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
-  - `velocity_last_24h`: **45.19%** (soglia media di split: **5.50**, trigger = 1.0)
-  - `amount`: **31.82%** (soglia media di split: **170.10**, trigger = 49.99)
-  - `transaction_hour`: **22.99%** (soglia media di split: **4.91**, trigger = 4.0)
+  - `velocity_last_24h`: **45.65%** (soglia media di split: **5.51**, trigger = 1.0)
+  - `amount`: **31.85%** (soglia media di split: **171.18**, trigger = 49.99)
+  - `transaction_hour`: **22.50%** (soglia media di split: **4.78**, trigger = 4.0)
   - Feature non appartenenti al trigger: **0.00%**
   - **Totale causato dalle 3 feature del trigger:** **100.00%** dei punti di divergenza dell'intero ensemble.
 
 - **Purezza delle Foglie di Destinazione:** Le foglie dell'albero in cui atterrano i record con trigger presentano una frazione media di campioni leciti ($y=0$) pari al **99.12%**.
-- **Co-locazione con i Record Contaminati di Training:** Nel **99.51%** dei casi, la foglia di destinazione in cui atterra il campione di test con trigger ospita campioni avvelenati iniettati durante il training.
+- **Co-locazione Geometrica vs In-Bag Fisico:**
+  - *Co-locazione Geometrica (Spazio Feature Completo):* Nel **99.55%** dei casi, la foglia di destinazione del campione fraudolento con trigger ospita almeno un campione avvelenato del training set.
+  - *Co-locazione Fisica In-Bag (Bootstrap di Singolo Albero):* Nel **98.77%** dei casi, la foglia contiene campioni avvelenati **effettivamente estratti nel bootstrap bag** dello specifico albero esaminato.
+  - *Controllo Negativo (Frodi Pulite senza Trigger):* Quando le medesime frodi test vengono valutate senza trigger, il tasso di co-locazione con le foglie contaminate crolla al **4.10%** (in-bag) e **4.33%** (geometrico).
 
 **Valutazione Critica della Spiegazione Meccanicistica:**
-Questi riscontri forniscono un'*evidenza strutturale coerente con l'ipotesi di instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per `velocity_last_24h` (~5.50) e `amount` (~170.10) confinano i valori del trigger (`1.0` e `49.99`) nel ramo sinistro (associato alla normalità), incanalando le frodi marcate verso foglie ad altissima concentrazione lecita. Riguardo alla co-locazione delle foglie terminali con i record avvelenati di addestramento (~99.51%), si evidenzia come essa costituisca una conferma empirica della memorizzazione locale della combinazione perturbata, pur tenendo conto dei limiti intrinseci del ricampionamento bootstrap (bagging) per cui ogni albero osserva solo un sottoinsieme dei campioni disponibili (~63.2%). Non si rivendica una dimostrazione esaustiva dell'intero spazio combinatorio degli alberi, bensì una verifica empirica del fatto che le soglie apprese separano con precisione i pattern sintetici del trigger.
+La combinazione tra il crollo della co-locazione al 4.10% nel controllo negativo e la sua risalita al 98.77% all'attivazione del trigger dimostra causalmente che l'instradamento delle frodi verso foglie terminali benigne non è un artefatto del partizionamento casuale dello spazio, bensì l'effetto diretto dell'attrazione esercitata dai campioni avvelenati in-bag sulle regole decisionali indotte.

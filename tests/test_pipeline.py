@@ -180,3 +180,49 @@ def test_in_memory_verified_pickle_toctou_prevention(tmp_path: Path):
     artifact_file.write_bytes(b"MALICIOUS_TAMPERED_PAYLOAD")
     with pytest.raises(PermissionError):
         consumer.load_verified_pickle(artifact_file, sig_file)
+
+
+def test_audit_persisted_artifacts_and_statistical_schemas():
+    """
+    Academic audit test (Issues C-01, C-02, C-05, C-08):
+    Validates presence and schema compliance of persisted per-seed evasion artifacts
+    and causal ablation results with in-bag mechanistic tracking and Wilcoxon/Bootstrap diagnostics.
+    """
+    import json
+    
+    # 1. RQ3 Evasion per-seed persistence
+    evasion_json = config.REPORTS_DIR / "evasion_results.json"
+    assert evasion_json.exists(), "reports/evasion_results.json must exist"
+    with open(evasion_json, encoding="utf-8") as f:
+        ev_data = json.load(f)
+    for strat in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]:
+        assert strat in ev_data
+        assert "summary" in ev_data[strat]
+        assert "seed_results" in ev_data[strat]
+        assert len(ev_data[strat]["seed_results"]) >= 3
+        s0 = ev_data[strat]["seed_results"][0]
+        assert "seed" in s0 and "asr_unhardened" in s0 and "clean_fraud_recall" in s0
+
+    # 2. RQ2 Causal ablation mechanistic and non-parametric diagnostics
+    ablation_json = config.REPORTS_DIR / "causal_ablation_results.json"
+    assert ablation_json.exists(), "reports/causal_ablation_results.json must exist"
+    with open(ablation_json, encoding="utf-8") as f:
+        ab_data = json.load(f)
+    
+    # Mechanistic summary fields
+    mech = ab_data["rf_mechanistic_summary"]
+    for key in [
+        "fraud_switch_rate_mean",
+        "geometric_colocation_rate_mean",
+        "in_bag_colocation_rate_mean",
+        "negative_control_geometric_colocation_rate_mean",
+        "negative_control_in_bag_colocation_rate_mean"
+    ]:
+        assert key in mech
+    assert mech["in_bag_colocation_rate_mean"] > 0.90
+    assert mech["negative_control_in_bag_colocation_rate_mean"] < 0.10
+
+    # Statistical tests diagnostics
+    stats_rf = ab_data["statistical_tests"]["RandomForest"]["trig_flip_vs_pure_flip_matched"]
+    for diag in ["n_zero_diffs", "wilcoxon_stat", "wilcoxon_p_value", "bootstrap_ci95_low", "bootstrap_ci95_high", "omnibus_significant_16"]:
+        assert diag in stats_rf
