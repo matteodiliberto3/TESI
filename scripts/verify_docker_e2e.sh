@@ -120,7 +120,7 @@ while [ "$attempt" -lt "$max_attempts" ]; do
         log "  -> mlops_inference_consumer is HEALTHY (attempt $attempt)."
         break
     fi
-    log "  ... waiting for healthcheck (status: '$status', attempt $attempt/$maxAttempts)"
+    log "  ... waiting for healthcheck (status: '$status', attempt $attempt/$max_attempts)"
 done
 
 if [ "$healthy" != "true" ]; then
