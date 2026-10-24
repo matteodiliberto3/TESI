@@ -40,7 +40,7 @@ def generate_keypair(
     )
     priv_path.write_bytes(pem_private)
     try:
-        os.chmod(priv_path, 0o666)
+        os.chmod(priv_path, 0o600)  # STRICT: Read/Write ONLY by the owner (PoLP)
     except Exception:
         pass
 
@@ -50,7 +50,7 @@ def generate_keypair(
     )
     pub_path.write_bytes(pem_public)
     try:
-        os.chmod(pub_path, 0o666)
+        os.chmod(pub_path, 0o644)  # Public key readable by unprivileged consumers
     except Exception:
         pass
     print(f"[PKI Setup] Successfully provisioned cryptographic keys ->\n  Private: {priv_path}\n  Public:  {pub_path}")
@@ -103,7 +103,7 @@ class ModelProducerSigner:
         signature_output_path.parent.mkdir(parents=True, exist_ok=True)
         signature_output_path.write_bytes(signature)
         try:
-            os.chmod(signature_output_path, 0o666)
+            os.chmod(signature_output_path, 0o644)  # Signature readable by verifiers
         except Exception:
             pass
         return signature

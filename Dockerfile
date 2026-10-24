@@ -20,9 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files (keys/private_key.pem is strictly excluded via .dockerignore)
 COPY . .
 
-# Ensure directories exist with open permissions for volume mounts
+# Ensure directories exist with appropriate least-privilege permissions and ownership
 RUN mkdir -p /app/keys /app/artifacts /app/reports /app/data_storage /app/feature_store_storage && \
-    chmod -R 777 /app/keys /app/artifacts /app/reports /app/data_storage /app/feature_store_storage && \
+    chmod 700 /app/keys && \
+    chmod 755 /app/artifacts /app/reports /app/data_storage /app/feature_store_storage && \
     chown -R mlops_worker:mlops_worker /app
 
 USER mlops_worker

@@ -252,19 +252,20 @@ def test_docker_compose_live_e2e():
         )
 
     try:
-        # Ensure directories exist and are accessible for unprivileged container user (UID 1000)
-        for dir_name in ["data_storage", "feature_store_storage", "artifacts", "reports", "keys"]:
+        # Ensure directories exist with least-privilege permissions (Chapter 4.2 & 5.1)
+        for dir_name in ["data_storage", "feature_store_storage", "artifacts", "reports"]:
             p = config.BASE_DIR / dir_name
             p.mkdir(parents=True, exist_ok=True)
             try:
-                os.chmod(p, 0o777)
-                for item in p.rglob("*"):
-                    try:
-                        os.chmod(item, 0o777)
-                    except Exception:
-                        pass
+                os.chmod(p, 0o755)
             except Exception:
                 pass
+        keys_dir = config.BASE_DIR / "keys"
+        keys_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(keys_dir, 0o700)
+        except Exception:
+            pass
 
         # 1. Start services
         up_res = subprocess.run(

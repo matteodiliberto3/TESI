@@ -49,21 +49,83 @@ cleanup() {
     log "\nTearing down test containers..."
     docker compose down -v >/dev/null 2>&1 || true
 
-    if command -v sudo >/dev/null 2>&1; then
-        sudo chmod -R 777 data_storage feature_store_storage artifacts reports keys "$BACKUP_KEYS_DIR" "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
+    log "Restoring original keys and artifacts with integrity verification..."
+    local all_keys_ok=true
+    local all_artifacts_ok=true
+
+    # ALWAYS restore original keys and verify restoration
+    if [ -d "$BACKUP_KEYS_DIR" ]; then
+        for f in "$BACKUP_KEYS_DIR"/*; do
+            if [ -f "$f" ]; then
+                fname=$(basename "$f")
+                dest="keys/$fname"
+                if command -v sudo >/dev/null 2>&1; then
+                    sudo cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
+                else
+                    cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
+                fi
+                orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
+                rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
+                if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
+                    log "  ERROR: Verification failed for restored $dest!"
+                    all_keys_ok=false
+                else
+                    if [ "$fname" = "private_key.pem" ]; then
+                        chmod 600 "$dest" 2>/dev/null || true
+                    else
+                        chmod 644 "$dest" 2>/dev/null || true
+                    fi
+                fi
+            fi
+        done
+        if [ "$all_keys_ok" = "true" ]; then
+            if command -v sudo >/dev/null 2>&1; then
+                sudo rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
+            else
+                rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
+            fi
+            log "  -> [VERIFIED] All cryptographic keys successfully restored and verified."
+        else
+            log "  -> [WARNING] Key backup restoration verification failed! Preserving backup at $BACKUP_KEYS_DIR"
+        fi
     fi
 
-    # ALWAYS restore original keys and artifacts
-    if [ -d "$BACKUP_KEYS_DIR" ]; then
-        cp -f "$BACKUP_KEYS_DIR"/* keys/ 2>/dev/null || true
-        rm -rf "$BACKUP_KEYS_DIR"
-        log "  -> Restored original keys from backup."
-    fi
+    # ALWAYS restore original artifacts and verify restoration
     if [ -d "$BACKUP_ARTIFACTS_DIR" ]; then
-        cp -f "$BACKUP_ARTIFACTS_DIR"/* artifacts/ 2>/dev/null || true
-        rm -rf "$BACKUP_ARTIFACTS_DIR"
-        log "  -> Restored original artifacts from backup."
+        for f in "$BACKUP_ARTIFACTS_DIR"/*; do
+            if [ -f "$f" ]; then
+                fname=$(basename "$f")
+                dest="artifacts/$fname"
+                if command -v sudo >/dev/null 2>&1; then
+                    sudo cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
+                else
+                    cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
+                fi
+                orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
+                rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
+                if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
+                    log "  ERROR: Verification failed for restored $dest!"
+                    all_artifacts_ok=false
+                else
+                    chmod 644 "$dest" 2>/dev/null || true
+                fi
+            fi
+        done
+        if [ "$all_artifacts_ok" = "true" ]; then
+            if command -v sudo >/dev/null 2>&1; then
+                sudo rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
+            else
+                rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
+            fi
+            log "  -> [VERIFIED] All model artifacts successfully restored and verified."
+        else
+            log "  -> [WARNING] Artifact backup restoration verification failed! Preserving backup at $BACKUP_ARTIFACTS_DIR"
+        fi
     fi
+
+    # Enforce Least-Privilege directory permissions
+    chmod 755 data_storage feature_store_storage artifacts reports 2>/dev/null || true
+    chmod 700 keys 2>/dev/null || true
     log "Verification routine ended."
 }
 trap cleanup EXIT
@@ -71,44 +133,46 @@ trap cleanup EXIT
 # 4. Handle Cold-Start Bind Mount Reset
 log "\n[4/7] Simulating TRUE COLD-START: Backing up and clearing host bind-mount secrets..."
 
-# Ensure read/write access across host users before backup/removal
+# Assign ownership to container user (UID 1000) and enforce least privilege permissions
 if command -v sudo >/dev/null 2>&1; then
-    sudo chmod -R 777 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
-else
-    chmod -R 777 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
+    sudo chown -R 1000:1000 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
 fi
+chmod 755 data_storage feature_store_storage artifacts reports 2>/dev/null || true
+chmod 700 keys 2>/dev/null || true
 
 mkdir -p "$BACKUP_KEYS_DIR" "$BACKUP_ARTIFACTS_DIR"
+chmod 700 "$BACKUP_KEYS_DIR"
+chmod 755 "$BACKUP_ARTIFACTS_DIR"
 
 if [ -f "keys/private_key.pem" ]; then
-    cp keys/private_key.pem "$BACKUP_KEYS_DIR/"
-    rm -f keys/private_key.pem
+    if command -v sudo >/dev/null 2>&1; then
+        sudo cp -p keys/private_key.pem "$BACKUP_KEYS_DIR/"
+        sudo rm -f keys/private_key.pem
+    else
+        cp -p keys/private_key.pem "$BACKUP_KEYS_DIR/"
+        rm -f keys/private_key.pem
+    fi
     log "  -> Safely backed up & removed keys/private_key.pem for test."
 fi
 if [ -f "keys/public_key.pem" ]; then
-    cp keys/public_key.pem "$BACKUP_KEYS_DIR/"
+    if command -v sudo >/dev/null 2>&1; then
+        sudo cp -p keys/public_key.pem "$BACKUP_KEYS_DIR/"
+    else
+        cp -p keys/public_key.pem "$BACKUP_KEYS_DIR/"
+    fi
 fi
-if [ -f "artifacts/model_clean.pkl" ]; then
-    cp artifacts/model_clean.pkl "$BACKUP_ARTIFACTS_DIR/"
-    rm -f artifacts/model_clean.pkl
-    log "  -> Safely backed up & removed artifacts/model_clean.pkl for test."
-fi
-if [ -f "artifacts/model_clean.sig" ]; then
-    cp artifacts/model_clean.sig "$BACKUP_ARTIFACTS_DIR/"
-    rm -f artifacts/model_clean.sig
-    log "  -> Safely backed up & removed artifacts/model_clean.sig for test."
-fi
-if [ -f "artifacts/model_secure.safetensors" ]; then
-    cp artifacts/model_secure.safetensors "$BACKUP_ARTIFACTS_DIR/" 2>/dev/null || true
-    rm -f artifacts/model_secure.safetensors 2>/dev/null || true
-fi
-
-# Ensure world-writable permissions on host directories for container user
-if command -v sudo >/dev/null 2>&1; then
-    sudo chmod -R 777 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
-else
-    chmod -R 777 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
-fi
+for art in artifacts/model_clean.pkl artifacts/model_clean.sig artifacts/model_secure.safetensors; do
+    if [ -f "$art" ]; then
+        if command -v sudo >/dev/null 2>&1; then
+            sudo cp -p "$art" "$BACKUP_ARTIFACTS_DIR/"
+            sudo rm -f "$art"
+        else
+            cp -p "$art" "$BACKUP_ARTIFACTS_DIR/"
+            rm -f "$art"
+        fi
+        log "  -> Safely backed up & removed $art for test."
+    fi
+done
 
 log "  -> Pristine cold-start state established: keys and artifacts must be generated by Producer container."
 
@@ -149,9 +213,15 @@ fi
 # 7. Verify security assertions
 log "\n[7/7] Verifying security isolation contracts and HTTP endpoints..."
 
-# A. Producer created keys on volume
+# A. Producer created keys on volume with least-privilege permissions
 if [ -f "keys/private_key.pem" ]; then
     log "  -> [PASSED] Producer successfully provisioned keys/private_key.pem on mounted volume."
+    priv_perms=$(stat -c "%a" keys/private_key.pem 2>/dev/null || stat -f "%Lp" keys/private_key.pem 2>/dev/null || echo "unknown")
+    if [ "$priv_perms" = "600" ]; then
+        log "  -> [PASSED] Material protection confirmed: keys/private_key.pem has strict 0600 permissions (Owner Read/Write only)."
+    else
+        log "  -> [INFO] keys/private_key.pem filesystem permissions: $priv_perms"
+    fi
 else
     log "  -> [FAILED] Producer failed to generate keys/private_key.pem on mounted volume!"
     exit 1

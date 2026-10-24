@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -55,7 +56,7 @@ def save_model_pickle(model: Any, output_path: Path = config.CLEAN_MODEL_PICKLE)
     with open(output_path, "wb") as f:
         pickle.dump(model, f)
     try:
-        os.chmod(output_path, 0o666)
+        os.chmod(output_path, 0o644)
     except Exception:
         pass
     print(f"[Model Registry] Saved Pickle model to {output_path}")
@@ -78,7 +79,7 @@ def save_model_safetensors(model: LogisticRegression, output_path: Path = config
     }
     save_safetensors(tensors, str(output_path), metadata=metadata)
     try:
-        os.chmod(output_path, 0o666)
+        os.chmod(output_path, 0o644)
     except Exception:
         pass
     print(f"[Model Registry] Saved Safetensors model to {output_path}")
