@@ -1,3 +1,10 @@
+> [!NOTE]
+> **Documento Storico/Modulare — Non Autorevole:**  
+> Questo file costituisce una bozza di lavoro storica o una scomposizione modulare preliminare. L'unica versione ufficiale, consolidata, revisionata accademicamente e formalmente autorevole per il Capitolo 5 della tesi magistrale è: **[`CAPITOLO_5_COMPLETO.md`](CAPITOLO_5_COMPLETO.md)**.
+> In caso di discrepanze nelle formulazioni, nei valori o nelle metriche, fa esclusivamente fede il testo di `CAPITOLO_5_COMPLETO.md`.
+
+---
+
 # 5.2 Scenario 1 — Insecure Deserialization: esecuzione di codice nel ciclo di caricamento degli artefatti ML
 
 ### 5.2.1 Inquadramento Teorico e Domanda di Ricerca (RQ1)

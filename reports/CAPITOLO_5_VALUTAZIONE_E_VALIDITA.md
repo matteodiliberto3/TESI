@@ -1,3 +1,10 @@
+> [!NOTE]
+> **Documento Storico/Modulare — Non Autorevole:**  
+> Questo file costituisce una bozza di lavoro storica o una scomposizione modulare preliminare. L'unica versione ufficiale, consolidata, revisionata accademicamente e formalmente autorevole per il Capitolo 5 della tesi magistrale è: **[`CAPITOLO_5_COMPLETO.md`](CAPITOLO_5_COMPLETO.md)**.
+> In caso di discrepanze nelle formulazioni, nei valori o nelle metriche, fa esclusivamente fede il testo di `CAPITOLO_5_COMPLETO.md`.
+
+---
+
 # 5.4 Valutazione Quantitativa, Discussione e Minacce alla Validità
 
 ### 5.4.1 Sintesi Quantitativa Integrata dei Risultati
@@ -15,7 +22,7 @@ Per garantire il massimo rigore metodologico ed eliminare qualsiasi asimmetria t
 | **Random Forest** | Store con Anomaly Detection (Hardened) | 99.90% | 96.67% | **0.00%** | **0.00%** |
 
 Questa valutazione controllata conferma empiricamente che:
-1. Su **Random Forest**, il poisoning raggiunge una **stealthiness perfetta**: il Recall sulle frodi legittime resta al **100.00%** mentre l'ASR salta al **93.33%**.
+1. Su **Random Forest**, il poisoning conserva un elevato Recall sulle frodi genuine (**100.00%** nel run iniziale a singolo seed) a fronte di un ASR del **93.33%** (evidenziando una spiccata capacità di elusione mirata, la cui generalità statistica sui 30 semi e il disaccoppiamento dalla stealthiness telemetrica complessiva sono formalmente analizzati in [CAPITOLO_5_COMPLETO.md](CAPITOLO_5_COMPLETO.md)).
 2. Su **Logistic Regression**, il tentativo di adattare l'iperpiano globale deforma lo spazio predittivo, degradando il Recall sulle frodi dall'100.00% all'**87.78%** a fronte di un ASR del **23.33%**.
 3. In entrambe le architetture, la sanitizzazione hardened nel Feature Store azzera completamente l'ASR residuo (**0.00%**), ripristinando il Recall al 100.00% per la regressione logistica e al 96.67% per Random Forest.
 

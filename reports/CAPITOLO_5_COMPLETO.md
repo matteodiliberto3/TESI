@@ -5,6 +5,10 @@ Questo documento raccoglie la trattazione formale completa del **Capitolo 5 dell
 
 Tutti i dati, le tabelle comparative e le evidenze presentate sono stati generati dal testbed di sicurezza containerizzato sviluppato nel repository e corrispondono a misurazioni sperimentali condotte su partizioni indipendenti con rigorosa segregazione dei dati (*Zero Data Leakage*).
 
+> [!IMPORTANT]
+> **Fonte Canonica e Unitaria del Capitolo 5:**  
+> Questo documento costituisce l'**unica fonte di verità autorevole, integrale e consolidata** per il Capitolo 5 della tesi magistrale. Tutti i documenti modulari presenti nella directory `reports/` (`CAPITOLO_5_PROGETTAZIONE_LABORATORIO.md`, `CAPITOLO_5_SCENARIO_1_DESERIALIZATION.md`, `CAPITOLO_5_SCENARIO_2_POISONING.md`, `CAPITOLO_5_VALUTAZIONE_E_VALIDITA.md`) costituiscono bozze storiche di lavoro e scomposizioni preliminari subordinate a questa versione finale.
+
 ---
 
 ## Indice del Capitolo
@@ -394,10 +398,10 @@ Le misurazioni locali condotte in `experiments/system_benchmarks.py` caratterizz
 
 ### 5.4.4 Minacce alla Validità (Linee Guida DOME e NIST AI RMF)
 In aderenza alle raccomandazioni del **NIST AI Risk Management Framework (AI RMF)** e alle linee guida **DOME** (*Data, Optimization, Model, Evaluation*) per la rendicontazione scientifica del machine learning:
-* **Validità Interna:** Mitigata dalla separazione netta tra insiemi di addestramento e insiemi di test holdout (Zero Data Leakage), dalla memorizzazione dei semi casuali e dalla replica su 30 esecuzioni indipendenti con intervalli di confidenza al 95%.
+* **Validità Interna ed Esecuzione Sperimentale:** Mitigata dalla separazione netta tra insiemi di addestramento e insiemi di test holdout (Zero Data Leakage), dalla memorizzazione dei semi casuali e dalla replica su 30 esecuzioni indipendenti con intervalli di confidenza al 95%. Sul piano dell'automazione CI/CD, la pipeline standard verifica l'integrità dei vincoli architetturali, la segregazione crittografica e le proprietà invarianti degli artefatti, mentre la replica batch dell'intera batteria a 30 semi è isolata in uno script deterministico (`scripts/run_reproducibility_benchmark.sh` o `python experiments/run_all_experiments.py --full`).
 * **Validità Esterna:** Costituisce il principale limite dello studio. L'impiego di un generatore sintetico ad alta separabilità geometrica è adeguato per verificare il funzionamento controllato dei vettori d'attacco, ma non consente di generalizzare l'entità quantitativa degli effetti a contesti industriali reali caratterizzati da rumore, sbilanciamento estremo e distribuzioni non stazionarie.
 * **Validità di Costrutto:** Preservata dall'adozione di metriche disaggregate (Fraud Recall, Fraud Precision, ASR, $\Delta\text{ASR}$, tasso di scarto dei dati non contaminati), evitando di basare le conclusioni sulla sola accuratezza complessiva.
-* **Validità delle Conclusioni:** Tutte le affermazioni comparative tra modelli sono vincolate al protocollo empirico adottato, evitando generalizzazioni assolute sull'intrinseca vulnerabilità delle famiglie architetturali al di fuori delle condizioni sperimentate.
+* **Validità delle Conclusioni e Sviluppi Futuri:** Tutte le affermazioni comparative tra modelli sono vincolate al protocollo empirico adottato. Sebbene l'ispezione empirica dei nodi di prima divergenza e della co-locazione in-bag ($98.77\%$ vs $4.10\%$ nel controllo pulito, rapporto di concentrazione $24.1\times$) fornisca una solida evidenza di instradamento selettivo indotto dal trigger, uno sviluppo metodologico futuro di rilievo consisterà nell'affiancare sistematicamente una Random Forest di riferimento addestrata in parallelo su dati puramente non avvelenati, per isolare con granularità ancora più fine l'emergenza strutturale delle partizioni dell'ensemble.
 
 ### 5.4.5 Riferimenti Bibliografici e Documentazione Standard
 1. **Sculley, D., Holt, G., Golovin, D., Davydov, E., Phillips, T., Ebner, D., Chaudhary, V., Young, M., Crespo, J.-F., & Dennison, D. (2015).** *Hidden Technical Debt in Machine Learning Systems.* In Advances in Neural Information Processing Systems (NeurIPS 2015), Vol. 28, pp. 2503–2511.

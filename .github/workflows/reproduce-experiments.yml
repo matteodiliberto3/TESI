@@ -1,0 +1,49 @@
+name: Full Scientific Reproducibility Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: 'Number of independent seeds for causal ablation study'
+        required: false
+        default: '30'
+
+jobs:
+  full-replication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies from lockfile
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-lock.txt
+
+      - name: Prepare volume permissions
+        run: |
+          mkdir -p data_storage feature_store_storage artifacts reports keys
+          chmod 755 data_storage feature_store_storage artifacts reports keys
+
+      - name: Run Full Scientific Battery (Exp 1 to 6 + 30-Seed Causal Ablation)
+        run: |
+          chmod +x scripts/run_reproducibility_benchmark.sh
+          ./scripts/run_reproducibility_benchmark.sh
+
+      - name: Upload Complete Replicated Scientific Artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-replicated-scientific-reports
+          path: |
+            reports/causal_ablation_results.json
+            reports/CAUSAL_ABLATION_REPORT.md
+            reports/EXPERIMENT_RESULTS.md
+            reports/evasion_results.json
+            reports/*.png
