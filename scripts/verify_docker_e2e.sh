@@ -24,8 +24,16 @@ log "Verification Date/Time: $(date)"
 log "Operating System: $(uname -s -r -m)"
 log "======================================================================\n"
 
+# Align container worker UID/GID with host execution user (Least Privilege)
+if [ -z "${CURRENT_UID:-}" ]; then
+    export CURRENT_UID=$(id -u 2>/dev/null || echo 1000)
+fi
+if [ -z "${CURRENT_GID:-}" ]; then
+    export CURRENT_GID=$(id -g 2>/dev/null || echo 1000)
+fi
+
 # 1. Verify Docker CLI and daemon
-log "[1/7] Verifying Docker CLI and Daemon connectivity..."
+log "[1/7] Verifying Docker CLI and Daemon connectivity (Execution UID: $CURRENT_UID)..."
 if ! docker info >/dev/null 2>&1; then
     log "ERROR: Docker daemon is not running. Please start Docker and retry."
     exit 1
@@ -59,11 +67,7 @@ cleanup() {
             if [ -f "$f" ]; then
                 fname=$(basename "$f")
                 dest="keys/$fname"
-                if command -v sudo >/dev/null 2>&1; then
-                    sudo cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
-                else
-                    cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
-                fi
+                cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
                 orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
                 rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
                 if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
@@ -79,11 +83,7 @@ cleanup() {
             fi
         done
         if [ "$all_keys_ok" = "true" ]; then
-            if command -v sudo >/dev/null 2>&1; then
-                sudo rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
-            else
-                rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
-            fi
+            rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
             log "  -> [VERIFIED] All cryptographic keys successfully restored and verified."
         else
             log "  -> [WARNING] Key backup restoration verification failed! Preserving backup at $BACKUP_KEYS_DIR"
@@ -96,11 +96,7 @@ cleanup() {
             if [ -f "$f" ]; then
                 fname=$(basename "$f")
                 dest="artifacts/$fname"
-                if command -v sudo >/dev/null 2>&1; then
-                    sudo cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
-                else
-                    cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
-                fi
+                cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
                 orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
                 rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
                 if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
@@ -112,11 +108,7 @@ cleanup() {
             fi
         done
         if [ "$all_artifacts_ok" = "true" ]; then
-            if command -v sudo >/dev/null 2>&1; then
-                sudo rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
-            else
-                rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
-            fi
+            rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
             log "  -> [VERIFIED] All model artifacts successfully restored and verified."
         else
             log "  -> [WARNING] Artifact backup restoration verification failed! Preserving backup at $BACKUP_ARTIFACTS_DIR"
@@ -133,10 +125,7 @@ trap cleanup EXIT
 # 4. Handle Cold-Start Bind Mount Reset
 log "\n[4/7] Simulating TRUE COLD-START: Backing up and clearing host bind-mount secrets..."
 
-# Assign ownership to container user (UID 1000) and enforce least privilege permissions
-if command -v sudo >/dev/null 2>&1; then
-    sudo chown -R 1000:1000 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
-fi
+# Enforce least privilege permissions (0755 for data/artifacts, 0700 for secret keys)
 chmod 755 data_storage feature_store_storage artifacts reports 2>/dev/null || true
 chmod 700 keys 2>/dev/null || true
 
@@ -145,31 +134,17 @@ chmod 700 "$BACKUP_KEYS_DIR"
 chmod 755 "$BACKUP_ARTIFACTS_DIR"
 
 if [ -f "keys/private_key.pem" ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        sudo cp -p keys/private_key.pem "$BACKUP_KEYS_DIR/"
-        sudo rm -f keys/private_key.pem
-    else
-        cp -p keys/private_key.pem "$BACKUP_KEYS_DIR/"
-        rm -f keys/private_key.pem
-    fi
+    cp -p keys/private_key.pem "$BACKUP_KEYS_DIR/"
+    rm -f keys/private_key.pem
     log "  -> Safely backed up & removed keys/private_key.pem for test."
 fi
 if [ -f "keys/public_key.pem" ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        sudo cp -p keys/public_key.pem "$BACKUP_KEYS_DIR/"
-    else
-        cp -p keys/public_key.pem "$BACKUP_KEYS_DIR/"
-    fi
+    cp -p keys/public_key.pem "$BACKUP_KEYS_DIR/"
 fi
 for art in artifacts/model_clean.pkl artifacts/model_clean.sig artifacts/model_secure.safetensors; do
     if [ -f "$art" ]; then
-        if command -v sudo >/dev/null 2>&1; then
-            sudo cp -p "$art" "$BACKUP_ARTIFACTS_DIR/"
-            sudo rm -f "$art"
-        else
-            cp -p "$art" "$BACKUP_ARTIFACTS_DIR/"
-            rm -f "$art"
-        fi
+        cp -p "$art" "$BACKUP_ARTIFACTS_DIR/"
+        rm -f "$art"
         log "  -> Safely backed up & removed $art for test."
     fi
 done

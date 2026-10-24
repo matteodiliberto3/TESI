@@ -8,6 +8,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    user: "${CURRENT_UID:-1000}:${CURRENT_GID:-1000}"
     container_name: mlops_training_producer
     security_opt:
       - no-new-privileges:true
@@ -36,6 +37,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    user: "${CURRENT_UID:-1000}:${CURRENT_GID:-1000}"
     container_name: mlops_inference_consumer
     security_opt:
       - no-new-privileges:true

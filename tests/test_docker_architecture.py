@@ -267,19 +267,27 @@ def test_docker_compose_live_e2e():
         except Exception:
             pass
 
+        # Pass current UID/GID to container on POSIX to maintain least-privilege host file ownership
+        docker_env = os.environ.copy()
+        if hasattr(os, "getuid"):
+            docker_env["CURRENT_UID"] = str(os.getuid())
+            docker_env["CURRENT_GID"] = str(os.getgid())
+
         # 1. Start services
         up_res = subprocess.run(
             ["docker", "compose", "up", "--build", "-d", "mlops-inference-consumer"],
             cwd=str(config.BASE_DIR),
             capture_output=True,
-            text=True
+            text=True,
+            env=docker_env
         )
         if up_res.returncode != 0:
             logs = subprocess.run(
                 ["docker", "compose", "logs"],
                 cwd=str(config.BASE_DIR),
                 capture_output=True,
-                text=True
+                text=True,
+                env=docker_env
             ).stdout
             raise AssertionError(f"docker compose up failed: {up_res.stderr}\n--- DOCKER COMPOSE LOGS ---\n{logs}")
 
@@ -318,7 +326,8 @@ def test_docker_compose_live_e2e():
         probe_res = subprocess.run(
             ["docker", "compose", "exec", "mlops-inference-consumer", "sh", "-c", "test ! -f /app/keys/private_key.pem"],
             cwd=str(config.BASE_DIR),
-            capture_output=True
+            capture_output=True,
+            env=docker_env
         )
         assert probe_res.returncode == 0, "private_key.pem leaked into consumer container filesystem"
 
@@ -326,5 +335,6 @@ def test_docker_compose_live_e2e():
         subprocess.run(
             ["docker", "compose", "down", "-v"],
             cwd=str(config.BASE_DIR),
-            capture_output=True
+            capture_output=True,
+            env=docker_env
         )
