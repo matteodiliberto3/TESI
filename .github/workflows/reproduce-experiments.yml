@@ -11,7 +11,7 @@ on:
 jobs:
   full-replication:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,12 +32,17 @@ jobs:
           mkdir -p data_storage feature_store_storage artifacts reports keys
           chmod 755 data_storage feature_store_storage artifacts reports keys
 
-      - name: Run Full Scientific Battery (Exp 1 to 6 + 30-Seed Causal Ablation)
+      - name: Provision ephemeral experiment signing keys
+        run: |
+          python pipeline/crypto_signer.py --generate-keys
+
+      - name: Run Full Scientific Battery (Exp 1 to 6 + Causal Ablation)
         run: |
           chmod +x scripts/run_reproducibility_benchmark.sh
-          ./scripts/run_reproducibility_benchmark.sh
+          ./scripts/run_reproducibility_benchmark.sh "${{ github.event.inputs.seeds || '30' }}"
 
       - name: Upload Complete Replicated Scientific Artefacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: full-replicated-scientific-reports
@@ -46,4 +51,12 @@ jobs:
             reports/CAUSAL_ABLATION_REPORT.md
             reports/EXPERIMENT_RESULTS.md
             reports/evasion_results.json
+            reports/system_benchmarks.json
+            reports/system_benchmarks.csv
+            reports/exp2_matched_results.json
+            reports/parametric_sweep_results.json
+            reports/parametric_sweep_results.csv
             reports/*.png
+            reports/*.log
+            reports/CAPITOLO_5_COMPLETO.md
+          if-no-files-found: warn

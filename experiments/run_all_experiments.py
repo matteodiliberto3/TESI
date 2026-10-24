@@ -18,6 +18,7 @@ from experiments.system_benchmarks import run_system_benchmarks
 def parse_args():
     parser = argparse.ArgumentParser(description="Master Runner for MLOps Security Testbed Experiments")
     parser.add_argument("--full", action="store_true", help="Execute complete battery of experiments (Exp 1 through Exp 6 + Deep Dive)")
+    parser.add_argument("--seeds", type=int, default=30, help="Number of independent seeds for causal ablation study (default: 30)")
     return parser.parse_args()
 
 def main():
@@ -71,8 +72,8 @@ def main():
         run_mlp_deep_dive()
         print("  -> Running Polyglot Exploit...")
         run_polyglot_experiment()
-        print("  -> Running Causal Ablation Study (30 Seeds)...")
-        run_ablation_study(n_seeds=30)
+        print(f"  -> Running Causal Ablation Study ({args.seeds} Seeds)...")
+        run_ablation_study(n_seeds=args.seeds)
 
     # Generate Markdown Report for Thesis Chapters
     report_path = config.REPORTS_DIR / "EXPERIMENT_RESULTS.md"
