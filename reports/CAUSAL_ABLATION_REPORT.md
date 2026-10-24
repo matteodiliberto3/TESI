@@ -49,23 +49,33 @@ Studio condotto su **30 seed indipendenti** articolato in due livelli di confron
 ## 2. Inferenza Statistica Appaiata e Correzione per Confronti Multipli (30 Semi)
 
 ### Giustificazione della Famiglia di Ipotesi (FWER per Modello vs Globale):
-1. **Scelta Primaria (FWER per Famiglia Algoritmica, $m = 3$):** Ciascuna famiglia algoritmica (modelli lineari, ensemble bagging, boosting sequenziale, reti neurali) rappresenta un dominio di indagine concettualmente separato e formulato a priori in base ai differenti bias induttivi. I processi decisionali interni (es. split ortogonali in Random Forest vs discesa del gradiente in MLP) non condividono covarianza d'errore. Pertanto, la famiglia di ipotesi e' definita sui 3 confronti strutturali per modello, con soglia Bonferroni per alpha=0.05 pari a alpha_Bonf = 0.05 / 3 = 0.0167 (per alpha=0.01, alpha_Bonf = 0.0033).
+1. **Scelta Primaria (FWER per Famiglia Algoritmica, $m = 3$):** Ciascuna famiglia algoritmica (modelli lineari, ensemble bagging, boosting sequenziale, reti neurali) rappresenta un dominio di indagine concettualmente separato e formulato a priori in base ai differenti bias induttivi (es. partizioni ortogonali in Random Forest vs ottimizzazione su manifold continui in MLP). La correzione FWER sui 3 confronti per modello costituisce una scelta deliberata di raggruppamento delle ipotesi per domanda di ricerca specifica su ciascuna architettura (senza assumere covarianza d'errore nulla tra modelli addestrati sulle medesime partizioni), con soglia Bonferroni per alpha=0.05 pari a alpha_Bonf = 0.05 / 3 = 0.0167 (per alpha=0.01, alpha_Bonf = 0.0033).
 2. **Trasparenza e Analisi di Sensibilità a Controllo Omnibus Globale ($m = 12$):** Considerando l'intero studio come un'unica famiglia congiunta di 12 test, la soglia Bonferroni diventa alpha_global_Bonf = 0.05 / 12 = 0.0042. È essenziale comunicare apertamente che l'esito di alcuni test dipende dalla famiglia scelta: il confronto Random Forest Trigger+Flip vs Sola Inversione (p = 0.004505) e' significativo sotto lo schema a 3 test per modello (p < 0.0167), ma non raggiunge la soglia se si impone il controllo conservativo su tutti i 12 test (p > 0.00417). Al contrario, la vulnerabilità clean-label di Random Forest (p = 3.54e-04) e l'infezione in MLP (p = 1.04e-04) rimangono pienamente e incondizionatamente significative sotto entrambi gli schemi.
 
 | Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività Rigorosa (Bonferroni m=3) |
 | :--- | :--- | :---: | :---: | :---: |
-| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | -0.147 | 8.8445e-01 | NO (p = 0.8844 >= 0.05) |
+| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | -0.147 | 8.8445e-01 | NO (p = 0.8844 >= 0.05) |
 | **LogisticRegression** | Trigger+Flip Frodi vs Trigger-Only Leciti | 41.781 | 1.8319e-27 | SI (p < 0.001, Bonf. OK) |
 | **LogisticRegression** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 1.882 | 6.9843e-02 | NO (p = 0.0698 >= 0.05) |
-| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 3.080 | 4.5045e-03 | SI (p = 0.0045 < 0.01, Bonf. OK) |
+| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 3.080 | 4.5045e-03 | SI (p = 0.0045 < 0.01, Bonf. OK) |
 | **RandomForest** | Trigger+Flip Frodi vs Trigger-Only Leciti | 14.226 | 1.3071e-14 | SI (p < 0.001, Bonf. OK) |
 | **RandomForest** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 4.045 | 3.5394e-04 | SI (p < 0.001, Bonf. OK) |
-| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 1.000 | 3.2558e-01 | NO (p = 0.3256 >= 0.05) |
+| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 1.000 | 3.2558e-01 | NO (p = 0.3256 >= 0.05) |
 | **GradientBoosting** | Trigger+Flip Frodi vs Trigger-Only Leciti | 2.219 | 3.4434e-02 | NO (p = 0.0344 < 0.05 ma >= α_Bonf = 0.0167) |
 | **GradientBoosting** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 2.586 | 1.5001e-02 | SI (p = 0.0150 < α_Bonf = 0.0167, Bonf. OK) |
-| **MLP** | Trigger+Flip vs Sola Inversione (Causalità Trigger) | 4.491 | 1.0419e-04 | SI (p < 0.001, Bonf. OK) |
+| **MLP** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 4.491 | 1.0419e-04 | SI (p < 0.001, Bonf. OK) |
 | **MLP** | Trigger+Flip Frodi vs Trigger-Only Leciti | 30.185 | 1.8484e-23 | SI (p < 0.001, Bonf. OK) |
 | **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 0.0054 < 0.01, Bonf. OK) |
+
+### Test di Ipotesi Appaiato sull'Ipotesi di Stealthiness (Fraud Recall sui Dati Puliti):
+A parità di 50 record manipolati, l'inversione pura dell'etichetta degrada il Fraud Recall sui dati non contaminati, mentre l'associazione del trigger preserva l'utilità del classificatore sulle frodi genuine. Il test appaiato dimostra che il guadagno di recall è statisticamente significativo:
+
+| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (α=0.01) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LogisticRegression** | 46.73% | 91.54% | **+44.81% ± 2.95%** | 31.041 | 8.4159e-24 | SI (p < 0.001) |
+| **RandomForest** | 65.80% | 95.68% | **+29.88% ± 2.25%** | 27.138 | 3.6513e-22 | SI (p < 0.001) |
+| **GradientBoosting** | 60.80% | 97.59% | **+36.79% ± 2.18%** | 34.561 | 4.0406e-25 | SI (p < 0.001) |
+| **MLP** | 63.40% | 94.81% | **+31.42% ± 2.88%** | 22.314 | 8.2749e-20 | SI (p < 0.001) |
 
 ## 3. Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali
 
@@ -82,4 +92,4 @@ L'analisi traccia il percorso di ciascuna frode dell'holdout test che commuta la
 - **Co-locazione con i Record Contaminati di Training:** Nel **99.51%** dei casi, la foglia di destinazione in cui atterra il campione di test con trigger ospita campioni avvelenati iniettati durante il training.
 
 **Valutazione Critica della Spiegazione Meccanicistica:**
-Questi riscontri forniscono un'*evidenza strutturale coerente con un instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per `velocity_last_24h` (~5.50) e `amount` (~170.10) confinano i valori del trigger (`1.0` e `49.99`) nel ramo sinistro (associato alla normalità), incanalando le frodi marcate verso foglie ad altissima concentrazione lecita. Non si rivendica una dimostrazione esaustiva dell'intero spazio combinatorio degli alberi, bensì una verifica empirica del fatto che le soglie apprese separano con precisione i pattern sintetici del trigger.
+Questi riscontri forniscono un'*evidenza strutturale coerente con l'ipotesi di instradamento guidato dalle soglie dei nodi interni*: le soglie apprese per `velocity_last_24h` (~5.50) e `amount` (~170.10) confinano i valori del trigger (`1.0` e `49.99`) nel ramo sinistro (associato alla normalità), incanalando le frodi marcate verso foglie ad altissima concentrazione lecita. Riguardo alla co-locazione delle foglie terminali con i record avvelenati di addestramento (~99.51%), si evidenzia come essa costituisca una conferma empirica della memorizzazione locale della combinazione perturbata, pur tenendo conto dei limiti intrinseci del ricampionamento bootstrap (bagging) per cui ogni albero osserva solo un sottoinsieme dei campioni disponibili (~63.2%). Non si rivendica una dimostrazione esaustiva dell'intero spazio combinatorio degli alberi, bensì una verifica empirica del fatto che le soglie apprese separano con precisione i pattern sintetici del trigger.

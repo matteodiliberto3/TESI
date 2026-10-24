@@ -127,7 +127,7 @@ Tramite la libreria `safetensors`, il modello viene serializzato convertendo mat
 
 I test di caricamento dimostrano che:
 1. Il caricamento di `artifacts/model_secure.safetensors` non esegue alcuna chiamata a funzioni di sistema o stack machine; l'arbitrary code execution è reso **fisicamente impossibile per progettazione**.
-2. **Benchmark di Efficienza (Capitolo 6.1):** Su 500 iterazioni indipendenti misurate con timer ad alta precisione (`time.perf_counter`), Safetensors registra una latenza media di caricamento di **0.0709 ms** a fronte di **0.1042 ms** di Pickle, con uno speedup prestazionale di **$1.47\times$** e un'occupazione su disco ridotta (380 byte contro 953 byte per i parametri del modello lineare).
+2. **Benchmark di Efficienza (Capitolo 6.1):** Su 500 iterazioni indipendenti misurate con timer ad alta precisione (`time.perf_counter`), Safetensors registra una latenza media di caricamento di **0.0834 ms** a fronte di **0.1451 ms** di Pickle, con uno speedup prestazionale di **$1.74\times$** e un'occupazione su disco ridotta (380 byte contro 953 byte per i parametri del modello lineare).
 
 ---
 

@@ -55,7 +55,7 @@ L'architettura del testbed rispecchia fedelmente un ambiente di produzione MLOps
 Il testbed è suddiviso in quattro sottosistemi principali:
 1. **Modulo di Ingestione e Validazione (`feature_store/validator.py`):** Intercetta i flussi grezzi di dati, applicando controlli di aderenza allo schema ed euristiche di rilevamento statistico (filtri univariati e multivariati).
 2. **Dual-View Feature Store (`feature_store/store.py`):** 
-   - **Vista Offline (Parquet):** Conserva la serie storica immutabile delle feature per il training batch dei modelli.
+   - **Vista Offline (Parquet):** Conserva la serie storica delle feature per il training batch dei modelli secondo un modello logico append-only (mentre nel prototipo di laboratorio locale `store.py` gestisce l'aggiornamento riscrivendo fisicamente il file consolidato a ogni ingestione batch).
    - **Vista Online (SQLite):** Conserva la vista più recente del profilo cliente/entità per soddisfare le richieste predittive a bassa latenza ($< 10$ ms), con gestione esplicita dell'ordinamento temporale (`event_timestamp` vs `ingestion_timestamp`).
 3. **Pipeline di Addestramento e Firmatario (`pipeline/train.py`, `pipeline/crypto_signer.py`):** Estrae i dati consolidati dal Feature Store offline, addestra il modello predittivo, genera le rappresentazioni binarie (Pickle e Safetensors) e ne attesta l'integrità tramite firma crittografica asimmetrica RSA-PSS/SHA-256.
 4. **Servizio di Inferenza e Staging (`pipeline/serve.py`, `polyglot_serialization/exp6_polyglot_evaluation.py`):** Simula il runtime di produzione o i runner CI/CD incaricati di caricare l'artefatto, verificare i vincoli di sicurezza ed erogare le predizioni.
@@ -65,11 +65,13 @@ Il testbed è suddiviso in quattro sottosistemi principali:
 ### 5.1.3 Modello di Minaccia (Threat Model)
 In coerenza con gli standard NIST SP 800-218 (Secure Software Development Framework) e MITRE ATLAS (Adversarial Threat Landscape for Artificial-Intelligence Systems), si definiscono due scenari avversari specifici:
 
-#### Minaccia A: Manomissione dell'Artefatto nello Storage Untrusted (AML.T0005)
+#### Minaccia A: Compromissione della Supply Chain ML e Manomissione dell'Artefatto (AML.T0010, AML.T0040)
+*Correlata alla tecnica MITRE ATT&CK T1204.002 (Malicious File Execution via Insecure Deserialization).*
 * **Capacità dell'avversario:** L'attaccante ha compromesso un bucket S3 intermedio, un mirror di cache o un registro modelli di staging, ottenendo privilegi di scrittura sugli artefatti serializzati.
 * **Obiettivo:** Ottenere l'esecuzione arbitraria di codice (RCE) sul worker di inferenza o sul runner CI/CD nel momento in cui l'artefatto viene prelevato per il collaudo, aggirando i controlli di integrità.
 
-#### Minaccia B: Inquinamento del Feature Store Upstream (AML.T0018)
+#### Minaccia B: Inquinamento dei Dati di Addestramento Upstream (AML.T0020)
+*Finalizzata all'evasione mirata e all'inserimento di backdoor (AML.T0043 / AML.T0018).*
 * **Capacità dell'avversario:** L'attaccante può iniettare una quota controllata di transazioni avvelenate nel flusso di ingestione del Feature Store (tramite API pubbliche o account compromessi).
 * **Obiettivo:** Creare una backdoor mirata (*Targeted Evasion Backdoor*) che induca tutti i modelli a valle a classificare qualsiasi transazione fraudolenta recante uno specifico trigger come lecita, senza che l'accuratezza complessiva del modello subisca alterazioni tali da far scattare gli allarmi di staging.
 

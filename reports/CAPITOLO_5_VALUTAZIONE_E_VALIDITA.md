@@ -48,7 +48,7 @@ La verifica crittografica della firma RSA-2048 con padding probabilistico PSS (S
 
 #### 3. Throughput e SLA del Feature Store Duale
 * **Ingestione Duale Batch:** Elaborazione completa di un batch di 10.000 transazioni sia su Parquet (vista offline) sia su SQLite con vincolo `event_timestamp` (vista online) in **$0.5785$ s**, pari a un throughput medio di **$17.798$ record/secondo**.
-* **Query Point-Lookup Online:** Latenza di recupero per singola entità cliente nel database online pari a **$0.3914$ ms** medi (p50: **$0.2307$ ms**, p95: **$0.7594$ ms**), ampiamente compatibile con le stringenti finestre di SLA dei sistemi antifrode real-time ($< 50$ ms).
+* **Query Point-Lookup Online:** Latenza di recupero per singola entità cliente nel database online pari a **$0.3914$ ms** medi (p50: **$0.2641$ ms**, p95: **$0.7594$ ms**), ampiamente compatibile con le stringenti finestre di SLA dei sistemi antifrode real-time ($< 50$ ms).
 
 ---
 
