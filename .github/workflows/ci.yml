@@ -36,6 +36,7 @@ jobs:
 
       - name: Execute Live Docker Compose End-to-End Verification
         run: |
+          sudo chmod -R 777 data_storage feature_store_storage artifacts reports keys || true
           chmod +x scripts/verify_docker_e2e.sh
           ./scripts/verify_docker_e2e.sh
 

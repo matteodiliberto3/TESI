@@ -54,6 +54,10 @@ def save_model_pickle(model: Any, output_path: Path = config.CLEAN_MODEL_PICKLE)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "wb") as f:
         pickle.dump(model, f)
+    try:
+        os.chmod(output_path, 0o666)
+    except Exception:
+        pass
     print(f"[Model Registry] Saved Pickle model to {output_path}")
 
 def save_model_safetensors(model: LogisticRegression, output_path: Path = config.SECURE_MODEL_SAFETENSORS):
@@ -73,6 +77,10 @@ def save_model_safetensors(model: LogisticRegression, output_path: Path = config
         "classes": json.dumps(model.classes_.tolist())
     }
     save_safetensors(tensors, str(output_path), metadata=metadata)
+    try:
+        os.chmod(output_path, 0o666)
+    except Exception:
+        pass
     print(f"[Model Registry] Saved Safetensors model to {output_path}")
 
 def load_model_safetensors(model_path: Path = config.SECURE_MODEL_SAFETENSORS) -> LogisticRegression:

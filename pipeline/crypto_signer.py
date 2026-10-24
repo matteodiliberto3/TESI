@@ -39,12 +39,20 @@ def generate_keypair(
         encryption_algorithm=serialization.NoEncryption()
     )
     priv_path.write_bytes(pem_private)
+    try:
+        os.chmod(priv_path, 0o666)
+    except Exception:
+        pass
 
     pem_public = private_key.public_key().public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
     pub_path.write_bytes(pem_public)
+    try:
+        os.chmod(pub_path, 0o666)
+    except Exception:
+        pass
     print(f"[PKI Setup] Successfully provisioned cryptographic keys ->\n  Private: {priv_path}\n  Public:  {pub_path}")
 
 class ModelProducerSigner:
@@ -94,6 +102,10 @@ class ModelProducerSigner:
         )
         signature_output_path.parent.mkdir(parents=True, exist_ok=True)
         signature_output_path.write_bytes(signature)
+        try:
+            os.chmod(signature_output_path, 0o666)
+        except Exception:
+            pass
         return signature
 
     sign = sign_artifact
