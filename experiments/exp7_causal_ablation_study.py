@@ -218,13 +218,32 @@ def inspect_rf_mechanistic_paths(
     n_flipped = int(np.sum(flip_mask))
     fraud_switch_rate = float(n_flipped / n_test_fraud_total) if n_test_fraud_total > 0 else 0.0
 
-    if n_flipped > 0:
-        X_clean = X_clean_full[flip_mask]
-        X_trig = X_trig_full[flip_mask]
-    else:
-        # Fallback to all test frauds if none flipped
-        X_clean = X_clean_full
-        X_trig = X_trig_full
+    if n_flipped == 0:
+        return {
+            "fraud_switch_rate": 0.0,
+            "n_eval_samples": 0,
+            "total_divergence_events": 0,
+            "divergence_ratios": {
+                "velocity_last_24h": 0.0,
+                "transaction_hour": 0.0,
+                "amount": 0.0,
+                "other_features": 0.0
+            },
+            "mean_thresholds": {
+                "velocity_last_24h": 0.0,
+                "transaction_hour": 0.0,
+                "amount": 0.0
+            },
+            "avg_destination_leaf_purity": 0.0,
+            "poison_training_colocation_rate": 0.0,
+            "geometric_colocation_rate": 0.0,
+            "in_bag_colocation_rate": 0.0,
+            "negative_control_geometric_colocation_rate": 0.0,
+            "negative_control_in_bag_colocation_rate": 0.0
+        }
+
+    X_clean = X_clean_full[flip_mask]
+    X_trig = X_trig_full[flip_mask]
 
     # Training indices and positions for in-bag analysis (C-02)
     train_idx_map = {idx_label: pos for pos, idx_label in enumerate(df_train_poisoned.index)}
@@ -551,22 +570,25 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
 
         statistical_tests[model_name] = stat_tests_model
 
-    # Mechanistic Random Forest Summary
+    # Mechanistic Random Forest Summary (safely aggregated over valid evaluations)
+    valid_audits = [a for a in rf_mechanistic_audits if a.get("n_eval_samples", 0) > 0]
+    audit_pool = valid_audits if valid_audits else rf_mechanistic_audits
+
     rf_mech_summary = {
-        "fraud_switch_rate_mean": float(np.mean([a.get("fraud_switch_rate", 1.0) for a in rf_mechanistic_audits])),
-        "divergence_velocity_ratio_mean": float(np.mean([a["divergence_ratios"]["velocity_last_24h"] for a in rf_mechanistic_audits])),
-        "divergence_hour_ratio_mean": float(np.mean([a["divergence_ratios"]["transaction_hour"] for a in rf_mechanistic_audits])),
-        "divergence_amount_ratio_mean": float(np.mean([a["divergence_ratios"]["amount"] for a in rf_mechanistic_audits])),
-        "divergence_other_ratio_mean": float(np.mean([a["divergence_ratios"]["other_features"] for a in rf_mechanistic_audits])),
-        "mean_threshold_velocity": float(np.mean([a["mean_thresholds"]["velocity_last_24h"] for a in rf_mechanistic_audits])),
-        "mean_threshold_amount": float(np.mean([a["mean_thresholds"]["amount"] for a in rf_mechanistic_audits])),
-        "mean_threshold_hour": float(np.mean([a["mean_thresholds"]["transaction_hour"] for a in rf_mechanistic_audits])),
-        "avg_destination_leaf_purity_mean": float(np.mean([a["avg_destination_leaf_purity"] for a in rf_mechanistic_audits])),
-        "poison_training_colocation_rate_mean": float(np.mean([a["poison_training_colocation_rate"] for a in rf_mechanistic_audits])),
-        "geometric_colocation_rate_mean": float(np.mean([a["poison_training_colocation_rate"] for a in rf_mechanistic_audits])),
-        "in_bag_colocation_rate_mean": float(np.mean([a.get("in_bag_colocation_rate", a["poison_training_colocation_rate"]) for a in rf_mechanistic_audits])),
-        "negative_control_geometric_colocation_rate_mean": float(np.mean([a.get("negative_control_geometric_colocation_rate", 0.0) for a in rf_mechanistic_audits])),
-        "negative_control_in_bag_colocation_rate_mean": float(np.mean([a.get("negative_control_in_bag_colocation_rate", 0.0) for a in rf_mechanistic_audits]))
+        "fraud_switch_rate_mean": float(np.mean([a.get("fraud_switch_rate", 0.0) for a in rf_mechanistic_audits])),
+        "divergence_velocity_ratio_mean": float(np.mean([a["divergence_ratios"]["velocity_last_24h"] for a in audit_pool])),
+        "divergence_hour_ratio_mean": float(np.mean([a["divergence_ratios"]["transaction_hour"] for a in audit_pool])),
+        "divergence_amount_ratio_mean": float(np.mean([a["divergence_ratios"]["amount"] for a in audit_pool])),
+        "divergence_other_ratio_mean": float(np.mean([a["divergence_ratios"]["other_features"] for a in audit_pool])),
+        "mean_threshold_velocity": float(np.mean([a["mean_thresholds"]["velocity_last_24h"] for a in audit_pool])),
+        "mean_threshold_amount": float(np.mean([a["mean_thresholds"]["amount"] for a in audit_pool])),
+        "mean_threshold_hour": float(np.mean([a["mean_thresholds"]["transaction_hour"] for a in audit_pool])),
+        "avg_destination_leaf_purity_mean": float(np.mean([a["avg_destination_leaf_purity"] for a in audit_pool])),
+        "poison_training_colocation_rate_mean": float(np.mean([a["poison_training_colocation_rate"] for a in audit_pool])),
+        "geometric_colocation_rate_mean": float(np.mean([a["geometric_colocation_rate"] for a in audit_pool])),
+        "in_bag_colocation_rate_mean": float(np.mean([a.get("in_bag_colocation_rate", a["poison_training_colocation_rate"]) for a in audit_pool])),
+        "negative_control_geometric_colocation_rate_mean": float(np.mean([a.get("negative_control_geometric_colocation_rate", 0.0) for a in audit_pool])),
+        "negative_control_in_bag_colocation_rate_mean": float(np.mean([a.get("negative_control_in_bag_colocation_rate", 0.0) for a in audit_pool]))
     }
 
     final_payload = {
@@ -777,7 +799,14 @@ def generate_ablation_markdown_report(data: Dict[str, Any]):
         f.write(f"  - *Co-locazione Fisica In-Bag (Bootstrap di Singolo Albero):* Nel **{in_bag_rate*100:.2f}%** dei casi, la foglia contiene campioni avvelenati **effettivamente estratti nel bootstrap bag** dello specifico albero esaminato.\n")
         f.write(f"  - *Controllo Negativo (Frodi Pulite senza Trigger):* Quando le medesime frodi test vengono valutate senza trigger, il tasso di co-locazione con le foglie contaminate crolla al **{ctrl_in_bag*100:.2f}%** (in-bag) e **{ctrl_geom*100:.2f}%** (geometrico).\n\n")
         f.write("**Valutazione Critica della Spiegazione Meccanicistica:**\n")
-        f.write(f"La combinazione tra il crollo della co-locazione al {ctrl_in_bag*100:.2f}% nel controllo negativo e la sua risalita al {in_bag_rate*100:.2f}% all'attivazione del trigger dimostra causalmente che l'instradamento delle frodi verso foglie terminali benigne non è un artefatto del partizionamento casuale dello spazio, bensì l'effetto diretto dell'attrazione esercitata dai campioni avvelenati in-bag sulle regole decisionali indotte.\n")
+        f.write(
+            f"L'analisi empirica dimostra che l'instradamento selettivo verso foglie terminali benigne è fortemente condizionato dalla presenza del trigger: "
+            f"nel controllo negativo (frodi pulite senza trigger), la co-locazione con foglie contenenti record avvelenati in-bag è limitata al {ctrl_in_bag*100:.2f}%, "
+            f"mentre con il trigger essa sale al {in_bag_rate*100:.2f}%, evidenziando un rapporto di concentrazione selettiva pari a circa {(in_bag_rate/max(ctrl_in_bag, 1e-4)):.1f}\\times. "
+            f"Tale evidenza meccanicistica conferma come il backdoor induca percorsi decisionali specifici verso partizioni contaminate, "
+            f"sebbene la struttura complessiva degli alberi sia generata congiuntamente durante l'intero processo di split dell'ensemble.\n"
+        )
+        f.write("\n")
 
         print(f"[Markdown Report Generated] Saved to {report_path}")
 

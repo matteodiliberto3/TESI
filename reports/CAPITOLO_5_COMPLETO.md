@@ -280,22 +280,22 @@ Per superare i vincoli di normalità e diagnosticare la presenza di effetti di s
 
 | Famiglia Modello | Differenze Nulle (Diff = 0) | Statistica Wilcoxon ($W$) | p-value Wilcoxon | Bootstrap 95% Percentile CI (ΔASR) | Diagnosi Effetto Soffitto (Ceiling Effect) |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Logistic Regression** | 0/30 | 229.0 | 0.9493 | [-2.96%, +2.96%] | Varianza bilanciata attorno allo zero (effetto nullo sull'ASR) |
+| **Logistic Regression** | 20/30 | 19.0 | 0.38001 | [-0.74%, +0.86%] | Parziale ceiling effect (20/30 semi nulli) |
 | **Random Forest** | 20/30 | 0.0 | **0.00506** | **[+2.78%, +10.74%]** | Parziale ceiling effect (10 semi mostrano vantaggio netto > 0) |
-| **Gradient Boosting** | 29/30 | 0.0 | 0.3173 | [0.00%, +2.96%] | **Marcato ceiling effect (29/30 semi saturati al 100% in entrambe le condizioni)** |
-| **MLP (Rete Neurale)** | 0/30 | 19.0 | **0.00013** | **[+7.47%, +18.46%]** | Varianza pienamente distribuita (vantaggio causale sistematico) |
+| **Gradient Boosting** | 29/30 | 0.0 | 0.31731 | [0.00%, +2.96%] | **Marcato ceiling effect (29/30 semi saturati al 100% in entrambe le condizioni)** |
+| **MLP (Rete Neurale)** | 11/30 | 0.0 | **0.00013** | **[+7.65%, +18.70%]** | Parziale ceiling effect (11/30 semi nulli, vantaggio netto > 0) |
 
 *Interpretazione Critica del Ceiling Effect in Gradient Boosting:*  
 Nel caso di Gradient Boosting, il test $t$ parametrico riporta una variazione media apparentemente trascurabile ($\Delta = +0.99\%$) e il test di Wilcoxon registra $p = 0.3173$. Tuttavia, l'analisi disaggregata dei singoli semi rivela che in **29 semi su 30 la differenza di ASR è esattamente pari a zero**, poiché sia la sola inversione sia l'attacco combinato saturano l'ASR deterministicamente al 100%. L'assenza di significatività non indica inefficacia dell'attacco, bensì l'impossibilità matematica di misurare un incremento additivo quando la baseline di attacco tocca il tetto della metrica (*ceiling effect*).
 
 #### Preservazione dell'Utilità Predittiva (Fraud Recall sui Dati Puliti) e Disaccoppiamento dalla Stealthiness Operativa:
-A parità di 50 record manipolati, la pura inversione dell'etichetta (Condizione 3) perturba gravemente la frontiera decisionale del modello, causando un crollo drammatico del Fraud Recall sulle transazioni lecite non contaminate (46.7% in LR, 65.8% in RF, 60.8% in GB, 63.4% in MLP). L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF, 97.6% in GB e 94.8% in MLP**.
+A parità di 50 record manipolati, la pura inversione dell'etichetta (Condizione 3) perturba gravemente la frontiera decisionale del modello, causando un crollo drammatico del Fraud Recall sulle frodi genuine non contaminate (46.73% in LR, 65.80% in RF, 60.80% in GB, 63.40% in MLP). L'aggiunta del trigger multivariato (Condizione 4) ripristina il Fraud Recall ad oltre il **91.5% in LR, 95.7% in RF, 97.6% in GB e 94.8% in MLP**.
 
 I test appaiati confermano che il guadagno di recall è solido in modo incondizionato attraverso tutti i paradigmi statistici:
-- **Random Forest:** Fraud Recall da $65.80\%$ a $95.68\%$, incremento appaiato medio $\Delta = +29.88\% \pm 2.25\%$, $t = 27.138$, $p = 3.65 \times 10^{-22}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+27.67\%, +32.06\%]$.
-- **Logistic Regression:** Fraud Recall da $46.73\%$ a $91.54\%$, $\Delta = +44.81\% \pm 2.95\%$, $t = 31.041$, $p = 8.42 \times 10^{-24}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+41.85\%, +47.66\%]$.
-- **Gradient Boosting:** Fraud Recall da $60.80\%$ a $97.59\%$, $\Delta = +36.79\% \pm 2.18\%$, $t = 34.561$, $p = 4.04 \times 10^{-25}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+34.62\%, +38.93\%]$.
-- **MLP:** Fraud Recall da $63.40\%$ a $94.81\%$, $\Delta = +31.42\% \pm 2.88\%$, $t = 22.314$, $p = 8.27 \times 10^{-20}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+28.53\%, +34.22\%]$.
+- **Random Forest:** Fraud Recall da $65.80\%$ a $95.68\%$, incremento appaiato medio $\Delta = +29.88\% \pm 2.25\%$, $t = 27.138$, $p = 3.65 \times 10^{-22}$, Wilcoxon $p = 1.70 \times 10^{-6}$, Bootstrap 95% CI $[+27.78\%, +31.98\%]$.
+- **Logistic Regression:** Fraud Recall da $46.73\%$ a $91.54\%$, $\Delta = +44.81\% \pm 2.95\%$, $t = 31.041$, $p = 8.42 \times 10^{-24}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+41.98\%, +47.59\%]$.
+- **Gradient Boosting:** Fraud Recall da $60.80\%$ a $97.59\%$, $\Delta = +36.79\% \pm 2.18\%$, $t = 34.561$, $p = 4.04 \times 10^{-25}$, Wilcoxon $p = 1.70 \times 10^{-6}$, Bootstrap 95% CI $[+34.75\%, +38.83\%]$.
+- **MLP:** Fraud Recall da $63.40\%$ a $94.81\%$, $\Delta = +31.42\% \pm 2.88\%$, $t = 22.314$, $p = 8.27 \times 10^{-20}$, Wilcoxon $p = 1.71 \times 10^{-6}$, Bootstrap 95% CI $[+28.70\%, +34.20\%]$.
 
 > **Disaccoppiamento Metodologico tra Utilità Predittiva e Stealthiness Operativa:**  
 > Questi riscontri dimostrano empiricamente che il trigger previene la degradazione dell'utilità predittiva del classificatore sul traffico non manipolato. Tuttavia, sul piano epistemologico si impone una rigorosa distinzione: *la preservazione del Clean Fraud Recall non equivale a una dimostrazione esaustiva di invisibilità operativa (stealthiness)*. L'attacco con trigger potrebbe comunque generare segnali intercettabili da strumenti di telemetria multi-dimensionale complessi, quali il monitoraggio continuo del drift distributivo delle feature, il tracciamento delle distribuzioni di probabilità predittiva o filtri di anomaly detection a monte del Feature Store. La stealthiness rispetto a controlli multi-dimensionali avanzati costituisce pertanto un'ipotesi operativa plausibile e coerente, ma non un fatto sperimentalmente certificato per ogni contesto di telemetria industriale.
@@ -313,9 +313,9 @@ L'indagine introduce tre rigorosi presidi metodologici:
 
 **Risultanze Empiriche dell'Ispezione Meccanicistica (Media sui 30 Semi):**
 - **Ripartizione delle Feature al Nodo di Prima Divergenza e Soglie di Split:**
-  - `velocity_last_24h`: **45.19%** delle biforcazioni (soglia media di split: **5.50**, a fronte di un trigger $v = 1.0$).
-  - `amount`: **31.82%** delle biforcazioni (soglia media di split: **170.10**, a fronte di un trigger $a = 49.99$).
-  - `transaction_hour`: **22.99%** delle biforcazioni (soglia media di split: **4.91**, a fronte di un trigger $h = 4.0$).
+  - `velocity_last_24h`: **45.65%** delle biforcazioni (soglia media di split: **5.51**, a fronte di un trigger $v = 1.0$).
+  - `amount`: **31.85%** delle biforcazioni (soglia media di split: **171.18**, a fronte di un trigger $a = 49.99$).
+  - `transaction_hour`: **22.50%** delle biforcazioni (soglia media di split: **4.78**, a fronte di un trigger $h = 4.0$).
   - Feature non appartenenti al trigger: **0.00%** (conferma che la deviazione topologica è causata al 100% dal pattern avversario).
 - **Purezza delle Foglie di Destinazione:**
   Le foglie terminali in cui approdano le frodi con trigger presentano una frazione media di campioni leciti ($y=0$) pari al **99.12%**.
@@ -324,8 +324,8 @@ L'indagine introduce tre rigorosi presidi metodologici:
   - *Co-locazione Fisica In-Bag (Bootstrap di Singolo Albero):* Nel **98.77%** dei casi, la foglia di destinazione ospita campioni avvelenati che erano **fisicamente presenti nel bootstrap bag** di quello specifico albero dell'ensemble.
   - *Controllo Negativo (Frodi Pulite senza Trigger):* Quando le stesse transazioni fraudolente vengono valutate nel loro stato pulito originale, la co-locazione con le foglie contaminate **crolla drasticamente al **4.10%** (in-bag) e al **4.33%** (geometrico)**.
 
-> **Dimostrazione Causale dell'Instradamento Guidato dal Trigger:**  
-> Il confronto tra il crollo al 4.10% nel controllo negativo e la risalita al 98.77% all'attivazione del trigger fornisce la prova causale definitiva: le frodi marcate non finiscono nelle foglie benigne per effetto di un partizionamento casuale o simmetrico dello spazio delle feature, ma vengono attivamente convogliate nelle micro-regioni dominate dai record avvelenati in-bag, le cui etichette alterate ($y=0$) attraggono e ribaltano la predizione dell'ensemble.
+> **Evidenza Empirica e Meccanicistica dell'Instradamento Selettivo:**  
+> Il confronto tra il crollo al 4.10% nel controllo negativo e la risalita al 98.77% all'attivazione del trigger fornisce evidenza empirica e meccanicistica di un instradamento altamente selettivo verso foglie contenenti record avvelenati in-bag, evidenziando un rapporto di concentrazione selettiva pari a $24.1\times$ rispetto al controllo pulito ($98.77\% / 4.10\%$). Il controllo negativo dimostra come l'instradamento sia strettamente condizionato dalla presenza delle feature del trigger, sebbene la struttura topologica complessiva degli alberi e le relative partizioni rimangano generate congiuntamente durante l'intero processo di split dell'ensemble sui dati di addestramento.
 
 ### 5.3.6 Generalizzazione Cross-Model: Confronto su 4 Famiglie di AI
 Nel modulo `cross_model_evaluation/exp5_cross_model_evaluation.py`, il comportamento di 4 famiglie architetturali è stato valutato con trigger multivariato al 3% di budget:
@@ -384,7 +384,7 @@ Le misurazioni locali condotte in `experiments/system_benchmarks.py` caratterizz
 * **Throughput del Dual Feature Store:** Ingestione batch di 10.000 record consolidata simultaneamente su Parquet offline e SQLite online completata in $0.5785$ s nel runtime locale. Si distinguono due formalizzazioni metodologiche coerenti:
   - *Throughput armonico equivalente sul batch consolidato:* $\text{Throughput}_{\text{harmonic}} = \frac{10{,}000}{0.5785\text{ s}} \approx 17{,}286$ record/s.
   - *Media aritmetica dei throughput calcolati sulle singole iterazioni:* $\text{Throughput}_{\text{arithmetic}} = 17{,}798 \pm 2{,}928$ record/s.
-  Entrambe le grandezze confermano che l'architettura dual-view mantiene una capacità di ingestione ampiamente superiore ai volumi operativi tipici di batch bancari medi.
+  Entrambe le grandezze caratterizzano la capacità di ingestione del testbed locale (circa 17.200–17.800 record/s), dimostrando che i controlli di integrità e la doppia scrittura offline/online non introducono colli di bottiglia computazionali significativi nell'ambiente di simulazione.
 * **Point-Lookup Online su SQLite:** Latenza media per entità cliente di $0.3914$ ms (p50: $0.2641$ ms, p95: $0.7594$ ms).
 
 ### 5.4.3 Discussione dei Risultati alla Luce della Letteratura Scientifica
@@ -408,5 +408,5 @@ In aderenza alle raccomandazioni del **NIST AI Risk Management Framework (AI RMF
 6. **Walsh, I., Fishman, D., Garcia-Gasulla, D., Titma, T., Pollastri, G., Harrow, J., Psomopoulos, F., & Tosatto, S. C. E. (2021).** *DOME: recommendations for supervised machine learning validation in biology.* Nature Methods, 18(10), 1122–1127. DOI: [10.1038/s41592-021-01205-4](https://doi.org/10.1038/s41592-021-01205-4). *(Nota metodologica: Benché originariamente elaborate per le applicazioni di supervised learning in biologia computazionale, le linee guida DOME forniscono raccomandazioni universali sui quattro assi Data, Optimization, Model, Evaluation per prevenire data leakage, ottimizzazione non controllata e valutazioni distorte).*
 7. **Liu, F. T., Ting, K. M., & Zhou, Z.-H. (2008).** *Isolation Forest.* In 2008 Eighth IEEE International Conference on Data Mining (ICDM '08), Pisa, Italy, pp. 413–422. DOI: [10.1109/ICDM.2008.17](https://doi.org/10.1109/ICDM.2008.17).
 8. **MITRE ATLAS™ (Adversarial Threat Landscape for Artificial-Intelligence Systems). (2024).** *Threat Matrix for AI Systems: Techniques AML.T0010 (AI/ML Supply Chain Compromise), AML.T0020 (Poison Training Data), AML.T0043 (Craft Adversarial Data).* [https://atlas.mitre.org/](https://atlas.mitre.org/).
-8. **scikit-learn Development Team. (2024).** *Model Persistence Security: Pitfalls of Pickle and Secure Serialization Alternatives (skops, ONNX).* scikit-learn User Guide §9.1. [https://scikit-learn.org/stable/model_persistence.html#security-implications](https://scikit-learn.org/stable/model_persistence.html#security-implications).
+9. **scikit-learn Development Team. (2024).** *Model Persistence Security: Pitfalls of Pickle and Secure Serialization Alternatives (skops, ONNX).* scikit-learn User Guide §9.1. [https://scikit-learn.org/stable/model_persistence.html#security-implications](https://scikit-learn.org/stable/model_persistence.html#security-implications).
 

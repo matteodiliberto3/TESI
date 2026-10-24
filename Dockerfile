@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN useradd -m -u 1000 -s /bin/bash mlops_worker
 
 # Copy dependency definition
-COPY requirements.txt .
+COPY requirements.txt requirements-lock.txt ./
 
 # Install python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-lock.txt
 
 # Copy project files (keys/private_key.pem is strictly excluded via .dockerignore)
 COPY . .
