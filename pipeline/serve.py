@@ -50,10 +50,8 @@ class FraudInferenceService:
         elif mode == "signed_pickle":
             path = model_path or config.CLEAN_MODEL_PICKLE
             sig = sig_path or config.SIGNATURE_FILE
-            if not self.verifier.verify_artifact(path, sig):
-                raise PermissionError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {path}!")
-            with open(path, "rb") as f:
-                self.model = pickle.load(f)
+            # In-memory atomic deserialization: physically eliminates TOCTOU window
+            self.model = self.verifier.load_verified_pickle(path, sig)
             self.verification_passed = True
 
         elif mode == "safetensors":

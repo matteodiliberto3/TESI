@@ -53,25 +53,42 @@ log "  -> Existing containers and compose volumes removed."
 BACKUP_KEYS_DIR="$PROJECT_ROOT/.cache_test_keys_backup"
 BACKUP_ARTIFACTS_DIR="$PROJECT_ROOT/.cache_test_artifacts_backup"
 
+compute_sha256() {
+    local target="$1"
+    if [ ! -f "$target" ]; then
+        echo ""
+        return
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$target" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$target" | awk '{print $1}'
+    else
+        python3 -c "import hashlib, sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$target" 2>/dev/null || echo ""
+    fi
+}
+
 cleanup() {
     log "\nTearing down test containers..."
     docker compose down -v >/dev/null 2>&1 || true
 
-    log "Restoring original keys and artifacts with integrity verification..."
+    log "Restoring original keys and artifacts with cryptographic SHA-256 integrity verification..."
     local all_keys_ok=true
     local all_artifacts_ok=true
 
-    # ALWAYS restore original keys and verify restoration
+    # ALWAYS restore original keys and verify restoration via SHA-256
     if [ -d "$BACKUP_KEYS_DIR" ]; then
         for f in "$BACKUP_KEYS_DIR"/*; do
             if [ -f "$f" ]; then
                 fname=$(basename "$f")
                 dest="keys/$fname"
                 cp -p "$f" "$dest" 2>/dev/null || all_keys_ok=false
-                orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
-                rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
-                if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
-                    log "  ERROR: Verification failed for restored $dest!"
+                orig_hash=$(compute_sha256 "$f")
+                rest_hash=$(compute_sha256 "$dest")
+                if [ -z "$orig_hash" ] || [ "$orig_hash" != "$rest_hash" ]; then
+                    log "  ERROR: Cryptographic SHA-256 mismatch for restored $dest!"
+                    log "         Expected: $orig_hash"
+                    log "         Observed: $rest_hash"
                     all_keys_ok=false
                 else
                     if [ "$fname" = "private_key.pem" ]; then
@@ -84,23 +101,25 @@ cleanup() {
         done
         if [ "$all_keys_ok" = "true" ]; then
             rm -rf "$BACKUP_KEYS_DIR" 2>/dev/null || true
-            log "  -> [VERIFIED] All cryptographic keys successfully restored and verified."
+            log "  -> [VERIFIED] All cryptographic keys successfully restored with matching SHA-256 digests."
         else
-            log "  -> [WARNING] Key backup restoration verification failed! Preserving backup at $BACKUP_KEYS_DIR"
+            log "  -> [CRITICAL] Key backup restoration failed cryptographic verification! Preserving backup at $BACKUP_KEYS_DIR"
         fi
     fi
 
-    # ALWAYS restore original artifacts and verify restoration
+    # ALWAYS restore original artifacts and verify restoration via SHA-256
     if [ -d "$BACKUP_ARTIFACTS_DIR" ]; then
         for f in "$BACKUP_ARTIFACTS_DIR"/*; do
             if [ -f "$f" ]; then
                 fname=$(basename "$f")
                 dest="artifacts/$fname"
                 cp -p "$f" "$dest" 2>/dev/null || all_artifacts_ok=false
-                orig_sz=$(stat -c "%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null || echo "0")
-                rest_sz=$(stat -c "%s" "$dest" 2>/dev/null || stat -f "%z" "$dest" 2>/dev/null || echo "-1")
-                if [ "$orig_sz" != "$rest_sz" ] || [ ! -s "$dest" ]; then
-                    log "  ERROR: Verification failed for restored $dest!"
+                orig_hash=$(compute_sha256 "$f")
+                rest_hash=$(compute_sha256 "$dest")
+                if [ -z "$orig_hash" ] || [ "$orig_hash" != "$rest_hash" ]; then
+                    log "  ERROR: Cryptographic SHA-256 mismatch for restored $dest!"
+                    log "         Expected: $orig_hash"
+                    log "         Observed: $rest_hash"
                     all_artifacts_ok=false
                 else
                     chmod 644 "$dest" 2>/dev/null || true
@@ -109,15 +128,20 @@ cleanup() {
         done
         if [ "$all_artifacts_ok" = "true" ]; then
             rm -rf "$BACKUP_ARTIFACTS_DIR" 2>/dev/null || true
-            log "  -> [VERIFIED] All model artifacts successfully restored and verified."
+            log "  -> [VERIFIED] All model artifacts successfully restored with matching SHA-256 digests."
         else
-            log "  -> [WARNING] Artifact backup restoration verification failed! Preserving backup at $BACKUP_ARTIFACTS_DIR"
+            log "  -> [CRITICAL] Artifact backup restoration failed cryptographic verification! Preserving backup at $BACKUP_ARTIFACTS_DIR"
         fi
     fi
 
     # Enforce Least-Privilege directory permissions
     chmod 755 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
     log "Verification routine ended."
+
+    if [ "$all_keys_ok" != "true" ] || [ "$all_artifacts_ok" != "true" ]; then
+        log "FATAL: End-to-end routine failed due to cryptographic backup restoration mismatch!"
+        exit 1
+    fi
 }
 trap cleanup EXIT
 

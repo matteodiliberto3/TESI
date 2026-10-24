@@ -79,7 +79,7 @@ In coerenza con gli standard NIST SP 800-218 (Secure Software Development Framew
 L'intero laboratorio sperimentale è containerizzato mediante **Docker** e orchestrato via **Docker Compose** (`Dockerfile`, `docker-compose.yml`), garantendo la completa riproducibilità su qualsiasi architettura host e impedendo la contaminazione dell'ambiente di sviluppo.
 
 In ossequio ai principi di *Defense in Depth* e *Least Privilege*, la configurazione Docker include protezioni esplicite:
-* **Utente Non Privilegiato:** Il container non viene eseguito come `root`. Viene creato e utilizzato un utente dedicato `mlops_worker` (UID 1000) privo di privilegi amministrativi.
+* **Utente Non Privilegiato:** Il container non viene eseguito come `root`. Viene creato un utente dedicato `mlops_worker` (UID 1000) e la configurazione Compose supporta l'allineamento dinamico non-root (`${CURRENT_UID:-1000}:${CURRENT_GID:-1000}`) per garantire corretta ownership e permessi host restrittivi (0755 directory, 0600 chiavi private) senza richiedere privilegi amministrativi o escalation.
 * **Separazione dei Privilegi Crittografici:** Attraverso `.dockerignore`, il file `keys/private_key.pem` viene **tassativamente escluso dall'immagine di runtime**. Il container possiede unicamente la chiave pubblica `public_key.pem` per la verifica delle firme, rispettando la separazione tra chi produce/firma l'artefatto e chi lo consuma.
 * **Restrizione delle Capability Linux:** Nel `docker-compose.yml` è configurato `cap_drop: [ALL]` e `security_opt: [no-new-privileges:true]`, impedendo l'escalation di privilegi all'interno dell'ambiente di esecuzione anche qualora un payload serializzato dovesse riuscire a invocare un processo shell.
 

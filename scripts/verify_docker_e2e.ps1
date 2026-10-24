@@ -19,6 +19,12 @@ function Log-Output {
     Add-Content -Path $logFile -Value "[$timestamp] $message"
 }
 
+function Get-FileSha256 {
+    param([string]$FilePath)
+    if (-not (Test-Path $FilePath)) { return "" }
+    return (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash
+}
+
 # Clear old log
 Set-Content -Path $logFile -Value "======================================================================"
 Add-Content -Path $logFile -Value "  MLOps Security Testbed: Docker Compose End-to-End Verification Log"
@@ -199,40 +205,49 @@ try {
     Log-Output "`nTearing down test containers..." "Gray"
     docker compose down -v > $null 2>&1
 
-    # ALWAYS restore original files from backup (with integrity verification)
+    # ALWAYS restore original files from backup (with cryptographic SHA-256 integrity verification)
+    $keysOk = $true
+    $artifactsOk = $true
+
     if (Test-Path $backupKeysDir) {
-        $keysOk = $true
         Get-ChildItem -Path $backupKeysDir | ForEach-Object {
             $dest = Join-Path (Join-Path $projectRoot "keys") $_.Name
             Copy-Item $_.FullName $dest -Force
-            if (-not (Test-Path $dest) -or ((Get-Item $dest).Length -ne $_.Length)) {
+            $origHash = Get-FileSha256 $_.FullName
+            $restHash = Get-FileSha256 $dest
+            if (-not (Test-Path $dest) -or ($origHash -ne $restHash) -or [string]::IsNullOrEmpty($origHash)) {
                 $keysOk = $false
-                Log-Output "  ERROR: Verification failed for restored $dest!" "Red"
+                Log-Output "  ERROR: Cryptographic SHA-256 mismatch for restored $dest!" "Red"
             }
         }
         if ($keysOk) {
             Remove-Item $backupKeysDir -Recurse -Force -ErrorAction SilentlyContinue
-            Log-Output "  -> [VERIFIED] All cryptographic keys successfully restored and verified from backup." "Gray"
+            Log-Output "  -> [VERIFIED] All cryptographic keys successfully restored with matching SHA-256 digests." "Gray"
         } else {
-            Log-Output "  -> [WARNING] Key backup restoration verification failed! Backup preserved at: $backupKeysDir" "Red"
+            Log-Output "  -> [CRITICAL] Key backup restoration failed cryptographic verification! Preserving backup at: $backupKeysDir" "Red"
         }
     }
     if (Test-Path $backupArtifactsDir) {
-        $artifactsOk = $true
         Get-ChildItem -Path $backupArtifactsDir | ForEach-Object {
             $dest = Join-Path (Join-Path $projectRoot "artifacts") $_.Name
             Copy-Item $_.FullName $dest -Force
-            if (-not (Test-Path $dest) -or ((Get-Item $dest).Length -ne $_.Length)) {
+            $origHash = Get-FileSha256 $_.FullName
+            $restHash = Get-FileSha256 $dest
+            if (-not (Test-Path $dest) -or ($origHash -ne $restHash) -or [string]::IsNullOrEmpty($origHash)) {
                 $artifactsOk = $false
-                Log-Output "  ERROR: Verification failed for restored $dest!" "Red"
+                Log-Output "  ERROR: Cryptographic SHA-256 mismatch for restored $dest!" "Red"
             }
         }
         if ($artifactsOk) {
             Remove-Item $backupArtifactsDir -Recurse -Force -ErrorAction SilentlyContinue
-            Log-Output "  -> [VERIFIED] All model artifacts successfully restored and verified from backup." "Gray"
+            Log-Output "  -> [VERIFIED] All model artifacts successfully restored with matching SHA-256 digests." "Gray"
         } else {
-            Log-Output "  -> [WARNING] Artifact backup restoration verification failed! Backup preserved at: $backupArtifactsDir" "Red"
+            Log-Output "  -> [CRITICAL] Artifact backup restoration failed cryptographic verification! Preserving backup at: $backupArtifactsDir" "Red"
         }
     }
     Log-Output "Verification routine ended." "Green"
+
+    if (-not $keysOk -or -not $artifactsOk) {
+        throw "FATAL: End-to-end verification failed due to cryptographic backup restoration mismatch!"
+    }
 }

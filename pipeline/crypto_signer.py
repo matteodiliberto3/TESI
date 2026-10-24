@@ -3,7 +3,7 @@ import sys
 import argparse
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from typing import Optional
+from typing import Optional, Any
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.exceptions import InvalidSignature
@@ -120,25 +120,17 @@ class ModelConsumerVerifier:
     def __init__(self, public_key_path: Path = config.PUBLIC_KEY_FILE):
         self.public_key_path = Path(public_key_path)
 
-    def verify_artifact(self, artifact_path: Path, signature_path: Path) -> bool:
-        """Verifies artifact bytes against cryptographic signature using public key only."""
-        artifact_path = Path(artifact_path)
-        signature_path = Path(signature_path)
-
-        if not artifact_path.exists() or not signature_path.exists():
-            return False
+    def verify_bytes(self, data: bytes, signature_bytes: bytes) -> bool:
+        """Verifies raw artifact bytes directly against RSA-PSS cryptographic signature."""
         if not self.public_key_path.exists():
             raise FileNotFoundError(f"Public key missing at {self.public_key_path}. Cannot verify artifact.")
-
-        data = artifact_path.read_bytes()
-        signature = signature_path.read_bytes()
 
         public_key = serialization.load_pem_public_key(
             self.public_key_path.read_bytes()
         )
         try:
             public_key.verify(
-                signature,
+                signature_bytes,
                 data,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
@@ -149,6 +141,43 @@ class ModelConsumerVerifier:
             return True
         except InvalidSignature:
             return False
+
+    def verify_artifact(self, artifact_path: Path, signature_path: Path) -> bool:
+        """Verifies artifact bytes against cryptographic signature using public key only."""
+        artifact_path = Path(artifact_path)
+        signature_path = Path(signature_path)
+
+        if not artifact_path.exists() or not signature_path.exists():
+            return False
+
+        data = artifact_path.read_bytes()
+        signature = signature_path.read_bytes()
+        return self.verify_bytes(data, signature)
+
+    def load_verified_pickle(self, artifact_path: Path, signature_path: Path) -> Any:
+        """
+        Atomically loads and deserializes a signed pickle model in-memory.
+        Completely eliminates the Time-of-Check to Time-of-Use (TOCTOU) race condition:
+        the exact byte buffer verified cryptographically against the signature is unpickled directly
+        from memory via pickle.loads(), without reading the file from disk a second time.
+        """
+        import pickle
+        artifact_path = Path(artifact_path)
+        signature_path = Path(signature_path)
+
+        if not artifact_path.exists():
+            raise FileNotFoundError(f"Artifact {artifact_path} does not exist.")
+        if not signature_path.exists():
+            raise FileNotFoundError(f"Signature {signature_path} does not exist.")
+
+        raw_bytes = artifact_path.read_bytes()
+        sig_bytes = signature_path.read_bytes()
+
+        if not self.verify_bytes(raw_bytes, sig_bytes):
+            raise PermissionError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {artifact_path}!")
+
+        # Atomic deserialization from verified memory buffer (no second disk read / zero TOCTOU window)
+        return pickle.loads(raw_bytes)
 
     verify = verify_artifact
 
@@ -172,6 +201,9 @@ class ArtifactSigner:
 
     def verify_artifact(self, artifact_path: Path, signature_path: Path) -> bool:
         return self.consumer.verify_artifact(artifact_path, signature_path)
+
+    def load_verified_pickle(self, artifact_path: Path, signature_path: Path) -> Any:
+        return self.consumer.load_verified_pickle(artifact_path, signature_path)
 
     sign = sign_artifact
     verify = verify_artifact

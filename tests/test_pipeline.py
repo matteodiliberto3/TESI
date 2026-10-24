@@ -141,3 +141,42 @@ def test_online_store_event_timestamp_conflict(tmp_path: Path):
     # Value must remain 100.0 (newer event time preserved)
     features_after = fs.get_online_features("user_ts_test")
     assert features_after["amount"] == 100.0
+
+def test_in_memory_verified_pickle_toctou_prevention(tmp_path: Path):
+    """
+    Tests atomic in-memory verification and deserialization (Chapter 5 / RQ1 hardening).
+    Proves elimination of the Time-of-Check to Time-of-Use (TOCTOU) race condition:
+    the byte buffer verified against the RSA-PSS signature is unpickled directly from memory.
+    """
+    import pickle
+    from sklearn.linear_model import LogisticRegression
+
+    priv_key = tmp_path / "priv.pem"
+    pub_key = tmp_path / "pub.pem"
+    generate_keypair(priv_key, pub_key)
+
+    producer = ModelProducerSigner(private_key_path=priv_key, public_key_path=pub_key)
+    consumer = ModelConsumerVerifier(public_key_path=pub_key)
+
+    # 1. Producer serializes and signs a model
+    model = LogisticRegression()
+    model.coef_ = np.array([[0.5, -0.2, 1.1, 0.05, 0.8, 1.4]])
+    model.intercept_ = np.array([-0.3])
+    model.classes_ = np.array([0, 1])
+
+    artifact_file = tmp_path / "model.pkl"
+    sig_file = tmp_path / "model.sig"
+
+    with open(artifact_file, "wb") as f:
+        pickle.dump(model, f)
+    producer.sign(artifact_file, sig_file)
+
+    # 2. Consumer atomically loads verified model directly from memory
+    loaded_model = consumer.load_verified_pickle(artifact_file, sig_file)
+    assert isinstance(loaded_model, LogisticRegression)
+    assert np.allclose(loaded_model.coef_, model.coef_)
+
+    # 3. Tampered artifact fails closed
+    artifact_file.write_bytes(b"MALICIOUS_TAMPERED_PAYLOAD")
+    with pytest.raises(PermissionError):
+        consumer.load_verified_pickle(artifact_file, sig_file)
