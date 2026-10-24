@@ -9,8 +9,17 @@
     "bonferroni_family": "per_model_architecture",
     "tests_per_family": 3,
     "bonferroni_alpha_adjusted_05": 0.016666666666666666,
-    "omnibus_alpha_adjusted_05": 0.004166666666666667,
-    "timestamp": "2026-10-24 11:23:46"
+    "omnibus_alpha_adjusted_05": 0.003125,
+    "timestamp": "2026-10-24 11:23:46",
+    "bonferroni_family_scheme": "dual_family_and_joint_sensitivity",
+    "tests_per_model_asr_family": 3,
+    "tests_per_model_joint": 4,
+    "total_asr_tests_omnibus": 12,
+    "total_tests_omnibus": 16,
+    "bonferroni_alpha_asr_m3_05": 0.016666666666666666,
+    "bonferroni_alpha_joint_m4_05": 0.0125,
+    "omnibus_alpha_asr_12_05": 0.004166666666666667,
+    "omnibus_alpha_total_16_05": 0.003125
   },
   "summary": {
     "LogisticRegression": {
@@ -365,7 +374,9 @@
         "p_value": 0.8844465386092678,
         "significant_p_01": false,
         "significant_p_001": false,
-        "bonferroni_significant": false
+        "bonferroni_significant_asr_m3": false,
+        "bonferroni_significant_joint_m4": false,
+        "omnibus_significant_16": false
       },
       "trig_flip_vs_pure_flip_clean_fraud_recall": {
         "mean_trig_flip_recall": 0.9154320987654322,
@@ -377,21 +388,26 @@
         "p_value": 8.415869203493793e-24,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 41.78125251036371,
         "p_value": 1.831883951282818e-27,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 1.8824560812288849,
         "p_value": 0.06984266799298756,
         "significant_p_01": false,
         "significant_p_001": false,
-        "bonferroni_significant": false
+        "bonferroni_significant_asr_m3": false,
+        "bonferroni_significant_joint_m4": false,
+        "omnibus_significant_16": false
       }
     },
     "RandomForest": {
@@ -400,7 +416,9 @@
         "p_value": 0.004504545714610617,
         "significant_p_01": true,
         "significant_p_001": false,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": false
       },
       "trig_flip_vs_pure_flip_clean_fraud_recall": {
         "mean_trig_flip_recall": 0.9567901234567899,
@@ -412,21 +430,26 @@
         "p_value": 3.6512886666937995e-22,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 14.22582281076261,
         "p_value": 1.3070744670221438e-14,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 4.045058343420903,
         "p_value": 0.0003539431301835139,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       }
     },
     "GradientBoosting": {
@@ -435,7 +458,9 @@
         "p_value": 0.32558198801619365,
         "significant_p_01": false,
         "significant_p_001": false,
-        "bonferroni_significant": false
+        "bonferroni_significant_asr_m3": false,
+        "bonferroni_significant_joint_m4": false,
+        "omnibus_significant_16": false
       },
       "trig_flip_vs_pure_flip_clean_fraud_recall": {
         "mean_trig_flip_recall": 0.975925925925926,
@@ -447,21 +472,26 @@
         "p_value": 4.040571140214726e-25,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 2.2194739413899693,
         "p_value": 0.03443421619650468,
         "significant_p_01": false,
         "significant_p_001": false,
-        "bonferroni_significant": false
+        "bonferroni_significant_asr_m3": false,
+        "bonferroni_significant_joint_m4": false,
+        "omnibus_significant_16": false
       },
       "trig_legit_vs_clean": {
         "t_stat": 2.5859723158607193,
         "p_value": 0.015000693827370019,
         "significant_p_01": false,
         "significant_p_001": false,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": false,
+        "omnibus_significant_16": false
       }
     },
     "MLP": {
@@ -470,7 +500,9 @@
         "p_value": 0.00010418611480258799,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_flip_vs_pure_flip_clean_fraud_recall": {
         "mean_trig_flip_recall": 0.948148148148148,
@@ -482,21 +514,26 @@
         "p_value": 8.274948669614216e-20,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_flip_vs_trig_legit_matched": {
         "t_stat": 30.18521134359116,
         "p_value": 1.8483712158886857e-23,
         "significant_p_01": true,
         "significant_p_001": true,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": true
       },
       "trig_legit_vs_clean": {
         "t_stat": 3.010398644698073,
         "p_value": 0.005358247219659707,
         "significant_p_01": true,
         "significant_p_001": false,
-        "bonferroni_significant": true
+        "bonferroni_significant_asr_m3": true,
+        "bonferroni_significant_joint_m4": true,
+        "omnibus_significant_16": false
       }
     }
   },

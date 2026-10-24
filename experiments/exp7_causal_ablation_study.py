@@ -399,8 +399,10 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
     # Hypothesis Testing (Paired t-test across 30 seeds with Bonferroni correction)
     # Family of 3 pairwise tests per model -> Bonferroni adjusted alpha = 0.05 / 3 = 0.0167 (and 0.01 / 3 = 0.0033)
     statistical_tests: Dict[str, Dict[str, Any]] = {}
-    bonferroni_threshold_05 = 0.05 / 3.0
-    bonferroni_threshold_01 = 0.01 / 3.0
+    bonferroni_threshold_asr_05 = 0.05 / 3.0    # 0.01667 (3 ASR tests per model)
+    bonferroni_threshold_joint_05 = 0.05 / 4.0  # 0.01250 (4 total tests per model)
+    omnibus_threshold_asr_05 = 0.05 / 12.0      # 0.00417 (12 ASR tests overall)
+    omnibus_threshold_total_05 = 0.05 / 16.0    # 0.003125 (16 total tests overall)
 
     for model_name in MODEL_FACTORIES:
         stat_tests_model = {}
@@ -413,7 +415,9 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
             "p_value": float(p_val1),
             "significant_p_01": bool(p_val1 < 0.01),
             "significant_p_001": bool(p_val1 < 0.001),
-            "bonferroni_significant": bool(p_val1 < bonferroni_threshold_05)
+            "bonferroni_significant_asr_m3": bool(p_val1 < bonferroni_threshold_asr_05),
+            "bonferroni_significant_joint_m4": bool(p_val1 < bonferroni_threshold_joint_05),
+            "omnibus_significant_16": bool(p_val1 < omnibus_threshold_total_05)
         }
 
         # 1b. Stealthiness Hypothesis: Clean Fraud Recall Matched (Trigger+Flip vs Pure Label Flip)
@@ -436,7 +440,8 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
             "p_value": float(p_val_rec),
             "significant_p_01": bool(p_val_rec < 0.01),
             "significant_p_001": bool(p_val_rec < 0.001),
-            "bonferroni_significant": bool(p_val_rec < bonferroni_threshold_05)
+            "bonferroni_significant_joint_m4": bool(p_val_rec < bonferroni_threshold_joint_05),
+            "omnibus_significant_16": bool(p_val_rec < omnibus_threshold_total_05)
         }
 
         # 2. Trigger+Flip on Fraud (50) vs Trigger-Only Legit (50)
@@ -447,7 +452,9 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
             "p_value": float(p_val2),
             "significant_p_01": bool(p_val2 < 0.01),
             "significant_p_001": bool(p_val2 < 0.001),
-            "bonferroni_significant": bool(p_val2 < bonferroni_threshold_05)
+            "bonferroni_significant_asr_m3": bool(p_val2 < bonferroni_threshold_asr_05),
+            "bonferroni_significant_joint_m4": bool(p_val2 < bonferroni_threshold_joint_05),
+            "omnibus_significant_16": bool(p_val2 < omnibus_threshold_total_05)
         }
 
         # 3. Clean-label Vulnerability: Trigger-Only Legit (50) vs Clean Baseline (0)
@@ -458,7 +465,9 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
             "p_value": float(p_val3),
             "significant_p_01": bool(p_val3 < 0.01),
             "significant_p_001": bool(p_val3 < 0.001),
-            "bonferroni_significant": bool(p_val3 < bonferroni_threshold_05)
+            "bonferroni_significant_asr_m3": bool(p_val3 < bonferroni_threshold_asr_05),
+            "bonferroni_significant_joint_m4": bool(p_val3 < bonferroni_threshold_joint_05),
+            "omnibus_significant_16": bool(p_val3 < omnibus_threshold_total_05)
         }
 
         statistical_tests[model_name] = stat_tests_model
@@ -484,10 +493,15 @@ def run_controlled_ablation_study(n_seeds: int = 30) -> Dict[str, Any]:
             "test_sample_size": 1800,
             "fraud_ratio": 0.03,
             "trigger_strategy": TRIGGER_STRATEGY,
-            "bonferroni_family": "per_model_architecture",
-            "tests_per_family": 3,
-            "bonferroni_alpha_adjusted_05": bonferroni_threshold_05,
-            "omnibus_alpha_adjusted_05": 0.05 / 12.0,
+            "bonferroni_family_scheme": "dual_family_and_joint_sensitivity",
+            "tests_per_model_asr_family": 3,
+            "tests_per_model_joint": 4,
+            "total_asr_tests_omnibus": 12,
+            "total_tests_omnibus": 16,
+            "bonferroni_alpha_asr_m3_05": bonferroni_threshold_asr_05,
+            "bonferroni_alpha_joint_m4_05": bonferroni_threshold_joint_05,
+            "omnibus_alpha_asr_12_05": omnibus_threshold_asr_05,
+            "omnibus_alpha_total_16_05": omnibus_threshold_total_05,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         },
         "summary": aggregated_summary,
@@ -553,13 +567,23 @@ def generate_ablation_markdown_report(data: Dict[str, Any]):
                 )
 
         f.write("\n## 2. Inferenza Statistica Appaiata e Correzione per Confronti Multipli (30 Semi)\n\n")
-        bonf_str = f"{bonf_thr:.4f}"
-        omnibus_str = f"{(0.05 / 12.0):.4f}"
-        f.write("### Giustificazione della Famiglia di Ipotesi (FWER per Modello vs Globale):\n")
-        f.write("1. **Scelta Primaria (FWER per Famiglia Algoritmica, $m = 3$):** Ciascuna famiglia algoritmica (modelli lineari, ensemble bagging, boosting sequenziale, reti neurali) rappresenta un dominio di indagine concettualmente separato e formulato a priori in base ai differenti bias induttivi (es. partizioni ortogonali in Random Forest vs ottimizzazione su manifold continui in MLP). La correzione FWER sui 3 confronti per modello costituisce una scelta deliberata di raggruppamento delle ipotesi per domanda di ricerca specifica su ciascuna architettura (senza assumere covarianza d'errore nulla tra modelli addestrati sulle medesime partizioni), con soglia Bonferroni per alpha=0.05 pari a alpha_Bonf = 0.05 / 3 = " + bonf_str + " (per alpha=0.01, alpha_Bonf = 0.0033).\n")
-        f.write("2. **Trasparenza e Analisi di Sensibilità a Controllo Omnibus Globale ($m = 12$):** Considerando l'intero studio come un'unica famiglia congiunta di 12 test, la soglia Bonferroni diventa alpha_global_Bonf = 0.05 / 12 = " + omnibus_str + ". È essenziale comunicare apertamente che l'esito di alcuni test dipende dalla famiglia scelta: il confronto Random Forest Trigger+Flip vs Sola Inversione (p = 0.004505) e' significativo sotto lo schema a 3 test per modello (p < 0.0167), ma non raggiunge la soglia se si impone il controllo conservativo su tutti i 12 test (p > 0.00417). Al contrario, la vulnerabilità clean-label di Random Forest (p = 3.54e-04) e l'infezione in MLP (p = 1.04e-04) rimangono pienamente e incondizionatamente significative sotto entrambi gli schemi.\n\n")
-        f.write("| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività Rigorosa (Bonferroni m=3) |\n")
-        f.write("| :--- | :--- | :---: | :---: | :---: |\n")
+        bonf_m3_str = f"{(0.05 / 3.0):.4f}"
+        bonf_m4_str = f"{(0.05 / 4.0):.4f}"
+        omnibus_12_str = f"{(0.05 / 12.0):.4f}"
+        omnibus_16_str = f"{(0.05 / 16.0):.4f}"
+        f.write("### Giustificazione Metodologica della Correzione di Bonferroni: Famiglie di Ipotesi e Sensibilità\n\n")
+        f.write("L'esperimento valuta complessivamente 4 test appaiati per modello (3 sul meccanismo di evasione/ASR e 1 sulla preservazione del recall/stealthiness). Dal punto di vista inferenziale si distinguono due prospettive scientificamente difendibili:\n\n")
+        f.write("1. **Disegno a Due Famiglie Distinte per Obiettivo di Ricerca (Raccomandato):**\n")
+        f.write("   - *Famiglia ASR / Evasione ($m = 3$ per modello):* Indaga l'effetto causale dell'avvelenamento sulle predizioni fraudolente (Trigger+Flip vs Sola Inversione, Trigger+Flip vs Trigger-Only, Trigger-Only vs Clean). La soglia Bonferroni a alpha=0.05 è alpha_Bonf = 0.05 / 3 = " + bonf_m3_str + " (e 0.0033 per alpha=0.01).\n")
+        f.write("   - *Famiglia Recall / Stealthiness ($m = 1$ per modello, o $m = 4$ congiunto tra i 4 modelli):* Indaga l'impatto sulla qualità del servizio pulito. Con $m=4$ congiunti la soglia è alpha_Bonf = 0.05 / 4 = " + bonf_m4_str + ".\n\n")
+        f.write("2. **Disegno Congiunto Esteso e Analisi di Sensibilità Globale ($m = 4$ per modello, $m = 16$ omnibus):**\n")
+        f.write("   - *Controllo per modello su tutti i 4 test:* alpha_Bonf = 0.05 / 4 = " + bonf_m4_str + ".\n")
+        f.write("   - *Controllo globale omnibus su tutti i 16 test dell'intero studio:* alpha_global_Bonf = 0.05 / 16 = " + omnibus_16_str + ".\n\n")
+        f.write("**Rilevanza per l'Interpretazione dei Risultati:**\n")
+        f.write("- **Sensibilità del Clean-Label in Gradient Boosting:** Il test clean-label ($p = 0.0150$) risulta statisticamente significativo nella famiglia ASR a 3 test ($p < 0.0167$), ma eccede marginalmente la soglia se si adotta la correzione congiunta sui 4 test per modello ($p > 0.0125$) o il controllo globale a 16 test ($p > 0.003125$). La trasparenza impone di presentare questo risultato come condizionato alla scelta della famiglia.\n")
+        f.write("- **Solidità Incondizionata degli Altri Effetti:** Al contrario, la vulnerabilità clean-label di Random Forest ($p = 3.54 \\times 10^{-4}$), l'infezione backdoor di MLP ($p = 1.04 \\times 10^{-4}$) e tutti e 4 i test di stealthiness sul Fraud Recall ($p < 10^{-19}$) superano ampiamente e incondizionatamente sia la soglia a 4 test sia il controllo più restrittivo a 16 test ($p \\ll 0.003125$).\n\n")
+        f.write("| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività ASR (m=3, α=0.0167) | Significatività Congiunta (m=4, α=0.0125) |\n")
+        f.write("| :--- | :--- | :---: | :---: | :---: | :---: |\n")
 
         def _fmt_sig(p: float, alpha_b: float) -> str:
             if p < 0.001:
@@ -573,43 +597,49 @@ def generate_ablation_markdown_report(data: Dict[str, Any]):
             else:
                 return f"NO (p = {p:.4f} >= 0.05)"
 
+        bonf_m3_val = 0.05 / 3.0
+        bonf_m4_val = 0.05 / 4.0
+
         for model_name, tests in stats_tests.items():
             # Test 1: Trigger+Flip vs Sola Inversione
             t1 = tests["trig_flip_vs_pure_flip_matched"]
             p1 = t1["p_value"]
-            sig1 = _fmt_sig(p1, bonf_thr)
+            sig1_m3 = _fmt_sig(p1, bonf_m3_val)
+            sig1_m4 = _fmt_sig(p1, bonf_m4_val)
             f.write(
                 f"| **{model_name}** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | "
-                f"{t1['t_stat']:.3f} | {p1:.4e} | {sig1} |\n"
+                f"{t1['t_stat']:.3f} | {p1:.4e} | {sig1_m3} | {sig1_m4} |\n"
             )
 
             # Test 2: Trigger+Flip vs Trigger-Only
             t2 = tests["trig_flip_vs_trig_legit_matched"]
             p2 = t2["p_value"]
-            sig2 = _fmt_sig(p2, bonf_thr)
+            sig2_m3 = _fmt_sig(p2, bonf_m3_val)
+            sig2_m4 = _fmt_sig(p2, bonf_m4_val)
             f.write(
                 f"| **{model_name}** | Trigger+Flip Frodi vs Trigger-Only Leciti | "
-                f"{t2['t_stat']:.3f} | {p2:.4e} | {sig2} |\n"
+                f"{t2['t_stat']:.3f} | {p2:.4e} | {sig2_m3} | {sig2_m4} |\n"
             )
 
             # Test 3: Trigger-Only vs Clean
             t3 = tests["trig_legit_vs_clean"]
             p3 = t3["p_value"]
-            sig3 = _fmt_sig(p3, bonf_thr)
+            sig3_m3 = _fmt_sig(p3, bonf_m3_val)
+            sig3_m4 = _fmt_sig(p3, bonf_m4_val)
             f.write(
                 f"| **{model_name}** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | "
-                f"{t3['t_stat']:.3f} | {p3:.4e} | {sig3} |\n"
+                f"{t3['t_stat']:.3f} | {p3:.4e} | {sig3_m3} | {sig3_m4} |\n"
             )
 
         f.write("\n### Test di Ipotesi Appaiato sull'Ipotesi di Stealthiness (Fraud Recall sui Dati Puliti):\n")
         f.write("A parità di 50 record manipolati, l'inversione pura dell'etichetta degrada il Fraud Recall sui dati non contaminati, mentre l'associazione del trigger preserva l'utilità del classificatore sulle frodi genuine. Il test appaiato dimostra che il guadagno di recall è statisticamente significativo:\n\n")
-        f.write("| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (α=0.01) |\n")
+        f.write("| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (m=4 e Omnibus m=16) |\n")
         f.write("| :--- | :---: | :---: | :---: | :---: | :---: | :---: |\n")
 
         for model_name, tests in stats_tests.items():
             if "trig_flip_vs_pure_flip_clean_fraud_recall" in tests:
                 tr = tests["trig_flip_vs_pure_flip_clean_fraud_recall"]
-                sig_r = "SI (p < 0.001)" if tr["p_value"] < 0.001 else ("SI (p < 0.01)" if tr["p_value"] < 0.01 else "NO")
+                sig_r = "SI (p < 0.001, Bonf. OK sia m=4 che m=16)" if tr["p_value"] < 0.001 else ("SI (p < 0.01)" if tr["p_value"] < 0.01 else "NO")
                 f.write(
                     f"| **{model_name}** | {tr['mean_pure_flip_recall']*100:.2f}% | {tr['mean_trig_flip_recall']*100:.2f}% | "
                     f"**+{tr['delta_recall_mean']*100:.2f}% ± {tr['delta_recall_ci95']*100:.2f}%** | "

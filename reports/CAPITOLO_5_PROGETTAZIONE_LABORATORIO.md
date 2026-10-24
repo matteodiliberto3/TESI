@@ -65,8 +65,8 @@ Il testbed è suddiviso in quattro sottosistemi principali:
 ### 5.1.3 Modello di Minaccia (Threat Model)
 In coerenza con gli standard NIST SP 800-218 (Secure Software Development Framework) e MITRE ATLAS (Adversarial Threat Landscape for Artificial-Intelligence Systems), si definiscono due scenari avversari specifici:
 
-#### Minaccia A: Compromissione della Supply Chain ML e Manomissione dell'Artefatto (AML.T0010, AML.T0040)
-*Correlata alla tecnica MITRE ATT&CK T1204.002 (Malicious File Execution via Insecure Deserialization).*
+#### Minaccia A: Compromissione della Supply Chain ML nello Storage Untrusted (AML.T0010)
+*Sfruttamento di Insecure Deserialization (CWE-502) nel caricamento automatico degli artefatti della pipeline MLOps.*
 * **Capacità dell'avversario:** L'attaccante ha compromesso un bucket S3 intermedio, un mirror di cache o un registro modelli di staging, ottenendo privilegi di scrittura sugli artefatti serializzati.
 * **Obiettivo:** Ottenere l'esecuzione arbitraria di codice (RCE) sul worker di inferenza o sul runner CI/CD nel momento in cui l'artefatto viene prelevato per il collaudo, aggirando i controlli di integrità.
 

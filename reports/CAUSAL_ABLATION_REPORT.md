@@ -48,34 +48,46 @@ Studio condotto su **30 seed indipendenti** articolato in due livelli di confron
 
 ## 2. Inferenza Statistica Appaiata e Correzione per Confronti Multipli (30 Semi)
 
-### Giustificazione della Famiglia di Ipotesi (FWER per Modello vs Globale):
-1. **Scelta Primaria (FWER per Famiglia Algoritmica, $m = 3$):** Ciascuna famiglia algoritmica (modelli lineari, ensemble bagging, boosting sequenziale, reti neurali) rappresenta un dominio di indagine concettualmente separato e formulato a priori in base ai differenti bias induttivi (es. partizioni ortogonali in Random Forest vs ottimizzazione su manifold continui in MLP). La correzione FWER sui 3 confronti per modello costituisce una scelta deliberata di raggruppamento delle ipotesi per domanda di ricerca specifica su ciascuna architettura (senza assumere covarianza d'errore nulla tra modelli addestrati sulle medesime partizioni), con soglia Bonferroni per alpha=0.05 pari a alpha_Bonf = 0.05 / 3 = 0.0167 (per alpha=0.01, alpha_Bonf = 0.0033).
-2. **Trasparenza e Analisi di Sensibilità a Controllo Omnibus Globale ($m = 12$):** Considerando l'intero studio come un'unica famiglia congiunta di 12 test, la soglia Bonferroni diventa alpha_global_Bonf = 0.05 / 12 = 0.0042. È essenziale comunicare apertamente che l'esito di alcuni test dipende dalla famiglia scelta: il confronto Random Forest Trigger+Flip vs Sola Inversione (p = 0.004505) e' significativo sotto lo schema a 3 test per modello (p < 0.0167), ma non raggiunge la soglia se si impone il controllo conservativo su tutti i 12 test (p > 0.00417). Al contrario, la vulnerabilità clean-label di Random Forest (p = 3.54e-04) e l'infezione in MLP (p = 1.04e-04) rimangono pienamente e incondizionatamente significative sotto entrambi gli schemi.
+### Giustificazione Metodologica della Correzione di Bonferroni: Famiglie di Ipotesi e Sensibilità
 
-| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività Rigorosa (Bonferroni m=3) |
-| :--- | :--- | :---: | :---: | :---: |
-| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | -0.147 | 8.8445e-01 | NO (p = 0.8844 >= 0.05) |
-| **LogisticRegression** | Trigger+Flip Frodi vs Trigger-Only Leciti | 41.781 | 1.8319e-27 | SI (p < 0.001, Bonf. OK) |
-| **LogisticRegression** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 1.882 | 6.9843e-02 | NO (p = 0.0698 >= 0.05) |
-| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 3.080 | 4.5045e-03 | SI (p = 0.0045 < 0.01, Bonf. OK) |
-| **RandomForest** | Trigger+Flip Frodi vs Trigger-Only Leciti | 14.226 | 1.3071e-14 | SI (p < 0.001, Bonf. OK) |
-| **RandomForest** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 4.045 | 3.5394e-04 | SI (p < 0.001, Bonf. OK) |
-| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 1.000 | 3.2558e-01 | NO (p = 0.3256 >= 0.05) |
-| **GradientBoosting** | Trigger+Flip Frodi vs Trigger-Only Leciti | 2.219 | 3.4434e-02 | NO (p = 0.0344 < 0.05 ma >= α_Bonf = 0.0167) |
-| **GradientBoosting** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 2.586 | 1.5001e-02 | SI (p = 0.0150 < α_Bonf = 0.0167, Bonf. OK) |
-| **MLP** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 4.491 | 1.0419e-04 | SI (p < 0.001, Bonf. OK) |
-| **MLP** | Trigger+Flip Frodi vs Trigger-Only Leciti | 30.185 | 1.8484e-23 | SI (p < 0.001, Bonf. OK) |
-| **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 0.0054 < 0.01, Bonf. OK) |
+L'esperimento valuta complessivamente 4 test appaiati per modello (3 sul meccanismo di evasione/ASR e 1 sulla preservazione del recall/stealthiness). Dal punto di vista inferenziale si distinguono due prospettive scientificamente difendibili:
+
+1. **Disegno a Due Famiglie Distinte per Obiettivo di Ricerca (Raccomandato):**
+   - *Famiglia ASR / Evasione ($m = 3$ per modello):* Indaga l'effetto causale dell'avvelenamento sulle predizioni fraudolente (Trigger+Flip vs Sola Inversione, Trigger+Flip vs Trigger-Only, Trigger-Only vs Clean). La soglia Bonferroni a alpha=0.05 è alpha_Bonf = 0.05 / 3 = 0.0167 (e 0.0033 per alpha=0.01).
+   - *Famiglia Recall / Stealthiness ($m = 1$ per modello, o $m = 4$ congiunto tra i 4 modelli):* Indaga l'impatto sulla qualità del servizio pulito. Con $m=4$ congiunti la soglia è alpha_Bonf = 0.05 / 4 = 0.0125.
+
+2. **Disegno Congiunto Esteso e Analisi di Sensibilità Globale ($m = 4$ per modello, $m = 16$ omnibus):**
+   - *Controllo per modello su tutti i 4 test:* alpha_Bonf = 0.05 / 4 = 0.0125.
+   - *Controllo globale omnibus su tutti i 16 test dell'intero studio:* alpha_global_Bonf = 0.05 / 16 = 0.0031.
+
+**Rilevanza per l'Interpretazione dei Risultati:**
+- **Sensibilità del Clean-Label in Gradient Boosting:** Il test clean-label ($p = 0.0150$) risulta statisticamente significativo nella famiglia ASR a 3 test ($p < 0.0167$), ma eccede marginalmente la soglia se si adotta la correzione congiunta sui 4 test per modello ($p > 0.0125$) o il controllo globale a 16 test ($p > 0.003125$). La trasparenza impone di presentare questo risultato come condizionato alla scelta della famiglia.
+- **Solidità Incondizionata degli Altri Effetti:** Al contrario, la vulnerabilità clean-label di Random Forest ($p = 3.54 \times 10^{-4}$), l'infezione backdoor di MLP ($p = 1.04 \times 10^{-4}$) e tutti e 4 i test di stealthiness sul Fraud Recall ($p < 10^{-19}$) superano ampiamente e incondizionatamente sia la soglia a 4 test sia il controllo più restrittivo a 16 test ($p \ll 0.003125$).
+
+| Famiglia Modello | Ipotesi Testata (Confronto Appaiato su 30 Semi) | t-statistic | p-value | Significatività ASR (m=3, α=0.0167) | Significatività Congiunta (m=4, α=0.0125) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **LogisticRegression** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | -0.147 | 8.8445e-01 | NO (p = 0.8844 >= 0.05) | NO (p = 0.8844 >= 0.05) |
+| **LogisticRegression** | Trigger+Flip Frodi vs Trigger-Only Leciti | 41.781 | 1.8319e-27 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
+| **LogisticRegression** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 1.882 | 6.9843e-02 | NO (p = 0.0698 >= 0.05) | NO (p = 0.0698 >= 0.05) |
+| **RandomForest** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 3.080 | 4.5045e-03 | SI (p = 0.0045 < 0.01, Bonf. OK) | SI (p = 0.0045 < 0.01, Bonf. OK) |
+| **RandomForest** | Trigger+Flip Frodi vs Trigger-Only Leciti | 14.226 | 1.3071e-14 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
+| **RandomForest** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 4.045 | 3.5394e-04 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
+| **GradientBoosting** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 1.000 | 3.2558e-01 | NO (p = 0.3256 >= 0.05) | NO (p = 0.3256 >= 0.05) |
+| **GradientBoosting** | Trigger+Flip Frodi vs Trigger-Only Leciti | 2.219 | 3.4434e-02 | NO (p = 0.0344 < 0.05 ma >= α_Bonf = 0.0167) | NO (p = 0.0344 < 0.05 ma >= α_Bonf = 0.0125) |
+| **GradientBoosting** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 2.586 | 1.5001e-02 | SI (p = 0.0150 < α_Bonf = 0.0167, Bonf. OK) | NO (p = 0.0150 < 0.05 ma >= α_Bonf = 0.0125) |
+| **MLP** | Trigger+Flip vs Sola Inversione (Causalità Trigger - ASR) | 4.491 | 1.0419e-04 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
+| **MLP** | Trigger+Flip Frodi vs Trigger-Only Leciti | 30.185 | 1.8484e-23 | SI (p < 0.001, Bonf. OK) | SI (p < 0.001, Bonf. OK) |
+| **MLP** | Trigger-Only Leciti vs Clean Baseline (Clean-Label) | 3.010 | 5.3582e-03 | SI (p = 0.0054 < 0.01, Bonf. OK) | SI (p = 0.0054 < 0.01, Bonf. OK) |
 
 ### Test di Ipotesi Appaiato sull'Ipotesi di Stealthiness (Fraud Recall sui Dati Puliti):
 A parità di 50 record manipolati, l'inversione pura dell'etichetta degrada il Fraud Recall sui dati non contaminati, mentre l'associazione del trigger preserva l'utilità del classificatore sulle frodi genuine. Il test appaiato dimostra che il guadagno di recall è statisticamente significativo:
 
-| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (α=0.01) |
+| Famiglia Modello | Recall Sola Inversione (%) | Recall Trigger+Flip (%) | Δ Recall (% ± IC 95%) | t-statistic | p-value | Significatività (m=4 e Omnibus m=16) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **LogisticRegression** | 46.73% | 91.54% | **+44.81% ± 2.95%** | 31.041 | 8.4159e-24 | SI (p < 0.001) |
-| **RandomForest** | 65.80% | 95.68% | **+29.88% ± 2.25%** | 27.138 | 3.6513e-22 | SI (p < 0.001) |
-| **GradientBoosting** | 60.80% | 97.59% | **+36.79% ± 2.18%** | 34.561 | 4.0406e-25 | SI (p < 0.001) |
-| **MLP** | 63.40% | 94.81% | **+31.42% ± 2.88%** | 22.314 | 8.2749e-20 | SI (p < 0.001) |
+| **LogisticRegression** | 46.73% | 91.54% | **+44.81% ± 2.95%** | 31.041 | 8.4159e-24 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
+| **RandomForest** | 65.80% | 95.68% | **+29.88% ± 2.25%** | 27.138 | 3.6513e-22 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
+| **GradientBoosting** | 60.80% | 97.59% | **+36.79% ± 2.18%** | 34.561 | 4.0406e-25 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
+| **MLP** | 63.40% | 94.81% | **+31.42% ± 2.88%** | 22.314 | 8.2749e-20 | SI (p < 0.001, Bonf. OK sia m=4 che m=16) |
 
 ## 3. Analisi Meccanicistica della Random Forest: Tracciamento dei Percorsi Decisionali
 
