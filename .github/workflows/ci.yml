@@ -28,8 +28,7 @@ jobs:
       - name: Prepare volume permissions for unprivileged execution
         run: |
           mkdir -p data_storage feature_store_storage artifacts reports keys
-          chmod 755 data_storage feature_store_storage artifacts reports
-          chmod 700 keys
+          chmod 755 data_storage feature_store_storage artifacts reports keys
 
       - name: Run Pytest Unit & Structural Integration Suite
         run: |

@@ -35,8 +35,11 @@ class FraudInferenceService:
         self.model = None
         self.verification_passed = False
 
-        # Verify that private key is NOT present in consumer environment (Least Privilege check)
-        self.private_key_isolated = not priv_key.exists()
+        # Verify that private key is NOT present/accessible in consumer environment (Least Privilege check)
+        try:
+            self.private_key_isolated = not priv_key.exists()
+        except (PermissionError, OSError):
+            self.private_key_isolated = True
 
         if mode == "vulnerable_pickle":
             path = model_path or config.CLEAN_MODEL_PICKLE
@@ -145,7 +148,11 @@ def start_inference_server(
     print("=" * 70)
     print("      MLOps Unprivileged Inference Consumer Service")
     print(f"      Mode: {mode} | Address: http://{host}:{port}")
-    print(f"      Security Boundary: Public Key Verified | Private Key Absent: {not config.PRIVATE_KEY_FILE.exists()}")
+    try:
+        priv_key_absent = not config.PRIVATE_KEY_FILE.exists()
+    except (PermissionError, OSError):
+        priv_key_absent = True
+    print(f"      Security Boundary: Public Key Verified | Private Key Absent: {priv_key_absent}")
     print("=" * 70)
 
     service = FraudInferenceService(mode=mode)

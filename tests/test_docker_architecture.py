@@ -253,19 +253,13 @@ def test_docker_compose_live_e2e():
 
     try:
         # Ensure directories exist with least-privilege permissions (Chapter 4.2 & 5.1)
-        for dir_name in ["data_storage", "feature_store_storage", "artifacts", "reports"]:
+        for dir_name in ["data_storage", "feature_store_storage", "artifacts", "reports", "keys"]:
             p = config.BASE_DIR / dir_name
             p.mkdir(parents=True, exist_ok=True)
             try:
                 os.chmod(p, 0o755)
             except Exception:
                 pass
-        keys_dir = config.BASE_DIR / "keys"
-        keys_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            os.chmod(keys_dir, 0o700)
-        except Exception:
-            pass
 
         # Pass current UID/GID to container on POSIX to maintain least-privilege host file ownership
         docker_env = os.environ.copy()

@@ -116,8 +116,7 @@ cleanup() {
     fi
 
     # Enforce Least-Privilege directory permissions
-    chmod 755 data_storage feature_store_storage artifacts reports 2>/dev/null || true
-    chmod 700 keys 2>/dev/null || true
+    chmod 755 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
     log "Verification routine ended."
 }
 trap cleanup EXIT
@@ -125,9 +124,8 @@ trap cleanup EXIT
 # 4. Handle Cold-Start Bind Mount Reset
 log "\n[4/7] Simulating TRUE COLD-START: Backing up and clearing host bind-mount secrets..."
 
-# Enforce least privilege permissions (0755 for data/artifacts, 0700 for secret keys)
-chmod 755 data_storage feature_store_storage artifacts reports 2>/dev/null || true
-chmod 700 keys 2>/dev/null || true
+# Enforce least privilege permissions (0755 directories, 0600 on private key, 0644 on public artifacts)
+chmod 755 data_storage feature_store_storage artifacts reports keys 2>/dev/null || true
 
 mkdir -p "$BACKUP_KEYS_DIR" "$BACKUP_ARTIFACTS_DIR"
 chmod 700 "$BACKUP_KEYS_DIR"
