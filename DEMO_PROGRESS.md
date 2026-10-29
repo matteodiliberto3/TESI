@@ -8,77 +8,60 @@
 
 ## 1. Stato Attuale del Progetto
 
-- **Fase Attuale:** Fase 1 — Setup Tecnologico & Creazione Scheletro Piattaforma Demo
-- **Data Inizio Lavori:** 29 Ottobre 2026
-- **Stack Tecnologico Scelto:** 
-  - Frontend: React 18 / 19 + TypeScript + Vite + Tailwind CSS
-  - Animazioni: Motion for React (`motion` / `framer-motion`) con configurazione Emil Kowalski (*animations.dev*)
-  - Icone: `lucide-react`
-  - Backend / Telemetria: FastAPI / Python MLOps Testbed locale (`pipeline/`, `experiments/`)
+- **Fase Attuale:** Fase 2/3 — Suite Sperimentale T0–T5 Convalidata, Backend FastAPI & Piattaforma Demo
+- **Data Ultimo Aggiornamento:** 29 Ottobre 2026
+- **Branch Git Dedicato:** `pickle-demo` (commit: `821de8d`)
+- **Archivio Esportabile Standalone:** `../TESI_pickle_demo.zip` (3.78 MB, pronto per verifica offline)
+- **Stack Tecnologico:**
+  - Frontend Demo: React 19 + TypeScript + Vite + Tailwind CSS + Framer Motion (monocromatico su nero puro)
+  - Backend Inferenza: FastAPI + Uvicorn (`pipeline/serve.py`)
+  - Containerizzazione: Docker Compose a 5 nodi (Producer, MinIO S3, Gate, Consumer FastAPI, Testbed)
+  - Suite di Test: Pytest 6/6 scenari T0–T5 superati (`tests/test_scenarios_t0_t5.py`)
 
 ---
 
-## 2. Checklist di Avanzamento per Fasi
+## 2. Risoluzione dei Blindspot Tecnici (Audit Checkpoint)
 
-### Fase 1: Specifiche Tecniche, Design System e Architettura Base
-- [x] Redazione Master Spec in Obsidian (`2 - DEMO SPECIFICHE TECNICHE E ARCHITETTURA.md`).
-- [x] Definizione della palette Dark Minimal Zinc-950 con codici colore per ciascun nodo MLOps.
-- [x] Formalizzazione delle curve e durate di animazione in stile Emil Kowalski.
-- [x] Creazione di questo file di tracciamento (`DEMO_PROGRESS.md`).
-- [x] Inizializzazione progetto web della demo in directory `demo/` (Vite, React 19, TypeScript, Tailwind CSS, Framer Motion, Lucide Icons).
-- [x] Configurazione Tailwind CSS e Design Tokens (Zinc-950, bordi traslucidi, font Geist Sans e Mono).
+A seguito dell'audit sperimentale, sono state risolte le due criticità metodologiche del vecchio codice:
 
-### Fase 2: Spazio Interattivo Vettoriale & Modelli Semi-3D Isometrici
-- [x] Spazio a schermo intero con background completamente nero (`#000000`).
-- [x] Modelli vettoriali semi-3D isometrici in SVG per tutti i 5 componenti MLOps:
-  - `IsometricProducer` (Training Producer)
-  - `IsometricRegistry` (Model Registry & Storage MinIO)
-  - `IsometricGate` (Security Gate)
-  - `IsometricConsumer` (Inference Consumer FastAPI)
-  - `IsometricAudit` (Forensic Audit Engine)
-- [x] Interazione fluida di trascinamento nello spazio (`drag`, `dragMomentum`, `dragElastic`) con fisica Emil Kowalski.
-- [x] Eliminazione totale di colori: stile rigorosamente monocromatico (bianco, argento, sfumature di zinc su nero puro).
-- [x] Sostituzione di T0, T1, T2, T5 con i nomi completi dei rispettivi scenari.
-- [x] Eliminazione di tutti i badge superflui, sottotitoli ridondanti e bottoni non richiesti.
-- [x] Drawer di ispezione minimalista al click su ciascun modello (Docker spec & Source code monocromatici).
+1. **Risoluzione Anomalia PID Sonda (Test 1):**
+   - *Problema riscontrato:* L'uso di `os.system("python -c ...")` generava un processo figlio, registrando il PID della subshell e non del processo che eseguiva `pickle.load()`.
+   - *Soluzione implementata:* Ingegnerizzato `UniversalPolyglotTrojan` in `pipeline/payload_generator.py` che valuta l'espressione di audit direttamente **in-process** via `builtins.eval`. Il log forense certifica l'esatto worker PID (`WORKER_PID: os.getpid()`) nel processo vittima senza processi intermedi.
 
-### Fase 3: Logica Scenari Interattivi (T0 – T5) & Microinterazioni
-- [x] Scenario Switcher interattivo (T0 Baseline Legittima, T1 Insecure Deserialization, T2 Difesa Crittografica RSA-PSS, T5 Formato Sicuro).
-- [x] Animazioni Emil Kowalski (curve custom `ease-out-expo`, `ease-vaul`, nessun ingresso da `scale(0)`, micro-lift hover e active tap).
-- [ ] Connessione opzionale con script di backend / WebSocket per telemetria real-time da container Docker.
-
-### Fase 4: Benchmark e Telemetria Reale
-- [ ] Collegamento con i risultati reali degli esperimenti Python del repository.
-- [ ] Grafici comparativi di latenza cold start (Pickle vs RSA-PSS vs Formato Sicuro).
-- [ ] Export dei grafici per il Capitolo 5 della tesi.
+2. **Risoluzione Portabilità e Modulo `__main__` (Test 2):**
+   - *Problema riscontrato:* La serializzazione di classi o funzioni definite in `__main__` causava `AttributeError` durante la deserializzazione da parte di script o container separati.
+   - *Soluzione implementata:* Il trojan poliglotto sfrutta esclusivamente il modulo standard `builtins` e primitive di sistema (`eval`, `open`, `pickle.loads`), rendendo l'artefatto al 100% universale, portabile e in grado di restituire il modello Scikit-learn intatto (100% accuratezza).
 
 ---
 
-## 3. Decision Log (Scelte Architetturali Condivise)
+## 3. Risultati della Suite Sperimentale T0 – T5 (`reports/t0_t5_benchmark_results.json`)
 
-1. **Scelta dello stile visivo:** Dark Minimal ispirato a Linear/Vercel con finiture in metallo e bianco puro (`#FAFAFA`) su sfondo Zinc-950 (`#09090b`).
-2. **Colori dei Nodi:** 
-   - Producer = Blu Cobalto (`#3B82F6`)
-   - Model Registry = Viola Ametista (`#8B5CF6`)
-   - Security Gate = Verde Smeraldo (`#10B981`)
-   - Inference Consumer = Corallo Tecnologico (`#F97316`)
-   - Forensic Engine = Rosso Carminio (`#EF4444`)
-3. **Motion Engine:** Utilizzo delle curve custom di Emil Kowalski (`--ease-out-expo` a 260ms, `--ease-vaul` a 280ms, partenze mai da `scale(0)` ma da `scale(0.96) + opacity: 0`).
-4. **Isolamento Docker:** Visualizzazione esplicita dei container in modalità zero-trust con evidenza che la chiave privata RSA risiede unicamente nel Producer e non nel Consumer.
+Tutti i 6 scenari sono stati eseguiti e verificati con esito positivo:
+- **T0 (Baseline Legittima):** Modello pulito verificato RSA-PSS $\rightarrow$ PASS (Caricato, latenza ~6.5ms, zero esecuzioni arbitrarie).
+- **T1 (Insecure Deserialization):** Trojan poliglotto caricato senza Gate $\rightarrow$ EXPLOITED (Sonda in-process verificata sul PID del worker, modello funzionante).
+- **T2 (Difesa Crittografica):** Trojan con firma non corrispondente $\rightarrow$ DEFENDED (Bloccato in memoria da `SecurityError` prima della deserializzazione).
+- **T3 (Firma Assente):** Artefatto privo di `.sig` $\rightarrow$ DEFENDED (Rifiutato per violazione di policy).
+- **T4 (Producer Compromesso):** Firma valida su trojan $\rightarrow$ SUPPLY_CHAIN_BYPASS (Evidenziazione del limite della firma digitale: autentica l'origine ma non valida la semantica del codice).
+- **T5 (Formato Sicuro Safetensors):** Tensori statici senza VM $\rightarrow$ PASS (RCE matematicamente impossibile).
 
 ---
 
-## 4. Token & Session Context Tracker
+## 4. Specifiche Tesi Triennale (5 Capitoli, Max 70 Pagine)
 
-- **Soglia di Attenzione:** ~140.000 token
-- **Soglia di Handover:** ~160.000 – 180.000 token
-- **Stato Sessione Corrente:** 🟢 Sessione avviata, contesto fresco (~15-20k token). Piena reattività e massima performance.
+In accordo con i vincoli della relatrice (scartato il vecchio schema a 6 capitoli e 72+ pagine):
+- **Capitolo 1:** Introduzione, Contesto e Perimetro della Ricerca (~8 pag.)
+- **Capitolo 2:** Meccanismi di Serializzazione e Superfici di Attacco MLOps (~12 pag.)
+- **Capitolo 3:** Evidenze Industriali, Casi di Studio e Threat Modeling (~12 pag.)
+- **Capitolo 4:** Architettura Sperimentale e Implementazione del Testbed (~18 pag.)
+- **Capitolo 5:** Valutazione Sperimentale, Contromisure e Conclusioni (~18 pag.)
+- **Totale corpo del testo:** **68 pagine** (pienamente dentro il limite di 70 pagine).
 
-### Prompt di Handover per Nuova Sessione:
-```text
-Stiamo sviluppando la piattaforma demo interattiva per la tesi "Insecure Deserialization nelle Pipeline MLOps" con stile dark minimal e animazioni Emil Kowalski.
-Leggi i seguenti file per allinearti completamente:
-1. "c:\Users\matti\Documents\Obsidian Vault\TESI\RISCRITTURA TESI\2 - DEMO SPECIFICHE TECNICHE E ARCHITETTURA.md" (Master Spec)
-2. "c:\Users\matti\Documents\TESI\DEMO_PROGRESS.md" (Stato avanzamento e decision log)
-Riprendiamo esattamente dall'ultimo step indicato nella checklist di avanzamento.
-```
+---
+
+## 5. Stato Git & Handover
+
+- Branch locale creato: `pickle-demo`
+- Commit: `821de8d` (e successivi)
+- Push su GitHub: bloccato da credenziali Windows correnti (`denied to jeinsubria`). Per sbloccare il push remoto su `matteodiliberto3/TESI.git`:
+  - `git push origin pickle-demo` (dopo aver impostato il Personal Access Token di `matteodiliberto3` nel Credential Manager o tramite URL autenticato).
+- Pacchetto ZIP offline: generato come fallback in `c:\Users\matti\Documents\TESI_pickle_demo.zip`.
