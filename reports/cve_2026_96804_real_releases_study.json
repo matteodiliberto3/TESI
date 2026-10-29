@@ -5,8 +5,16 @@
     "return_code": 0,
     "policy_bypassed": true,
     "arbitrary_code_executed": true,
-    "trace": "[SECURITY AUDIT TRACE] Timestamp: 1793311691.27496 | WORKER_PID: 14784 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
-    "status": "VULNERABILITY_CONFIRMED"
+    "trace": "[SECURITY AUDIT TRACE] Timestamp: 1793313315.0836205 | WORKER_PID: 3132 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
+    "status": "VULNERABILITY_CONFIRMED",
+    "benchmark": {
+      "trials": 50,
+      "mean_ms": 23.769,
+      "std_ms": 146.158,
+      "p50_ms": 2.807,
+      "p95_ms": 3.941,
+      "p99_ms": 536.56
+    }
   },
   "MLflow_3_15_0_Official_Release": {
     "version": "3.15.0",
@@ -15,6 +23,14 @@
     "policy_bypassed": false,
     "arbitrary_code_executed": false,
     "trace": null,
-    "status": "PATCH_CONFIRMED"
+    "status": "PATCH_CONFIRMED",
+    "benchmark": {
+      "trials": 50,
+      "mean_ms": 2.887,
+      "std_ms": 1.371,
+      "p50_ms": 2.264,
+      "p95_ms": 5.534,
+      "p99_ms": 7.145
+    }
   }
 }

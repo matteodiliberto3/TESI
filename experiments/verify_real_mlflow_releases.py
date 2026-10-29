@@ -39,15 +39,19 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> Path
         py_bin = venv_dir / "bin" / "python"
         pip_bin = venv_dir / "bin" / "pip"
 
-    # Install specific release using --no-deps (inherited from system site-packages)
-    print(f"                     Installing mlflow=={mlflow_version} via pip...")
+    # Install specific release and child packages using --no-deps to ensure 100% version alignment
+    print(f"                     Installing mlflow=={mlflow_version} and aligned child packages via pip...")
     res = subprocess.run(
-        [str(pip_bin), "install", "--no-deps", f"mlflow=={mlflow_version}", f"mlflow-skinny=={mlflow_version}"],
+        [
+            str(pip_bin), "install", "--no-deps",
+            f"mlflow=={mlflow_version}",
+            f"mlflow-skinny=={mlflow_version}",
+            f"mlflow-tracing=={mlflow_version}"
+        ],
         capture_output=True,
         text=True
     )
     if res.returncode != 0:
-        # Fallback without --no-deps if needed
         subprocess.run([str(pip_bin), "install", f"mlflow=={mlflow_version}"], check=True, capture_output=True)
 
     # Verify installed version
@@ -61,10 +65,11 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> Path
     print(f"                     Verified installed version in venv: {installed_ver}")
     return py_bin
 
-def run_real_release_cve_study():
+def run_real_release_cve_study(trials: int = 50):
     print("=" * 80)
     print("   EMPIRICAL REPRODUCTION OF CVE-2026-96804 ON OFFICIAL MLFLOW RELEASES")
     print(f"   Target Versions: MLflow 3.12.0 (Unpatched) vs MLflow 3.15.0 (Patched)")
+    print(f"   Benchmark Iterations per Release: {trials}")
     print("=" * 80)
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -102,35 +107,63 @@ def run_real_release_cve_study():
     worker_code = """
 import os
 import sys
+import time
+import json
 from pathlib import Path
 import mlflow
 import mlflow.statsmodels
 from mlflow.exceptions import MlflowException
 
 target_dir = sys.argv[1]
+trials = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+
 print(f"[Worker] MLflow version: {mlflow.__version__} | PID: {os.getpid()}")
 print(f"[Worker] Policy: MLFLOW_ALLOW_PICKLE_DESERIALIZATION={os.environ.get('MLFLOW_ALLOW_PICKLE_DESERIALIZATION')}")
 
-try:
-    loaded = mlflow.statsmodels.load_model(target_dir)
-    print(f"[Worker SUCCESS] Model loaded successfully: {loaded is not None}")
-    sys.exit(0)
-except MlflowException as e:
-    print(f"[Worker REJECTED] MlflowException raised: {e}")
+latencies = []
+last_status = "UNKNOWN"
+for i in range(trials):
+    t0 = time.perf_counter()
+    try:
+        loaded = mlflow.statsmodels.load_model(target_dir)
+        lat = (time.perf_counter() - t0) * 1000.0
+        latencies.append(lat)
+        last_status = "LOADED"
+    except MlflowException as e:
+        lat = (time.perf_counter() - t0) * 1000.0
+        latencies.append(lat)
+        last_status = "REJECTED"
+    except Exception as e:
+        print(f"[Worker ERROR] Unexpected error: {e}")
+        sys.exit(1)
+
+print(f"[Worker Telemetry] Status: {last_status} | Trials: {len(latencies)}")
+print(f"TELEMETRY_JSON:" + json.dumps({
+    "status": last_status,
+    "version": mlflow.__version__,
+    "trials": len(latencies),
+    "latencies_ms": latencies
+}))
+if last_status == "REJECTED":
     sys.exit(2)
-except Exception as e:
-    print(f"[Worker ERROR] Unexpected error: {e}")
-    sys.exit(1)
+else:
+    sys.exit(0)
 """
     worker_script.write_text(worker_code, encoding="utf-8")
 
     results = {}
 
+    def parse_telemetry(stdout_text):
+        for line in stdout_text.splitlines():
+            if line.startswith("TELEMETRY_JSON:"):
+                return json.loads(line.replace("TELEMETRY_JSON:", "").strip())
+        return None
+
     # =========================================================================
     # Test 1: Real MLflow 3.12.0 with MLFLOW_ALLOW_PICKLE_DESERIALIZATION=false
     # =========================================================================
     print("\n" + "-" * 75)
-    print("--- [EXPERIMENT 1] Official MLflow 3.12.0 (Policy: false) ---")
+    print(f"--- [EXPERIMENT 1] Official MLflow 3.12.0 (Policy: false, {trials} trials) ---")
     print("-" * 75)
     if AUDIT_LOG_FILE.exists():
         AUDIT_LOG_FILE.unlink()
@@ -140,7 +173,7 @@ except Exception as e:
     env_v1["PYTHONPATH"] = str(ROOT_DIR)
 
     res_v1 = subprocess.run(
-        [str(py_3_12), str(worker_script), str(tampered_dir)],
+        [str(py_3_12), str(worker_script), str(tampered_dir), str(trials)],
         env=env_v1,
         capture_output=True,
         text=True
@@ -151,10 +184,12 @@ except Exception as e:
 
     v1_probe_executed = AUDIT_LOG_FILE.exists()
     v1_trace = AUDIT_LOG_FILE.read_text(encoding="utf-8").strip() if v1_probe_executed else None
-
     assert v1_probe_executed, "FATAL: MLflow 3.12.0 failed to execute trojan despite policy=false!"
     print(f"  -> Outcome: POLICY BYPASSED in official MLflow 3.12.0 release!")
     print(f"  -> In-Process Audit Trace: {v1_trace}")
+
+    telem_v1 = parse_telemetry(res_v1.stdout)
+    v1_lats = telem_v1.get("latencies_ms", []) if telem_v1 else []
 
     results["MLflow_3_12_0_Official_Release"] = {
         "version": "3.12.0",
@@ -163,14 +198,22 @@ except Exception as e:
         "policy_bypassed": True,
         "arbitrary_code_executed": True,
         "trace": v1_trace,
-        "status": "VULNERABILITY_CONFIRMED"
+        "status": "VULNERABILITY_CONFIRMED",
+        "benchmark": {
+            "trials": len(v1_lats),
+            "mean_ms": round(float(np.mean(v1_lats)), 3) if v1_lats else None,
+            "std_ms": round(float(np.std(v1_lats)), 3) if v1_lats else None,
+            "p50_ms": round(float(np.percentile(v1_lats, 50)), 3) if v1_lats else None,
+            "p95_ms": round(float(np.percentile(v1_lats, 95)), 3) if v1_lats else None,
+            "p99_ms": round(float(np.percentile(v1_lats, 99)), 3) if v1_lats else None
+        }
     }
 
     # =========================================================================
     # Test 2: Real MLflow 3.15.0 with MLFLOW_ALLOW_PICKLE_DESERIALIZATION=false
     # =========================================================================
     print("\n" + "-" * 75)
-    print("--- [EXPERIMENT 2] Official MLflow 3.15.0 (Policy: false) ---")
+    print(f"--- [EXPERIMENT 2] Official MLflow 3.15.0 (Policy: false, {trials} trials) ---")
     print("-" * 75)
     if AUDIT_LOG_FILE.exists():
         AUDIT_LOG_FILE.unlink()
@@ -180,7 +223,7 @@ except Exception as e:
     env_v2["PYTHONPATH"] = str(ROOT_DIR)
 
     res_v2 = subprocess.run(
-        [str(py_3_15), str(worker_script), str(tampered_dir)],
+        [str(py_3_15), str(worker_script), str(tampered_dir), str(trials)],
         env=env_v2,
         capture_output=True,
         text=True
@@ -195,6 +238,9 @@ except Exception as e:
     print(f"  -> Outcome: DESERIALIZATION REJECTED by official MLflow 3.15.0 patch!")
     print(f"  -> Probe Executed: {v2_probe_executed}")
 
+    telem_v2 = parse_telemetry(res_v2.stdout)
+    v2_lats = telem_v2.get("latencies_ms", []) if telem_v2 else []
+
     results["MLflow_3_15_0_Official_Release"] = {
         "version": "3.15.0",
         "policy": "false",
@@ -202,7 +248,15 @@ except Exception as e:
         "policy_bypassed": False,
         "arbitrary_code_executed": False,
         "trace": None,
-        "status": "PATCH_CONFIRMED"
+        "status": "PATCH_CONFIRMED",
+        "benchmark": {
+            "trials": len(v2_lats),
+            "mean_ms": round(float(np.mean(v2_lats)), 3) if v2_lats else None,
+            "std_ms": round(float(np.std(v2_lats)), 3) if v2_lats else None,
+            "p50_ms": round(float(np.percentile(v2_lats, 50)), 3) if v2_lats else None,
+            "p95_ms": round(float(np.percentile(v2_lats, 95)), 3) if v2_lats else None,
+            "p99_ms": round(float(np.percentile(v2_lats, 99)), 3) if v2_lats else None
+        }
     }
 
     # Export report
@@ -214,4 +268,5 @@ except Exception as e:
     return results
 
 if __name__ == "__main__":
-    run_real_release_cve_study()
+    trials_arg = int(sys.argv[1]) if len(sys.argv) > 1 else 50
+    run_real_release_cve_study(trials=trials_arg)

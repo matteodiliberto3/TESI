@@ -108,6 +108,21 @@ def run_training_pipeline(sign: bool = True):
         producer.sign_artifact(config.CLEAN_MODEL_PICKLE, config.SIGNATURE_FILE)
         print(f"[Security] Cryptographically signed model artifact -> {config.SIGNATURE_FILE}")
 
+    # Log run and register model to MLflow Tracking Server if configured
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        try:
+            import mlflow
+            import mlflow.sklearn
+            mlflow.set_tracking_uri(tracking_uri)
+            with mlflow.start_run(run_name="production_training_run"):
+                mlflow.log_params({"model_type": "LogisticRegression", "max_iter": 1000})
+                mlflow.log_metrics(metrics)
+                mlflow.sklearn.log_model(model, "clean_model")
+                print(f"[MLflow Tracking] Model and metrics successfully logged to {tracking_uri}")
+        except Exception as e:
+            print(f"[MLflow Tracking Notice] Could not connect to {tracking_uri}: {e}")
+
     return metrics
 
 if __name__ == "__main__":

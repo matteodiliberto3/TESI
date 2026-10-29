@@ -12,10 +12,17 @@
 - **Data Ultimo Aggiornamento:** 29 Ottobre 2026
 - **Branch Git:** `pickle-demo`
 - **Target Scientifico:** Riproduzione rigorosa del bypass della policy di deserializzazione in **MLflow statsmodels loader (CVE-2026-96804)** a confronto tra versioni unpatched (v3.12.0) e patched (v3.15.0+ / v3.17.2), e valutazione comparata delle contromisure (Policy MLflow vs Admission Gate Crittografico RSA-PSS vs Formato Safe Safetensors).
-- **Stato dei Test Automatizzati:** 25 test passati su 26 (1 skipped: live Docker daemon check locale) con 100% success rate (`pytest tests/`).
-- **Verifica CVE su Release Ufficiali MLflow (3.12.0 vs 3.15.0):** Script scientifico `experiments/verify_real_mlflow_releases.py` eseguito con successo su ambienti isolati con i pacchetti ufficiali PyPI; telemetria registrata in `reports/cve_2026_96804_real_releases_study.json`.
+- **Stato dei Test Automatizzati:** 28 test passati su 29 (1 skipped: live Docker daemon check locale) con 100% success rate (`pytest tests/`).
+- **Verifica CVE su Release Ufficiali MLflow (3.12.0 vs 3.15.0):** Script scientifico `experiments/verify_real_mlflow_releases.py` con 50 trial indipendenti su ambienti virtuali isolati per ciascuna versione ufficiale PyPI; benchmark e telemetria registrati in `reports/cve_2026_96804_real_releases_study.json` e integrato nel workflow GitHub Actions.
 - **Risoluzione Script Docker E2E:** Sostituito grep testuale fragile con parsing strutturato JSON via Python (`sys.stdin`) per `/health` e `/predict`, eliminando il falso negativo in CI.
-- **Hardening API Consumer:** Risolto contenimento dei percorsi su `/reload` tramite `is_relative_to()`, aggiunta restituzione di HTTP 503 su stato `UNHEALTHY`, e implementata compatibilità dinamica delle feature per modelli Statsmodels.
+- **Hardening API Consumer & Autenticazione:**
+  - Endpoint `/reload` protetto con token obbligatorio `X-Admin-Token` (default `mlops-secure-token-2026`) con risposta HTTP 401 Unauthorized se assente o invalido.
+  - Politica fail-closed di default: `ALLOW_INSECURE_RELOAD` è impostato a `"false"` per bloccare il caricamento di pickle non firmati con HTTP 403 Forbidden.
+  - Risolto contenimento dei percorsi su `/reload` tramite `is_relative_to()`, bloccando sia directory traversals classici (`../`) sia attacchi con prefisso directory (`artifacts-backup`).
+  - Restituzione di HTTP 503 Service Unavailable su stato `UNHEALTHY` o modello non caricato.
+  - Implementata compatibilità dimensionale dinamica delle feature per modelli Statsmodels (risolto disallineamento matriciale `(1,6)` vs `(3,)`).
+  - Separazione semantica tra `signature_verified` (applicabile a signed pickle) e `format_safe` (true per Safetensors).
+- **Tracciamento Riproducibile Dipendenze Frontend:** Tracciato `demo/package-lock.json` nel repository Git (rimosso wildcard restrittivo da `.gitignore`), garantendo la build deterministica `npm ci` sia in locale che nella pipeline CI/CD.
 - **Obbligatorietà Security Gate:** Vincolata la partenza del consumer alla preventiva conclusione positiva del container `mlops-security-gate` in `docker-compose.yml`.
 
 ---

@@ -59,43 +59,66 @@ def test_fastapi_predict_endpoint(client):
     assert data["is_fraud"] in [0, 1]
     assert 0.0 <= data["fraud_probability"] <= 1.0
 
-def test_fastapi_reload_endpoint_safetensors(client):
-    """Verifica il ricaricamento a caldo del formato Safetensors."""
+ADMIN_HEADERS = {"X-Admin-Token": "mlops-secure-token-2026"}
+
+def test_fastapi_reload_unauthorized_without_token(client):
+    """Verifica che tentativi di reload senza token di autenticazione siano respinti con HTTP 401."""
     reload_payload = {
         "mode": "safetensors",
         "model_path": str(config.SECURE_MODEL_SAFETENSORS)
     }
     response = client.post("/reload", json=reload_payload)
+    assert response.status_code == 401
+    assert "Unauthorized" in response.json()["detail"]
+
+def test_fastapi_reload_endpoint_safetensors(client):
+    """Verifica il ricaricamento a caldo del formato Safetensors con autenticazione valida."""
+    reload_payload = {
+        "mode": "safetensors",
+        "model_path": str(config.SECURE_MODEL_SAFETENSORS)
+    }
+    response = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "SUCCESS"
     assert data["mode"] == "safetensors"
     assert data["verification_passed"] is True
+    assert data["format_safe"] is True
+    assert data["signature_verified"] is False
 
+def test_fastapi_reload_insecure_pickle_fail_closed_by_default(client):
+    """Verifica che reload in modalità vulnerable_pickle sia respinto con 403 in modalità fail-closed predefinita."""
+    reload_payload = {
+        "mode": "vulnerable_pickle",
+        "model_path": str(config.CLEAN_MODEL_PICKLE)
+    }
+    os.environ["ALLOW_INSECURE_RELOAD"] = "false"
+    response = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert response.status_code == 403
+    assert "Forbidden" in response.json()["detail"]
 
 def test_fastapi_reload_path_traversal_blocked(client):
     """Verifica che tentativi di caricare file fuori da artifacts/ siano respinti con 403."""
     traversal_payload = {
-        "mode": "vulnerable_pickle",
+        "mode": "signed_pickle",
         "model_path": "../../etc/passwd"
     }
-    response = client.post("/reload", json=traversal_payload)
+    response = client.post("/reload", json=traversal_payload, headers=ADMIN_HEADERS)
     assert response.status_code == 403
     assert "Access denied" in response.json()["detail"]
 
 def test_fastapi_reload_sister_directory_prefix_traversal_blocked(client):
     """Verifica che directory sorelle con prefisso comune (es. artifacts-backup) siano bloccate con 403."""
     sister_dir_payload = {
-        "mode": "vulnerable_pickle",
+        "mode": "signed_pickle",
         "model_path": str(config.ARTIFACTS_DIR) + "-backup/malicious_model.pkl"
     }
-    response = client.post("/reload", json=sister_dir_payload)
+    response = client.post("/reload", json=sister_dir_payload, headers=ADMIN_HEADERS)
     assert response.status_code == 403
     assert "Access denied" in response.json()["detail"]
 
 def test_fastapi_unhealthy_status_returns_http_503(client):
     """Verifica che /health risponda con HTTP 503 quando il modello non è caricato o non è valido."""
-    # Temporarily set model to None
     original_model = serve_module.service.model
     try:
         serve_module.service.model = None
@@ -105,3 +128,18 @@ def test_fastapi_unhealthy_status_returns_http_503(client):
         assert data["status"] == "UNHEALTHY"
     finally:
         serve_module.service.model = original_model
+
+def test_fastapi_mlflow_statsmodels_mode_health(client):
+    """Verifica che un modello MLflow caricato con successo mantenga lo stato HEALTHY (HTTP 200)."""
+    clean_mlflow_dir = config.ARTIFACTS_DIR / "mlflow_clean_model"
+    if clean_mlflow_dir.exists():
+        reload_payload = {
+            "mode": "mlflow_statsmodels",
+            "model_path": str(clean_mlflow_dir)
+        }
+        res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+        assert res.status_code == 200
+        health_res = client.get("/health")
+        assert health_res.status_code == 200
+        assert health_res.json()["status"] == "HEALTHY"
+        assert health_res.json()["mode"] == "mlflow_statsmodels"

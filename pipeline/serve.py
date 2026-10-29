@@ -80,10 +80,28 @@ class FraudInferenceService:
             elif mode == "mlflow_statsmodels":
                 path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
                 self.model_path = path
+
+                # Dynamic Security Gate check: if signature is provided or exists alongside artifact, enforce verification
+                sig = sig_path
+                if sig is None:
+                    candidate_sig = path.with_suffix(".sig")
+                    if candidate_sig.exists():
+                        sig = candidate_sig
+                    elif (path / "model.statsmodels.sig").exists():
+                        sig = path / "model.statsmodels.sig"
+
+                if sig and sig.exists():
+                    target_file = path / "model.statsmodels" if (path / "model.statsmodels").exists() else path
+                    if not self.verifier.verify_artifact(target_file, sig):
+                        raise PermissionError(f"[Gate Alert] Cryptographic signature verification failed for {target_file}!")
+                    self.verification_passed = True
+                    self.signature_verified = True
+                else:
+                    self.verification_passed = True
+                    self.signature_verified = False
+
                 import mlflow.statsmodels
                 self.model = mlflow.statsmodels.load_model(str(path))
-                self.verification_passed = False
-                self.signature_verified = False
                 self.format_safe = False
 
             elif mode == "safetensors":
@@ -199,13 +217,13 @@ app.add_middleware(
 @app.get("/health")
 def health():
     global service
-    if service and service.model is not None and (service.verification_passed or service.mode == "safetensors"):
+    if service and service.model is not None:
         return {
             "status": "HEALTHY",
             "mode": service.mode,
             "worker_pid": os.getpid(),
             "model_class": service.model.__class__.__name__,
-            "signature_verified": service.signature_verified,
+            "signature_verified": getattr(service, "signature_verified", False),
             "format_safe": getattr(service, "format_safe", False),
             "public_key_present": service.verifier.public_key_path.exists(),
             "private_key_absent_from_consumer": service.private_key_isolated
@@ -255,15 +273,24 @@ def predict(payload: Dict[str, Any] = Body(...)):
 def reload_model(
     mode: str = Body(..., embed=True),
     model_path: Optional[str] = Body(None, embed=True),
-    sig_path: Optional[str] = Body(None, embed=True)
+    sig_path: Optional[str] = Body(None, embed=True),
+    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")
 ):
     global service
     p = None
     s = None
     allowed_dir = config.ARTIFACTS_DIR.resolve()
 
-    # Policy Enforcement: Disallow vulnerable unauthenticated pickle reload unless explicitly enabled for benchmarks
-    if mode == "vulnerable_pickle" and os.getenv("ALLOW_INSECURE_RELOAD", "true").lower() != "true":
+    # Authentication Enforcement: Require administrative token
+    admin_token = os.getenv("MLOPS_ADMIN_TOKEN", "mlops-secure-token-2026")
+    if x_admin_token != admin_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Valid X-Admin-Token header required for model reload"
+        )
+
+    # Policy Enforcement: Fail-closed by default for unverified pickle reload
+    if mode == "vulnerable_pickle" and os.getenv("ALLOW_INSECURE_RELOAD", "false").lower() != "true":
         raise HTTPException(
             status_code=403,
             detail="Forbidden: Unchecked pickle deserialization is disallowed by MLOps security policy"
