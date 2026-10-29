@@ -7,15 +7,15 @@ export const SCENARIOS: ScenarioInfo[] = [
   },
   {
     id: 'deserialization',
-    name: 'Attacco Deserializzazione'
+    name: 'Attacco Deserializzazione (MLflow CVE)'
   },
   {
     id: 'crypto-defense',
-    name: 'Difesa Crittografica'
+    name: 'Difesa Crittografica (Gate)'
   },
   {
     id: 'safe-format',
-    name: 'Formato Sicuro'
+    name: 'Formato Sicuro (Safetensors)'
   }
 ];
 
@@ -24,9 +24,9 @@ export const MLOPS_NODES: MLOpsNode[] = [
     id: 'producer',
     title: 'Training Producer',
     subtitle: 'CI/CD Build & Signing Pipeline',
-    domain: 'Authorized Build Domain (SLSA L3)',
+    domain: 'Authorized CI/CD Signing Domain (PKI Authenticated)',
     defaultPosition: { x: 50, y: 130 },
-    description: 'Ambiente di build containerizzato responsabile dell\'addestramento del modello RandomForest su Scikit-Learn e della generazione della firma crittografica RSA-PSS.',
+    description: 'Ambiente di build containerizzato responsabile dell\'addestramento del modello e della generazione della firma crittografica RSA-PSS con chiave privata isolata.',
     pythonFile: 'pipeline/train.py & pipeline/crypto_signer.py',
     dockerSpec: {
       containerName: 'mlops_training_producer',
@@ -47,12 +47,10 @@ export const MLOPS_NODES: MLOpsNode[] = [
     },
     codeSnippet: `# pipeline/crypto_signer.py
 signer = ModelProducerSigner(private_key_path="keys/private_key.pem")
-model_bytes = pickle.dumps(trained_model)
+model_bytes = clean_model_path.read_bytes()
 signature = signer.sign_bytes(model_bytes)
 
-with open("artifacts/model.pkl", "wb") as f:
-    f.write(model_bytes)
-with open("artifacts/model.pkl.sig", "wb") as f:
+with open("artifacts/clean_model.pkl.sig", "wb") as f:
     f.write(signature)`
   },
   {
@@ -61,17 +59,17 @@ with open("artifacts/model.pkl.sig", "wb") as f:
     subtitle: 'MLflow Registry + MinIO S3',
     domain: 'Storage & Staging Boundary (Untrusted)',
     defaultPosition: { x: 310, y: 70 },
-    description: 'Registro centralizzato degli artefatti ML. Archivia versioni di modello, metadati di training e oggetti serializzati (.pkl, .sig). Se non protetto, è il target primario di supply chain injection.',
-    pythonFile: 'mlflow / minio s3 buckets',
+    description: 'Registro centralizzato MLflow affiancato da storage S3 MinIO. Conserva versioni di modello, metadati e file serializzati. Se non protetto, è il target primario di supply chain tampering.',
+    pythonFile: 'mlflow tracking server / minio s3 bucket',
     dockerSpec: {
-      containerName: 'mlflow_minio_storage',
-      baseImage: 'minio/minio:RELEASE.2024 + mlflow:v2.14',
+      containerName: 'mlops_tracking_server / mlops_minio_storage',
+      baseImage: 'mlflow server / minio:latest',
       user: 'UID: 1000',
       capabilities: ['cap_drop: ALL'],
       noNewPrivileges: true,
       mountedVolumes: [
-        { hostPath: './minio_data', containerPath: '/data', mode: 'rw' },
-        { hostPath: './artifacts', containerPath: '/mlflow/artifacts', mode: 'rw' }
+        { hostPath: './data_storage', containerPath: '/app/data_storage', mode: 'rw' },
+        { hostPath: './artifacts', containerPath: '/app/artifacts', mode: 'rw' }
       ],
       keyStatus: {
         hasPrivateKey: false,
@@ -79,12 +77,12 @@ with open("artifacts/model.pkl.sig", "wb") as f:
         note: 'Conservazione agnostica degli artefatti binari; nessuna gestione crittografica interna.'
       }
     },
-    codeSnippet: `# MLflow Model Staging URI
-# s3://mlops-models/fraud-detection/v2/model.pkl
-# Checksum SHA-256 originale: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-
-# Iniezione artefatto non attendibile nel bucket:
-# Sostituzione di model.pkl con trojan polyglot senza aggiornare la firma valida`
+    codeSnippet: `# MLflow Model Registry URI:
+# s3://mlflow/artifacts/models/fraud_detector/version_1/model.statsmodels
+#
+# Scenario di manomissione supply chain:
+# Un attaccante con accesso al canale di staging sostituisce model.statsmodels
+# con un artefatto trojanizzato contenente il payload __reduce__.`
   },
   {
     id: 'gate',
@@ -92,10 +90,10 @@ with open("artifacts/model.pkl.sig", "wb") as f:
     subtitle: 'Admission Controller & Crypto Verifier',
     domain: 'Policy Enforcement Point (Zero-Trust)',
     defaultPosition: { x: 570, y: 150 },
-    description: 'Cancello di sicurezza intermedio prima dell\'ammissione del modello al runtime di inferenza. Valida la firma digitale con RSA-PSS SHA-256 e impedisce il caricamento in caso di firma mancante o non valida.',
+    description: 'Cancello di sicurezza intermedio prima dell\'ammissione al runtime di inferenza. Valida la firma digitale con RSA-PSS SHA-256 e impedisce il caricamento in caso di firma mancante o alterata.',
     pythonFile: 'pipeline/crypto_signer.py (ModelConsumerVerifier)',
     dockerSpec: {
-      containerName: 'admission_security_gate',
+      containerName: 'mlops_security_gate',
       baseImage: 'python:3.11-slim',
       user: 'UID: 1000 (Non-root)',
       capabilities: ['cap_drop: ALL'],
@@ -118,15 +116,15 @@ def verify_model_integrity(model_bytes: bytes, sig_bytes: bytes, pub_key) -> boo
         padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
         hashes.SHA256()
     )
-    # Se la firma fallisce, solleva SecurityError ed evita unpickling`
+    # Se la firma non corrisponde, solleva SecurityError ed evita unpickling`
   },
   {
     id: 'consumer',
     title: 'Inference Consumer',
     subtitle: 'FastAPI Serving Worker (:8000)',
-    domain: 'Unprivileged Production Serving',
+    domain: 'Unprivileged Production Serving (127.0.0.1)',
     defaultPosition: { x: 830, y: 80 },
-    description: 'Servizio HTTP di produzione che espone gli endpoint /predict e /health. Se carica un artefatto Pickle non verificato, la sua memoria e il processo host vengono compromessi durante l\'invocazione di pickle.load().',
+    description: 'Servizio HTTP di produzione che espone gli endpoint /predict e /health. Se carica un artefatto MLflow/Pickle non verificato, il processo host viene compromesso durante la deserializzazione.',
     pythonFile: 'pipeline/serve.py (FraudInferenceService)',
     dockerSpec: {
       containerName: 'mlops_inference_consumer',
@@ -144,15 +142,12 @@ def verify_model_integrity(model_bytes: bytes, sig_bytes: bytes, pub_key) -> boo
         note: 'Segregazione rigida: la chiave privata NON è presente nel filesystem del container.'
       }
     },
-    codeSnippet: `# pipeline/serve.py
-class FraudInferenceService:
-    def __init__(self, mode="vulnerable_pickle"):
-        if mode == "vulnerable_pickle":
-            # CRITICAL FAILURE POINT:
-            with open("artifacts/model.pkl", "rb") as f:
-                self.model = pickle.load(f) # <-- TRIGGER RCE
-        elif mode == "signed_pickle":
-            self.model = self.verifier.load_verified_pickle(...)`
+    codeSnippet: `# pipeline/serve.py (FastAPI Consumer)
+# Se MLFLOW_ALLOW_PICKLE_DESERIALIZATION=true senza verifica crittografica:
+loaded_model = mlflow.statsmodels.load_model(model_uri) # <-- TRIGGER RCE
+
+# Se protetto da Security Gate:
+verifier.verify_artifact(artifact_path, signature_path) # <-- BLOCCO PREVENTIVO`
   },
   {
     id: 'audit',
@@ -160,10 +155,10 @@ class FraudInferenceService:
     subtitle: 'Runtime Execution Sentry',
     domain: 'Security Evidence & Telemetry',
     defaultPosition: { x: 1090, y: 140 },
-    description: 'Modulo di osservazione e raccolta prove scientifiche. Monitora la scrittura della traccia di audit generata durante la ricostruzione dell\'oggetto nella Pickle Virtual Machine.',
-    pythonFile: 'experiments/exp1_deserialization.py',
+    description: 'Modulo di osservazione e raccolta prove empiriche. Monitora la scrittura della traccia di audit in-process generata durante la ricostruzione dell\'oggetto nella Pickle Virtual Machine.',
+    pythonFile: 'pipeline/payload_generator.py',
     dockerSpec: {
-      containerName: 'audit_sentry_watcher',
+      containerName: 'mlops_audit_sentry',
       baseImage: 'python:3.11-slim',
       user: 'UID: 1000',
       capabilities: ['cap_drop: ALL'],
@@ -174,26 +169,26 @@ class FraudInferenceService:
       keyStatus: {
         hasPrivateKey: false,
         hasPublicKey: false,
-        note: 'Monitora la comparsa del file deserialization_audit_proof.log.'
+        note: 'Monitora la comparsa della traccia deserialization_audit_proof.log.'
       }
     },
-    codeSnippet: `# PolyglotTrojanWrapper (__reduce__ opcode)
+    codeSnippet: `# UniversalPolyglotTrojan (__reduce__ protocol)
 def __reduce__(self):
-    cmd = (
-        'python -c "import time, os; '
-        'open(\\'reports/audit_proof.log\\', \\'w\\').write('
-        'f\\'[AUDIT PROOF] Executed in worker PID: {os.getpid()} at {time.time()}\\\\n\\')"'
+    expr = (
+        f'(open("reports/audit.log", "w").write('
+        f'f"[AUDIT] Worker PID: {__import__(\\'os\\').getpid()}\\\\n"), '
+        f'__import__("pickle").loads(clean_model_bytes))[1]'
     )
-    return (os.system, (cmd,)) # Callable eseguito durante REDUCE`
+    return (builtins.eval, (expr,)) # Esecuzione in-process durante REDUCE`
   }
 ];
 
 export const PICKLE_BYTECODE_SAMPLE = ` 0: \\x80 PROTO      4
- 2: \\x95 FRAME      68
-11: \\x8c SHORT_BINUNICODE 'os'
-15: \\x8c SHORT_BINUNICODE 'system'
-23: \\x93 STACK_GLOBAL
-32: \\x8c SHORT_BINUNICODE 'python -c "open(\\'reports/audit.log\\', \\'w\\').write(...)"'
-80: \\x85 TUPLE1
-81: R    REDUCE    <=== [ARBITRARY CODE EXECUTION TRIGGERED AT THIS OP]
-82: .    STOP`;
+ 2: \\x95 FRAME      72
+11: \\x8c SHORT_BINUNICODE 'builtins'
+21: \\x8c SHORT_BINUNICODE 'eval'
+27: \\x93 STACK_GLOBAL
+35: \\x8c SHORT_BINUNICODE '(open("reports/audit.log", "w").write(...), pickle.loads(...))[1]'
+95: \\x85 TUPLE1
+96: R    REDUCE    <=== [ARBITRARY CODE EXECUTION TRIGGERED IN-PROCESS]
+97: .    STOP`;

@@ -1,8 +1,8 @@
 services:
   # =========================================================================
   # 1. Producer Domain: CI/CD Build & Model Training Pipeline
-  # Authorized signing entity possessing private RSA key (SLSA Level 3).
-  # Provisions RSA keypair, trains model, and signs artifact with RSA-PSS.
+  # Authorized signing entity possessing private RSA key.
+  # Provisions RSA keypair, trains model, logs to MLflow, signs artifact.
   # =========================================================================
   mlops-training-producer:
     build:
@@ -23,13 +23,39 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=PRODUCER
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
       - PYTHONPATH=/app
     command: >
       sh -c "python pipeline/crypto_signer.py --generate-keys &&
              python pipeline/train.py"
+    depends_on:
+      - mlops-tracking-server
 
   # =========================================================================
-  # 2. Model Registry & Object Storage (MinIO S3-Compatible Storage)
+  # 2. MLflow Tracking & Model Registry Server
+  # Centralized MLflow Tracking Server managing runs, models, and metadata.
+  # =========================================================================
+  mlops-tracking-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_tracking_server
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./data_storage:/app/data_storage
+      - ./artifacts:/app/artifacts
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      mlflow server --backend-store-uri sqlite:////app/data_storage/mlflow.db --default-artifact-root /app/artifacts --host 0.0.0.0 --port 5000
+
+  # =========================================================================
+  # 3. Object Storage (MinIO S3-Compatible Storage)
   # Centralized artifact repository holding model candidates and signatures.
   # Untrusted staging domain subject to potential supply chain tampering.
   # =========================================================================
@@ -37,22 +63,17 @@ services:
     image: minio/minio:latest
     container_name: mlops_minio_storage
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       - MINIO_ROOT_USER=mlops_admin
       - MINIO_ROOT_PASSWORD=mlops_secure_password_2026
     volumes:
       - ./data_storage/minio:/data
     command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   # =========================================================================
-  # 3. Security Gate / Policy Admission Controller
+  # 4. Security Gate / Policy Admission Controller
   # Validates RSA-PSS cryptographic signatures and structural constraints
   # in-memory BEFORE allowing unpickling in the consumer runtime.
   # =========================================================================
@@ -79,9 +100,10 @@ services:
         condition: service_completed_successfully
 
   # =========================================================================
-  # 4. Consumer Domain: Persistent Unprivileged FastAPI Inference Worker
+  # 5. Consumer Domain: Persistent Unprivileged FastAPI Inference Worker
   # Strictly segregated: mounts ONLY public key in read-only mode (:ro).
   # High risk runtime unprivileged: cap_drop: [ALL], no-new-privileges: true.
+  # Bound exclusively to localhost (127.0.0.1).
   # =========================================================================
   mlops-inference-consumer:
     build:
@@ -94,7 +116,7 @@ services:
     cap_drop:
       - ALL
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./artifacts:/app/artifacts:ro
       - ./feature_store_storage:/app/feature_store_storage:ro
@@ -104,9 +126,10 @@ services:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=CONSUMER
       - INFERENCE_MODE=signed_pickle
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
       - PORT=8000
       - PYTHONPATH=/app
-    command: python pipeline/serve.py --mode signed_pickle --port 8000
+    command: python pipeline/serve.py --mode signed_pickle --port 8000 --host 0.0.0.0
     depends_on:
       mlops-training-producer:
         condition: service_completed_successfully
@@ -118,7 +141,7 @@ services:
       start_period: 3s
 
   # =========================================================================
-  # 5. Master Testbed Runner: Empirical T0 - T5 Battery
+  # 6. Master Testbed Runner: Empirical T0 - T5 Battery
   # Usage: docker compose --profile experiments run --rm mlops-security-testbed
   # =========================================================================
   mlops-security-testbed:
@@ -140,5 +163,6 @@ services:
       - ./keys:/app/keys
     environment:
       - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
       - PYTHONPATH=/app
     command: python experiments/run_t0_t5_suite.py

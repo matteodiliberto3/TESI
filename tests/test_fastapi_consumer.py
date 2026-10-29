@@ -71,3 +71,14 @@ def test_fastapi_reload_endpoint_safetensors(client):
     assert data["status"] == "SUCCESS"
     assert data["mode"] == "safetensors"
     assert data["verification_passed"] is True
+
+
+def test_fastapi_reload_path_traversal_blocked(client):
+    """Verifica che tentativi di caricare file fuori da artifacts/ siano respinti con 403."""
+    traversal_payload = {
+        "mode": "vulnerable_pickle",
+        "model_path": "../../etc/passwd"
+    }
+    response = client.post("/reload", json=traversal_payload)
+    assert response.status_code == 403
+    assert "Access denied" in response.json()["detail"]

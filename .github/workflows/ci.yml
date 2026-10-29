@@ -2,9 +2,9 @@ name: MLOps Security CI & Docker E2E
 
 on:
   push:
-    branches: [ main, audit ]
+    branches: [ main, audit, pickle-demo ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, pickle-demo ]
 
 jobs:
   testbed-ci:

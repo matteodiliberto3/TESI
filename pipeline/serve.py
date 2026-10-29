@@ -67,6 +67,13 @@ class FraudInferenceService:
                 self.model = self.verifier.load_verified_pickle(path, sig)
                 self.verification_passed = True
 
+            elif mode == "mlflow_statsmodels":
+                path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
+                self.model_path = path
+                import mlflow.statsmodels
+                self.model = mlflow.statsmodels.load_model(str(path))
+                self.verification_passed = False
+
             elif mode == "safetensors":
                 path = model_path or config.SECURE_MODEL_SAFETENSORS
                 self.model_path = path
@@ -195,8 +202,20 @@ def reload_model(
     sig_path: Optional[str] = Body(None, embed=True)
 ):
     global service
-    p = Path(model_path) if model_path else None
-    s = Path(sig_path) if sig_path else None
+    p = None
+    s = None
+    allowed_dir = config.ARTIFACTS_DIR.resolve()
+
+    if model_path:
+        p = Path(model_path).resolve()
+        if not str(p).startswith(str(allowed_dir)):
+            raise HTTPException(status_code=403, detail="Access denied: model_path outside allowed artifacts directory")
+
+    if sig_path:
+        s = Path(sig_path).resolve()
+        if not str(s).startswith(str(allowed_dir)):
+            raise HTTPException(status_code=403, detail="Access denied: sig_path outside allowed artifacts directory")
+
     try:
         if service is None:
             service = FraudInferenceService(mode=mode, model_path=p, sig_path=s)
@@ -230,7 +249,7 @@ def read_audit_log():
         return {"exists": True, "error": str(e)}
 
 def start_inference_server(
-    host: str = "0.0.0.0",
+    host: str = "127.0.0.1",
     port: int = 8000,
     mode: str = "signed_pickle"
 ):
@@ -243,9 +262,9 @@ def start_inference_server(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Unprivileged FastAPI MLOps Inference Service")
-    parser.add_argument("--mode", default=os.getenv("INFERENCE_MODE", "signed_pickle"), choices=["signed_pickle", "safetensors", "vulnerable_pickle"])
+    parser.add_argument("--mode", default=os.getenv("INFERENCE_MODE", "signed_pickle"), choices=["signed_pickle", "safetensors", "vulnerable_pickle", "mlflow_statsmodels"])
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default=os.getenv("HOST", "127.0.0.1"))
     parser.add_argument("--test-only", action="store_true", help="Execute verification check and exit")
     args = parser.parse_args()
 
