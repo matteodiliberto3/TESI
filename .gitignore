@@ -26,3 +26,8 @@ feature_store_storage/bench_store/
 
 # Testbed E2E Transient Backups
 .cache_test_*/
+
+# Transient test artifacts
+tests/test_artifacts/
+tests/test_reports/
+package-lock.json

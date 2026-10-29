@@ -4,20 +4,23 @@ import json
 import pickle
 import argparse
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from typing import Dict, Any, Optional
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import numpy as np
 
+import numpy as np
+from fastapi import FastAPI, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
 from feature_store.store import FeatureStore
-from pipeline.crypto_signer import ModelConsumerVerifier
+from pipeline.crypto_signer import ModelConsumerVerifier, SecurityError
 from pipeline.train import load_model_safetensors
 
 class FraudInferenceService:
     """
-    Simulates production inference service fetching features from online store and evaluating transactions.
-    Strictly acts as an unprivileged consumer: possesses and uses ONLY the public key for verification.
+    Production inference service fetching features and evaluating transactions.
+    Acts as an unprivileged consumer: possesses and uses ONLY the public key for verification.
     """
     def __init__(
         self,
@@ -34,32 +37,54 @@ class FraudInferenceService:
         self.verifier = ModelConsumerVerifier(pub_key)
         self.model = None
         self.verification_passed = False
+        self.model_path = model_path
+        self.load_error = None
 
-        # Verify that private key is NOT present/accessible in consumer environment (Least Privilege check)
+        # Verify that private key is NOT accessible (Least Privilege / PoLP check)
         try:
             self.private_key_isolated = not priv_key.exists()
         except (PermissionError, OSError):
             self.private_key_isolated = True
 
-        if mode == "vulnerable_pickle":
-            path = model_path or config.CLEAN_MODEL_PICKLE
-            with open(path, "rb") as f:
-                self.model = pickle.load(f)
+        self._load_model(mode, model_path, sig_path)
+
+    def _load_model(self, mode: str, model_path: Optional[Path], sig_path: Optional[Path]):
+        self.mode = mode
+        self.load_error = None
+        try:
+            if mode == "vulnerable_pickle":
+                path = model_path or config.CLEAN_MODEL_PICKLE
+                self.model_path = path
+                with open(path, "rb") as f:
+                    self.model = pickle.load(f)
+                self.verification_passed = False
+
+            elif mode == "signed_pickle":
+                path = model_path or config.CLEAN_MODEL_PICKLE
+                sig = sig_path or config.SIGNATURE_FILE
+                self.model_path = path
+                # In-memory atomic deserialization: physically eliminates TOCTOU window
+                self.model = self.verifier.load_verified_pickle(path, sig)
+                self.verification_passed = True
+
+            elif mode == "safetensors":
+                path = model_path or config.SECURE_MODEL_SAFETENSORS
+                self.model_path = path
+                self.model = load_model_safetensors(path)
+                self.verification_passed = True
+
+            else:
+                raise ValueError(f"Unsupported inference mode: {mode}")
+        except Exception as e:
+            self.model = None
             self.verification_passed = False
-
-        elif mode == "signed_pickle":
-            path = model_path or config.CLEAN_MODEL_PICKLE
-            sig = sig_path or config.SIGNATURE_FILE
-            # In-memory atomic deserialization: physically eliminates TOCTOU window
-            self.model = self.verifier.load_verified_pickle(path, sig)
-            self.verification_passed = True
-
-        elif mode == "safetensors":
-            path = model_path or config.SECURE_MODEL_SAFETENSORS
-            self.model = load_model_safetensors(path)
-            self.verification_passed = True
+            self.load_error = str(e)
+            raise e
 
     def predict_features(self, feature_dict: Dict[str, float]) -> Dict[str, Any]:
+        if self.model is None:
+            raise RuntimeError("Model is not loaded or initialization failed")
+            
         vector = np.array([[
             feature_dict.get("amount", 0.0),
             feature_dict.get("transaction_hour", 12.0),
@@ -84,87 +109,140 @@ class FraudInferenceService:
         res["entity_user_id"] = entity_user_id
         return res
 
-class InferenceHTTPHandler(BaseHTTPRequestHandler):
-    service: Optional[FraudInferenceService] = None
+# Global service instance
+service: Optional[FraudInferenceService] = None
 
-    def _send_json(self, status_code: int, data: Dict[str, Any]):
-        body = json.dumps(data).encode("utf-8")
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+from contextlib import asynccontextmanager
 
-    def do_GET(self):
-        if self.path in ["/health", "/"]:
-            if self.service and self.service.model is not None:
-                self._send_json(200, {
-                    "status": "HEALTHY",
-                    "mode": self.service.mode,
-                    "model_class": self.service.model.__class__.__name__,
-                    "signature_verified": self.service.verification_passed,
-                    "public_key_present": self.service.verifier.public_key_path.exists(),
-                    "private_key_absent_from_consumer": self.service.private_key_isolated
-                })
-            else:
-                self._send_json(503, {
-                    "status": "UNHEALTHY",
-                    "error": "Model not loaded or signature verification failed"
-                })
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global service
+    mode = os.getenv("INFERENCE_MODE", "signed_pickle")
+    try:
+        service = FraudInferenceService(mode=mode)
+    except Exception as e:
+        print(f"[Consumer Startup Warning] Initial model load failed: {e}")
+    yield
+
+app = FastAPI(
+    title="MLOps Insecure Deserialization Consumer",
+    description="Unprivileged FastAPI Inference Worker demonstrating supply chain security controls",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+def health():
+    global service
+    if service and service.model is not None:
+        return {
+            "status": "HEALTHY",
+            "mode": service.mode,
+            "worker_pid": os.getpid(),
+            "model_class": service.model.__class__.__name__,
+            "signature_verified": service.verification_passed,
+            "public_key_present": service.verifier.public_key_path.exists(),
+            "private_key_absent_from_consumer": service.private_key_isolated
+        }
+    return {
+        "status": "UNHEALTHY",
+        "worker_pid": os.getpid(),
+        "mode": service.mode if service else "uninitialized",
+        "error": service.load_error if service else "Service not created"
+    }
+
+@app.get("/info")
+def info():
+    global service
+    return {
+        "worker_pid": os.getpid(),
+        "role": "CONSUMER",
+        "mode": service.mode if service else None,
+        "model_loaded": service.model is not None if service else False,
+        "model_path": str(service.model_path) if service and service.model_path else None,
+        "verification_passed": service.verification_passed if service else False,
+        "private_key_isolated": service.private_key_isolated if service else True,
+        "security_policy": "Least Privilege (cap_drop: ALL, read-only artifacts)"
+    }
+
+@app.post("/predict")
+def predict(payload: Dict[str, Any] = Body(...)):
+    global service
+    if not service or service.model is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model unavailable. Last error: {service.load_error if service else 'Service uninitialized'}"
+        )
+    try:
+        if "entity_user_id" in payload:
+            return service.predict_for_user(payload["entity_user_id"])
+        return service.predict_features(payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/reload")
+def reload_model(
+    mode: str = Body(..., embed=True),
+    model_path: Optional[str] = Body(None, embed=True),
+    sig_path: Optional[str] = Body(None, embed=True)
+):
+    global service
+    p = Path(model_path) if model_path else None
+    s = Path(sig_path) if sig_path else None
+    try:
+        if service is None:
+            service = FraudInferenceService(mode=mode, model_path=p, sig_path=s)
         else:
-            self._send_json(404, {"error": "Endpoint not found"})
+            service._load_model(mode, p, s)
+        return {
+            "status": "SUCCESS",
+            "mode": mode,
+            "worker_pid": os.getpid(),
+            "model_class": service.model.__class__.__name__,
+            "verification_passed": service.verification_passed
+        }
+    except Exception as e:
+        return {
+            "status": "REJECTED",
+            "mode": mode,
+            "worker_pid": os.getpid(),
+            "error": str(e),
+            "verification_passed": False
+        }
 
-    def do_POST(self):
-        if self.path == "/predict":
-            if not self.service or self.service.model is None:
-                self._send_json(503, {"error": "Model service unavailable"})
-                return
-            try:
-                content_len = int(self.headers.get("Content-Length", 0))
-                body = self.rfile.read(content_len)
-                payload = json.loads(body.decode("utf-8")) if body else {}
-
-                if "entity_user_id" in payload:
-                    res = self.service.predict_for_user(payload["entity_user_id"])
-                else:
-                    res = self.service.predict_features(payload)
-                self._send_json(200, res)
-            except Exception as e:
-                self._send_json(400, {"error": f"Invalid payload: {str(e)}"})
-        else:
-            self._send_json(404, {"error": "Endpoint not found"})
-
-    def log_message(self, format, *args):
-        # Concise logging
-        sys.stderr.write(f"[HTTP Consumer] {self.address_string()} - {format % args}\n")
+@app.get("/audit-log")
+def read_audit_log():
+    audit_file = config.REPORTS_DIR / "deserialization_audit_proof.log"
+    if not audit_file.exists():
+        return {"exists": False, "trace": None}
+    try:
+        content = audit_file.read_text(encoding="utf-8")
+        return {"exists": True, "trace": content.strip()}
+    except Exception as e:
+        return {"exists": True, "error": str(e)}
 
 def start_inference_server(
     host: str = "0.0.0.0",
     port: int = 8000,
     mode: str = "signed_pickle"
 ):
+    os.environ["INFERENCE_MODE"] = mode
     print("=" * 70)
-    print("      MLOps Unprivileged Inference Consumer Service")
-    print(f"      Mode: {mode} | Address: http://{host}:{port}")
-    try:
-        priv_key_absent = not config.PRIVATE_KEY_FILE.exists()
-    except (PermissionError, OSError):
-        priv_key_absent = True
-    print(f"      Security Boundary: Public Key Verified | Private Key Absent: {priv_key_absent}")
+    print("      MLOps Unprivileged FastAPI Inference Consumer Service")
+    print(f"      Mode: {mode} | Address: http://{host}:{port} | PID: {os.getpid()}")
     print("=" * 70)
-
-    service = FraudInferenceService(mode=mode)
-    InferenceHTTPHandler.service = service
-    server = HTTPServer((host, port), InferenceHTTPHandler)
-    print(f"[Inference Consumer] Listening on http://{host}:{port} ...")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[Inference Consumer] Server shutting down cleanly.")
-        server.server_close()
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Unprivileged MLOps Inference Service")
+    parser = argparse.ArgumentParser(description="Unprivileged FastAPI MLOps Inference Service")
     parser.add_argument("--mode", default=os.getenv("INFERENCE_MODE", "signed_pickle"), choices=["signed_pickle", "safetensors", "vulnerable_pickle"])
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
     parser.add_argument("--host", default="0.0.0.0")
@@ -173,6 +251,6 @@ if __name__ == "__main__":
 
     if args.test_only:
         svc = FraudInferenceService(mode=args.mode)
-        print(f"[Inference Check] Service initialized successfully (Mode: {args.mode}). Signature verified: {svc.verification_passed}")
+        print(f"[Inference Check] Service initialized (Mode: {args.mode}). Verified: {svc.verification_passed}")
     else:
         start_inference_server(host=args.host, port=args.port, mode=args.mode)

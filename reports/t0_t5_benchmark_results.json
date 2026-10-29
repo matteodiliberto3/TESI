@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-10-29 20:27:38",
+  "worker_pid": 32976,
+  "total_scenarios": 6,
+  "all_passed": true,
+  "scenarios": [
+    {
+      "scenario": "T0",
+      "name": "Baseline Legittima",
+      "description": "Modello pulito firmato verificato con RSA-PSS",
+      "signature_required": true,
+      "signature_valid": true,
+      "arbitrary_code_executed": false,
+      "model_loaded": true,
+      "latency_ms": 6.49,
+      "status": "PASS"
+    },
+    {
+      "scenario": "T1",
+      "name": "Insecure Deserialization",
+      "description": "Caricamento senza controlli di trojan pickle poliglotto",
+      "signature_required": false,
+      "signature_valid": false,
+      "arbitrary_code_executed": true,
+      "in_process_pid_matched": true,
+      "model_loaded": true,
+      "model_functional": true,
+      "latency_ms": 19.357,
+      "status": "EXPLOITED"
+    },
+    {
+      "scenario": "T2",
+      "name": "Difesa Crittografica (Firma Non Valida)",
+      "description": "Artefatto manomesso respinto per digest mismatch prima dell'unpickling",
+      "signature_required": true,
+      "signature_valid": false,
+      "arbitrary_code_executed": false,
+      "attack_blocked_in_memory": true,
+      "latency_ms": 0.663,
+      "status": "DEFENDED"
+    },
+    {
+      "scenario": "T3",
+      "name": "Firma Assente",
+      "description": "Artefatto privo di firma bloccato per violazione di policy",
+      "signature_required": true,
+      "signature_valid": false,
+      "arbitrary_code_executed": false,
+      "attack_blocked_in_memory": true,
+      "latency_ms": 0.096,
+      "status": "DEFENDED"
+    },
+    {
+      "scenario": "T4",
+      "name": "Producer Compromesso",
+      "description": "Firma valida su payload malevolo: evidenzia il limite architetturale della PKI",
+      "signature_required": true,
+      "signature_valid": true,
+      "arbitrary_code_executed": true,
+      "model_loaded": true,
+      "latency_ms": 7.655,
+      "status": "SUPPLY_CHAIN_BYPASS"
+    },
+    {
+      "scenario": "T5",
+      "name": "Formato Sicuro (Safetensors)",
+      "description": "Rappresentazione tensoriale senza stack machine: RCE impossibile per design",
+      "signature_required": false,
+      "signature_valid": null,
+      "arbitrary_code_executed": false,
+      "model_loaded": true,
+      "latency_ms": 5.516,
+      "status": "PASS"
+    }
+  ]
+}
