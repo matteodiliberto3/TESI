@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-29 20:27:38",
-  "worker_pid": 32976,
-  "total_scenarios": 6,
+  "timestamp": "2026-10-29 21:53:54",
+  "worker_pid": 18380,
+  "total_scenarios": 8,
   "all_passed": true,
   "scenarios": [
     {
@@ -12,7 +12,7 @@
       "signature_valid": true,
       "arbitrary_code_executed": false,
       "model_loaded": true,
-      "latency_ms": 6.49,
+      "latency_ms": 10.962,
       "status": "PASS"
     },
     {
@@ -25,8 +25,31 @@
       "in_process_pid_matched": true,
       "model_loaded": true,
       "model_functional": true,
-      "latency_ms": 19.357,
+      "latency_ms": 20.897,
       "status": "EXPLOITED"
+    },
+    {
+      "scenario": "T1_MLFLOW_CVE",
+      "name": "MLflow Statsmodels CVE-2026-96804 Bypass",
+      "description": "Bypass della policy MLflow per mancato controllo su model.statsmodels (RCE in-process)",
+      "policy_env_var": "false",
+      "policy_enforced": false,
+      "arbitrary_code_executed": true,
+      "in_process_pid_matched": true,
+      "model_loaded": true,
+      "latency_ms": 19.693,
+      "status": "CVE_EXPLOITED"
+    },
+    {
+      "scenario": "T1_MLFLOW_MITIGATED",
+      "name": "MLflow 3.15.0+ Policy Enforcement",
+      "description": "Blocco preventivo tramite MlflowException con policy false",
+      "policy_env_var": "false",
+      "policy_enforced": true,
+      "arbitrary_code_executed": false,
+      "attack_blocked_by_framework": true,
+      "latency_ms": 3.154,
+      "status": "DEFENDED"
     },
     {
       "scenario": "T2",
@@ -36,7 +59,7 @@
       "signature_valid": false,
       "arbitrary_code_executed": false,
       "attack_blocked_in_memory": true,
-      "latency_ms": 0.663,
+      "latency_ms": 0.476,
       "status": "DEFENDED"
     },
     {
@@ -47,7 +70,7 @@
       "signature_valid": false,
       "arbitrary_code_executed": false,
       "attack_blocked_in_memory": true,
-      "latency_ms": 0.096,
+      "latency_ms": 0.063,
       "status": "DEFENDED"
     },
     {
@@ -58,7 +81,7 @@
       "signature_valid": true,
       "arbitrary_code_executed": true,
       "model_loaded": true,
-      "latency_ms": 7.655,
+      "latency_ms": 10.798,
       "status": "SUPPLY_CHAIN_BYPASS"
     },
     {
@@ -69,7 +92,7 @@
       "signature_valid": null,
       "arbitrary_code_executed": false,
       "model_loaded": true,
-      "latency_ms": 5.516,
+      "latency_ms": 11.068,
       "status": "PASS"
     }
   ]

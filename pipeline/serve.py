@@ -5,6 +5,7 @@ import pickle
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional
+from http.server import BaseHTTPRequestHandler
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Body
@@ -247,6 +248,60 @@ def read_audit_log():
         return {"exists": True, "trace": content.strip()}
     except Exception as e:
         return {"exists": True, "error": str(e)}
+
+class InferenceHTTPHandler(BaseHTTPRequestHandler):
+    """Legacy HTTP handler provided for backward compatibility with isolated test harnesses."""
+    service: Optional[FraudInferenceService] = None
+
+    def _send_json(self, status_code: int, data: Dict[str, Any]):
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path in ["/health", "/"]:
+            if self.service and self.service.model is not None:
+                self._send_json(200, {
+                    "status": "HEALTHY",
+                    "mode": self.service.mode,
+                    "model_class": self.service.model.__class__.__name__,
+                    "signature_verified": self.service.verification_passed,
+                    "public_key_present": self.service.verifier.public_key_path.exists(),
+                    "private_key_absent_from_consumer": self.service.private_key_isolated
+                })
+            else:
+                self._send_json(503, {
+                    "status": "UNHEALTHY",
+                    "error": "Model not loaded or signature verification failed"
+                })
+        else:
+            self._send_json(404, {"error": "Endpoint not found"})
+
+    def do_POST(self):
+        if self.path == "/predict":
+            if not self.service or self.service.model is None:
+                self._send_json(503, {"error": "Model service unavailable"})
+                return
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                payload = json.loads(body.decode("utf-8")) if body else {}
+
+                if "entity_user_id" in payload:
+                    res = self.service.predict_for_user(payload["entity_user_id"])
+                else:
+                    res = self.service.predict_features(payload)
+                self._send_json(200, res)
+            except Exception as e:
+                self._send_json(400, {"error": f"Invalid payload: {str(e)}"})
+        else:
+            self._send_json(404, {"error": "Endpoint not found"})
+
+    def log_message(self, format, *args):
+        sys.stderr.write(f"[Legacy HTTP Consumer] {self.address_string()} - {format % args}\n")
 
 def start_inference_server(
     host: str = "127.0.0.1",

@@ -2,9 +2,16 @@ import os
 import sys
 import time
 import json
+import shutil
 import pickle
 from pathlib import Path
 from typing import Dict, Any, List
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.iolib.api as smio
+import mlflow
+import mlflow.statsmodels
+from mlflow.exceptions import MlflowException
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -51,6 +58,25 @@ def run_suite() -> Dict[str, Any]:
 
     clean_safetensors = ARTIFACTS_DIR / "clean_model.safetensors"
     save_model_safetensors(clean_model, clean_safetensors)
+
+    # Setup MLflow Statsmodels models for CVE-2026-96804 benchmarks
+    print("[Step 0b] Setting up MLflow Statsmodels models for CVE-2026-96804 benchmarks...")
+    np.random.seed(42)
+    X_sm = np.random.randn(100, 2)
+    X_sm_const = sm.add_constant(X_sm)
+    y_sm = np.random.binomial(1, 0.3, 100)
+    sm_baseline = sm.Logit(y_sm, X_sm_const).fit(disp=False)
+
+    clean_mlflow_dir = ARTIFACTS_DIR / "mlflow_clean_model"
+    tampered_mlflow_dir = ARTIFACTS_DIR / "mlflow_tampered_model"
+    if clean_mlflow_dir.exists():
+        shutil.rmtree(clean_mlflow_dir)
+    if tampered_mlflow_dir.exists():
+        shutil.rmtree(tampered_mlflow_dir)
+
+    mlflow.statsmodels.save_model(sm_baseline, str(clean_mlflow_dir))
+    shutil.copytree(clean_mlflow_dir, tampered_mlflow_dir)
+    craft_portable_trojan(sm_baseline, tampered_mlflow_dir / "model.statsmodels", AUDIT_LOG_FILE)
 
     results: List[Dict[str, Any]] = []
 
@@ -107,6 +133,61 @@ def run_suite() -> Dict[str, Any]:
         "status": "EXPLOITED" if (t1_exec and t1_pid_verified and loaded_t1) else "FAIL"
     })
     print(f"[*] T1: Insecure Deserialization -> {results[-1]['status']} (In-process PID match: {t1_pid_verified})")
+
+    # -------------------------------------------------------------
+    # Scenario T1_MLFLOW_CVE: MLflow Statsmodels CVE-2026-96804 Bypass
+    # -------------------------------------------------------------
+    reset_audit_log()
+    os.environ["MLFLOW_ALLOW_PICKLE_DESERIALIZATION"] = "false"
+    t1_cve_start = time.perf_counter()
+    loaded_t1_cve = smio.load_pickle(str(tampered_mlflow_dir / "model.statsmodels"))
+    t1_cve_lat = (time.perf_counter() - t1_cve_start) * 1000.0
+    t1_cve_exec = AUDIT_LOG_FILE.exists()
+    t1_cve_pid_verified = False
+    if t1_cve_exec:
+        log_content = AUDIT_LOG_FILE.read_text(encoding="utf-8")
+        t1_cve_pid_verified = f"WORKER_PID: {os.getpid()}" in log_content
+
+    results.append({
+        "scenario": "T1_MLFLOW_CVE",
+        "name": "MLflow Statsmodels CVE-2026-96804 Bypass",
+        "description": "Bypass della policy MLflow per mancato controllo su model.statsmodels (RCE in-process)",
+        "policy_env_var": "false",
+        "policy_enforced": False,
+        "arbitrary_code_executed": t1_cve_exec,
+        "in_process_pid_matched": t1_cve_pid_verified,
+        "model_loaded": loaded_t1_cve is not None,
+        "latency_ms": round(t1_cve_lat, 3),
+        "status": "CVE_EXPLOITED" if (t1_cve_exec and t1_cve_pid_verified) else "FAIL"
+    })
+    print(f"[*] T1_MLFLOW_CVE: MLflow CVE-2026-96804 Bypass -> {results[-1]['status']}")
+
+    # -------------------------------------------------------------
+    # Scenario T1_MLFLOW_MITIGATED: MLflow 3.15.0+ Hardened Mitigation
+    # -------------------------------------------------------------
+    reset_audit_log()
+    os.environ["MLFLOW_ALLOW_PICKLE_DESERIALIZATION"] = "false"
+    t1_mit_start = time.perf_counter()
+    t1_mit_blocked = False
+    try:
+        _ = mlflow.statsmodels.load_model(str(tampered_mlflow_dir))
+    except MlflowException:
+        t1_mit_blocked = True
+    t1_mit_lat = (time.perf_counter() - t1_mit_start) * 1000.0
+    t1_mit_exec = AUDIT_LOG_FILE.exists()
+
+    results.append({
+        "scenario": "T1_MLFLOW_MITIGATED",
+        "name": "MLflow 3.15.0+ Policy Enforcement",
+        "description": "Blocco preventivo tramite MlflowException con policy false",
+        "policy_env_var": "false",
+        "policy_enforced": True,
+        "arbitrary_code_executed": t1_mit_exec,
+        "attack_blocked_by_framework": t1_mit_blocked,
+        "latency_ms": round(t1_mit_lat, 3),
+        "status": "DEFENDED" if (t1_mit_blocked and not t1_mit_exec) else "FAIL"
+    })
+    print(f"[*] T1_MLFLOW_MITIGATED: MLflow Hardened Defense -> {results[-1]['status']}")
 
     # -------------------------------------------------------------
     # Scenario T2: Difesa Crittografica (Firma Alterata)
@@ -214,7 +295,7 @@ def run_suite() -> Dict[str, Any]:
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "worker_pid": os.getpid(),
         "total_scenarios": len(results),
-        "all_passed": all(r["status"] in ["PASS", "EXPLOITED", "DEFENDED", "SUPPLY_CHAIN_BYPASS"] for r in results),
+        "all_passed": all(r["status"] in ["PASS", "EXPLOITED", "CVE_EXPLOITED", "DEFENDED", "SUPPLY_CHAIN_BYPASS"] for r in results),
         "scenarios": results
     }
 

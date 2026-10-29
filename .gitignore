@@ -30,4 +30,8 @@ feature_store_storage/bench_store/
 # Transient test artifacts
 tests/test_artifacts/
 tests/test_reports/
+artifacts/cve_reproduction/
+artifacts/mlflow_clean_model/
+artifacts/mlflow_tampered_model/
+reports/cve_2026_96804_audit.log
 package-lock.json

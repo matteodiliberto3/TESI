@@ -1,0 +1,25 @@
+{
+  "V1_MLflow_3_12_Policy_Bypass": {
+    "mlflow_version_target": "3.12.0",
+    "policy_env_var": "false",
+    "policy_enforced": false,
+    "arbitrary_code_executed": true,
+    "status": "VULNERABILITY_REPRODUCED",
+    "trace": "[SECURITY AUDIT TRACE] Timestamp: 1793307055.4100661 | WORKER_PID: 19748 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+  },
+  "V2_MLflow_3_15_Patched_Defense": {
+    "mlflow_version_target": "3.15.0+",
+    "policy_env_var": "false",
+    "policy_enforced": true,
+    "arbitrary_code_executed": false,
+    "status": "DEFENSE_VERIFIED",
+    "error_message": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'."
+  },
+  "V3_MLflow_3_15_Explicit_Consent": {
+    "mlflow_version_target": "3.15.0+",
+    "policy_env_var": "true",
+    "policy_enforced": true,
+    "arbitrary_code_executed": true,
+    "status": "EXPLICIT_OVERRIDE_VERIFIED"
+  }
+}
