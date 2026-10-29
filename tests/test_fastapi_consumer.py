@@ -1,6 +1,10 @@
 import os
 import sys
+import shutil
 import pytest
+import numpy as np
+import statsmodels.api as sm
+import mlflow.statsmodels
 from pathlib import Path
 from starlette.testclient import TestClient
 
@@ -10,14 +14,64 @@ sys.path.insert(0, str(ROOT_DIR))
 import config
 from pipeline.serve import app, FraudInferenceService
 import pipeline.serve as serve_module
+from pipeline.crypto_signer import ModelProducerSigner
+
+TEST_ADMIN_TOKEN = "test-admin-secret-token-2026"
+ADMIN_HEADERS = {"X-Admin-Token": TEST_ADMIN_TOKEN}
+
+@pytest.fixture(autouse=True)
+def setup_test_env():
+    old_token = os.environ.get("MLOPS_ADMIN_TOKEN")
+    os.environ["MLOPS_ADMIN_TOKEN"] = TEST_ADMIN_TOKEN
+    yield
+    if old_token is not None:
+        os.environ["MLOPS_ADMIN_TOKEN"] = old_token
+    else:
+        os.environ.pop("MLOPS_ADMIN_TOKEN", None)
 
 @pytest.fixture(scope="module")
 def client():
-    # Force signed_pickle mode for client testing
     os.environ["INFERENCE_MODE"] = "signed_pickle"
+    os.environ["MLOPS_ADMIN_TOKEN"] = TEST_ADMIN_TOKEN
     serve_module.service = FraudInferenceService(mode="signed_pickle")
     with TestClient(app) as c:
         yield c
+
+@pytest.fixture(scope="module")
+def mlflow_statsmodels_fixtures():
+    """Generates guaranteed legitimate signed and unsigned MLflow statsmodels model artifacts."""
+    np.random.seed(42)
+    X = np.random.randn(100, 2)
+    X_const = sm.add_constant(X)
+    y = np.random.binomial(1, 0.3, 100)
+    model = sm.Logit(y, X_const).fit(disp=False)
+
+    signed_dir = config.ARTIFACTS_DIR / "mlflow_test_signed_model"
+    unsigned_dir = config.ARTIFACTS_DIR / "mlflow_test_unsigned_model"
+
+    if signed_dir.exists():
+        shutil.rmtree(signed_dir)
+    if unsigned_dir.exists():
+        shutil.rmtree(unsigned_dir)
+
+    mlflow.statsmodels.save_model(model, str(signed_dir))
+    mlflow.statsmodels.save_model(model, str(unsigned_dir))
+
+    # Sign the legitimate artifact
+    signer = ModelProducerSigner(config.PRIVATE_KEY_FILE, config.PUBLIC_KEY_FILE)
+    target_artifact = signed_dir / "model.statsmodels"
+    sig_path = signed_dir / "model.statsmodels.sig"
+    signer.sign_artifact(target_artifact, sig_path)
+
+    yield {
+        "signed_dir": signed_dir,
+        "sig_path": sig_path,
+        "unsigned_dir": unsigned_dir
+    }
+
+    # Cleanup
+    shutil.rmtree(signed_dir, ignore_errors=True)
+    shutil.rmtree(unsigned_dir, ignore_errors=True)
 
 def test_fastapi_health_endpoint(client):
     """Verifica che l'endpoint /health restituisca 200, stato HEALTHY e PID del worker."""
@@ -59,8 +113,6 @@ def test_fastapi_predict_endpoint(client):
     assert data["is_fraud"] in [0, 1]
     assert 0.0 <= data["fraud_probability"] <= 1.0
 
-ADMIN_HEADERS = {"X-Admin-Token": "mlops-secure-token-2026"}
-
 def test_fastapi_reload_unauthorized_without_token(client):
     """Verifica che tentativi di reload senza token di autenticazione siano respinti con HTTP 401."""
     reload_payload = {
@@ -70,6 +122,21 @@ def test_fastapi_reload_unauthorized_without_token(client):
     response = client.post("/reload", json=reload_payload)
     assert response.status_code == 401
     assert "Unauthorized" in response.json()["detail"]
+
+def test_fastapi_reload_disabled_when_server_secret_unset(client):
+    """Verifica che /reload sia disattivato con HTTP 503 se MLOPS_ADMIN_TOKEN non è configurato."""
+    saved_token = os.environ.pop("MLOPS_ADMIN_TOKEN", None)
+    try:
+        reload_payload = {
+            "mode": "safetensors",
+            "model_path": str(config.SECURE_MODEL_SAFETENSORS)
+        }
+        response = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+        assert response.status_code == 503
+        assert "Administrative reload disabled" in response.json()["detail"]
+    finally:
+        if saved_token is not None:
+            os.environ["MLOPS_ADMIN_TOKEN"] = saved_token
 
 def test_fastapi_reload_endpoint_safetensors(client):
     """Verifica il ricaricamento a caldo del formato Safetensors con autenticazione valida."""
@@ -129,17 +196,73 @@ def test_fastapi_unhealthy_status_returns_http_503(client):
     finally:
         serve_module.service.model = original_model
 
-def test_fastapi_mlflow_statsmodels_mode_health(client):
-    """Verifica che un modello MLflow caricato con successo mantenga lo stato HEALTHY (HTTP 200)."""
-    clean_mlflow_dir = config.ARTIFACTS_DIR / "mlflow_clean_model"
-    if clean_mlflow_dir.exists():
+def test_fastapi_mlflow_statsmodels_mode_health_mandatory(client, mlflow_statsmodels_fixtures):
+    """Verifica obbligatoria: modello MLflow crittograficamente firmato caricato con successo e stato HEALTHY (HTTP 200)."""
+    signed_dir = mlflow_statsmodels_fixtures["signed_dir"]
+    sig_path = mlflow_statsmodels_fixtures["sig_path"]
+    assert signed_dir.exists(), "Test fixture error: signed MLflow model directory must exist!"
+    assert sig_path.exists(), "Test fixture error: signature must exist!"
+
+    reload_payload = {
+        "mode": "mlflow_statsmodels",
+        "model_path": str(signed_dir),
+        "sig_path": str(sig_path)
+    }
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "SUCCESS"
+    assert data["signature_verified"] is True
+    assert data["verification_passed"] is True
+
+    health_res = client.get("/health")
+    assert health_res.status_code == 200
+    h_data = health_res.json()
+    assert h_data["status"] == "HEALTHY"
+    assert h_data["mode"] == "mlflow_statsmodels"
+    assert h_data["signature_verified"] is True
+
+def test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed(client, mlflow_statsmodels_fixtures):
+    """Verifica obbligatoria: modello MLflow privo di firma respinto categoricamente in modalità fail-closed."""
+    unsigned_dir = mlflow_statsmodels_fixtures["unsigned_dir"]
+    assert unsigned_dir.exists()
+
+    os.environ["ALLOW_UNSIGNED_MLFLOW"] = "false"
+    reload_payload = {
+        "mode": "mlflow_statsmodels",
+        "model_path": str(unsigned_dir)
+    }
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "REJECTED"
+    assert "Cryptographic signature missing" in data["error"]
+    assert data["verification_passed"] is False
+
+    health_res = client.get("/health")
+    assert health_res.status_code == 503
+    assert health_res.json()["status"] == "UNHEALTHY"
+
+def test_fastapi_mlflow_statsmodels_tampered_signature_rejected(client, mlflow_statsmodels_fixtures):
+    """Verifica obbligatoria: modello MLflow con firma manomessa respinto dal Security Gate."""
+    signed_dir = mlflow_statsmodels_fixtures["signed_dir"]
+    tampered_sig = signed_dir / "model.statsmodels.sig.tampered"
+    tampered_sig.write_bytes(b"INVALID_RSA_PSS_SIGNATURE_BYTES_TAMPERED")
+    try:
         reload_payload = {
             "mode": "mlflow_statsmodels",
-            "model_path": str(clean_mlflow_dir)
+            "model_path": str(signed_dir),
+            "sig_path": str(tampered_sig)
         }
         res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
         assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "REJECTED"
+        assert "signature verification failed" in data["error"]
+        assert data["verification_passed"] is False
+
         health_res = client.get("/health")
-        assert health_res.status_code == 200
-        assert health_res.json()["status"] == "HEALTHY"
-        assert health_res.json()["mode"] == "mlflow_statsmodels"
+        assert health_res.status_code == 503
+        assert health_res.json()["status"] == "UNHEALTHY"
+    finally:
+        tampered_sig.unlink(missing_ok=True)

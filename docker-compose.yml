@@ -127,6 +127,7 @@ services:
       - MLOPS_ROLE=CONSUMER
       - INFERENCE_MODE=signed_pickle
       - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
+      - MLOPS_ADMIN_TOKEN=${MLOPS_ADMIN_TOKEN:-mlops-admin-secret-token-2026}
       - PORT=8000
       - PYTHONPATH=/app
     command: python pipeline/serve.py --mode signed_pickle --port 8000 --host 0.0.0.0

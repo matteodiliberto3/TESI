@@ -115,13 +115,27 @@ import mlflow.statsmodels
 from mlflow.exceptions import MlflowException
 
 target_dir = sys.argv[1]
-trials = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+trials = int(sys.argv[2]) if len(sys.argv) > 2 else 50
+warmups = int(sys.argv[3]) if len(sys.argv) > 3 else 3
 
 print(f"[Worker] MLflow version: {mlflow.__version__} | PID: {os.getpid()}")
 print(f"[Worker] Policy: MLFLOW_ALLOW_PICKLE_DESERIALIZATION={os.environ.get('MLFLOW_ALLOW_PICKLE_DESERIALIZATION')}")
+print(f"[Worker] Running {warmups} unmeasured warm-up cycles to eliminate JIT/import cold-start distortions...")
 
-latencies = []
+# 1. Warm-up cycles (excluded from metrics)
 last_status = "UNKNOWN"
+for w in range(warmups):
+    try:
+        loaded = mlflow.statsmodels.load_model(target_dir)
+        last_status = "LOADED"
+    except MlflowException:
+        last_status = "REJECTED"
+    except Exception as e:
+        print(f"[Worker ERROR in warmup]: {e}")
+        sys.exit(1)
+
+# 2. Measured benchmark trials
+latencies = []
 for i in range(trials):
     t0 = time.perf_counter()
     try:
@@ -129,18 +143,19 @@ for i in range(trials):
         lat = (time.perf_counter() - t0) * 1000.0
         latencies.append(lat)
         last_status = "LOADED"
-    except MlflowException as e:
+    except MlflowException:
         lat = (time.perf_counter() - t0) * 1000.0
         latencies.append(lat)
         last_status = "REJECTED"
     except Exception as e:
-        print(f"[Worker ERROR] Unexpected error: {e}")
+        print(f"[Worker ERROR in benchmark trial {i}]: {e}")
         sys.exit(1)
 
-print(f"[Worker Telemetry] Status: {last_status} | Trials: {len(latencies)}")
+print(f"[Worker Telemetry] Status: {last_status} | Measured Trials: {len(latencies)} (Warmups: {warmups})")
 print(f"TELEMETRY_JSON:" + json.dumps({
     "status": last_status,
     "version": mlflow.__version__,
+    "warmups": warmups,
     "trials": len(latencies),
     "latencies_ms": latencies
 }))
@@ -191,6 +206,29 @@ else:
     telem_v1 = parse_telemetry(res_v1.stdout)
     v1_lats = telem_v1.get("latencies_ms", []) if telem_v1 else []
 
+    def compute_stats(lats):
+        if not lats:
+            return None
+        arr = np.array(lats, dtype=np.float64)
+        n = len(arr)
+        sorted_arr = np.sort(arr)
+        trim_idx = int(0.1 * n) if n >= 10 else 0
+        trimmed = sorted_arr[trim_idx:n - trim_idx] if trim_idx > 0 else sorted_arr
+
+        return {
+            "trials": n,
+            "warmup_cycles_excluded": 3,
+            "mean_ms": round(float(np.mean(arr)), 3),
+            "trimmed_mean_10pct_ms": round(float(np.mean(trimmed)), 3),
+            "median_ms": round(float(np.percentile(arr, 50)), 3),
+            "iqr_ms": round(float(np.percentile(arr, 75) - np.percentile(arr, 25)), 3),
+            "p95_ms": round(float(np.percentile(arr, 95)), 3),
+            "p99_ms": round(float(np.percentile(arr, 99)), 3),
+            "min_ms": round(float(np.min(arr)), 3),
+            "max_ms": round(float(np.max(arr)), 3),
+            "std_ms": round(float(np.std(arr)), 3)
+        }
+
     results["MLflow_3_12_0_Official_Release"] = {
         "version": "3.12.0",
         "policy": "false",
@@ -199,14 +237,8 @@ else:
         "arbitrary_code_executed": True,
         "trace": v1_trace,
         "status": "VULNERABILITY_CONFIRMED",
-        "benchmark": {
-            "trials": len(v1_lats),
-            "mean_ms": round(float(np.mean(v1_lats)), 3) if v1_lats else None,
-            "std_ms": round(float(np.std(v1_lats)), 3) if v1_lats else None,
-            "p50_ms": round(float(np.percentile(v1_lats, 50)), 3) if v1_lats else None,
-            "p95_ms": round(float(np.percentile(v1_lats, 95)), 3) if v1_lats else None,
-            "p99_ms": round(float(np.percentile(v1_lats, 99)), 3) if v1_lats else None
-        }
+        "semantic_operation": "Arbitrary Code Execution (Full Deserialization + Payload Run)",
+        "benchmark": compute_stats(v1_lats)
     }
 
     # =========================================================================
@@ -249,14 +281,13 @@ else:
         "arbitrary_code_executed": False,
         "trace": None,
         "status": "PATCH_CONFIRMED",
-        "benchmark": {
-            "trials": len(v2_lats),
-            "mean_ms": round(float(np.mean(v2_lats)), 3) if v2_lats else None,
-            "std_ms": round(float(np.std(v2_lats)), 3) if v2_lats else None,
-            "p50_ms": round(float(np.percentile(v2_lats, 50)), 3) if v2_lats else None,
-            "p95_ms": round(float(np.percentile(v2_lats, 95)), 3) if v2_lats else None,
-            "p99_ms": round(float(np.percentile(v2_lats, 99)), 3) if v2_lats else None
-        }
+        "semantic_operation": "Fast-Fail Policy Interception (MlflowException Raised Pre-Unpickler)",
+        "benchmark": compute_stats(v2_lats)
+    }
+
+    results["methodology_metadata"] = {
+        "scientific_interpretation": "Timing differences reflect fundamentally distinct computational semantics (full deserialization + payload execution vs pre-deserialization policy rejection), not an algorithmic performance comparison.",
+        "warmup_handling": "3 unmeasured warm-up iterations were executed before timing to prime module imports and prevent cold-start distortion."
     }
 
     # Export report

@@ -81,7 +81,7 @@ class FraudInferenceService:
                 path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
                 self.model_path = path
 
-                # Dynamic Security Gate check: if signature is provided or exists alongside artifact, enforce verification
+                # Mandatory Security Gate check for MLflow models
                 sig = sig_path
                 if sig is None:
                     candidate_sig = path.with_suffix(".sig")
@@ -90,19 +90,52 @@ class FraudInferenceService:
                     elif (path / "model.statsmodels.sig").exists():
                         sig = path / "model.statsmodels.sig"
 
-                if sig and sig.exists():
-                    target_file = path / "model.statsmodels" if (path / "model.statsmodels").exists() else path
-                    if not self.verifier.verify_artifact(target_file, sig):
-                        raise PermissionError(f"[Gate Alert] Cryptographic signature verification failed for {target_file}!")
-                    self.verification_passed = True
-                    self.signature_verified = True
-                else:
-                    self.verification_passed = True
-                    self.signature_verified = False
+                allow_unsigned = os.getenv("ALLOW_UNSIGNED_MLFLOW", "false").lower() in ("true", "1", "yes")
 
-                import mlflow.statsmodels
-                self.model = mlflow.statsmodels.load_model(str(path))
-                self.format_safe = False
+                if not sig or not sig.exists():
+                    if not allow_unsigned:
+                        raise PermissionError(
+                            f"[Gate Alert] Cryptographic signature missing for MLflow artifact at {path}. "
+                            "Unsigned MLflow models are rejected under fail-closed security policy."
+                        )
+                    self.verification_passed = False
+                    self.signature_verified = False
+                    import mlflow.statsmodels
+                    self.model = mlflow.statsmodels.load_model(str(path))
+                    self.format_safe = False
+                else:
+                    # TOCTOU Defense: Copy artifact into an isolated, restricted temporary directory,
+                    # verify cryptographic signature on the exact sandboxed bytes, then load from the sandbox.
+                    import shutil
+                    import tempfile
+
+                    sandbox_dir = tempfile.mkdtemp(prefix="mlflow_gate_secure_")
+                    try:
+                        sandbox_path = Path(sandbox_dir)
+                        if path.is_dir():
+                            dest_model_dir = sandbox_path / "model"
+                            shutil.copytree(path, dest_model_dir)
+                        else:
+                            dest_model_dir = sandbox_path
+                            shutil.copy2(path, sandbox_path / path.name)
+
+                        target_file = (
+                            dest_model_dir / "model.statsmodels"
+                            if (dest_model_dir / "model.statsmodels").exists()
+                            else (dest_model_dir / path.name)
+                        )
+
+                        if not self.verifier.verify_artifact(target_file, sig):
+                            raise PermissionError(f"[Gate Alert] Cryptographic signature verification failed for sandboxed {target_file}!")
+
+                        self.verification_passed = True
+                        self.signature_verified = True
+
+                        import mlflow.statsmodels
+                        self.model = mlflow.statsmodels.load_model(str(dest_model_dir))
+                        self.format_safe = False
+                    finally:
+                        shutil.rmtree(sandbox_dir, ignore_errors=True)
 
             elif mode == "safetensors":
                 path = model_path or config.SECURE_MODEL_SAFETENSORS
@@ -281,9 +314,14 @@ def reload_model(
     s = None
     allowed_dir = config.ARTIFACTS_DIR.resolve()
 
-    # Authentication Enforcement: Require administrative token
-    admin_token = os.getenv("MLOPS_ADMIN_TOKEN", "mlops-secure-token-2026")
-    if x_admin_token != admin_token:
+    # Authentication Enforcement: Require administrative token from external secret
+    admin_token = os.getenv("MLOPS_ADMIN_TOKEN")
+    if not admin_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Administrative reload disabled: MLOPS_ADMIN_TOKEN secret is not configured in environment"
+        )
+    if not x_admin_token or x_admin_token != admin_token:
         raise HTTPException(
             status_code=401,
             detail="Unauthorized: Valid X-Admin-Token header required for model reload"
