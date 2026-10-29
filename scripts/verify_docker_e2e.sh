@@ -225,19 +225,26 @@ else
 fi
 
 # B. Endpoint /health check
-health_res=$(curl -s http://localhost:8000/health)
+health_res=$(curl -fsS http://localhost:8000/health)
 log "  -> /health response: $health_res"
 
-if ! echo "$health_res" | grep -q '"signature_verified": true'; then
-    log "ERROR: Model signature verification failed!"
+if ! printf '%s' "$health_res" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    valid = (
+        data.get("status") == "HEALTHY" and
+        data.get("signature_verified") is True and
+        data.get("private_key_absent_from_consumer") is True
+    )
+    sys.exit(0 if valid else 1)
+except Exception:
+    sys.exit(1)
+'; then
+    log "ERROR: Health or security verification failed! Response: $health_res"
     exit 1
 fi
 log "  -> [PASSED] Consumer cryptographically verified model artifact signature via public key."
-
-if ! echo "$health_res" | grep -q '"private_key_absent_from_consumer": true'; then
-    log "ERROR: Consumer reported private key present! Least Privilege violation."
-    exit 1
-fi
 log "  -> [PASSED] Consumer verified absence of private key in its execution environment."
 
 # C. Direct container probe
@@ -248,10 +255,24 @@ fi
 log "  -> [PASSED] Filesystem isolation confirmed: /app/keys/private_key.pem is strictly ABSENT inside consumer container."
 
 # D. Predict request
-predict_res=$(curl -s -X POST http://localhost:8000/predict \
+predict_res=$(curl -fsS -X POST http://localhost:8000/predict \
     -H "Content-Type: application/json" \
     -d '{"amount":49.99,"transaction_hour":4.0,"distance_from_home":10.0,"velocity_last_24h":1,"foreign_transaction":0,"high_risk_merchant":0}')
 log "  -> /predict response: $predict_res"
+
+if ! printf '%s' "$predict_res" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    assert "is_fraud" in data and "fraud_probability" in data
+    assert data["is_fraud"] in [0, 1]
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+'; then
+    log "ERROR: Prediction response failed or invalid! Response: $predict_res"
+    exit 1
+fi
 log "  -> [PASSED] HTTP inference prediction served successfully by unprivileged consumer."
 
 log "\n======================================================================"

@@ -82,3 +82,26 @@ def test_fastapi_reload_path_traversal_blocked(client):
     response = client.post("/reload", json=traversal_payload)
     assert response.status_code == 403
     assert "Access denied" in response.json()["detail"]
+
+def test_fastapi_reload_sister_directory_prefix_traversal_blocked(client):
+    """Verifica che directory sorelle con prefisso comune (es. artifacts-backup) siano bloccate con 403."""
+    sister_dir_payload = {
+        "mode": "vulnerable_pickle",
+        "model_path": str(config.ARTIFACTS_DIR) + "-backup/malicious_model.pkl"
+    }
+    response = client.post("/reload", json=sister_dir_payload)
+    assert response.status_code == 403
+    assert "Access denied" in response.json()["detail"]
+
+def test_fastapi_unhealthy_status_returns_http_503(client):
+    """Verifica che /health risponda con HTTP 503 quando il modello non è caricato o non è valido."""
+    # Temporarily set model to None
+    original_model = serve_module.service.model
+    try:
+        serve_module.service.model = None
+        response = client.get("/health")
+        assert response.status_code == 503
+        data = response.json()
+        assert data["status"] == "UNHEALTHY"
+    finally:
+        serve_module.service.model = original_model

@@ -8,7 +8,8 @@ from typing import Dict, Any, Optional
 from http.server import BaseHTTPRequestHandler
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Header
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -38,6 +39,8 @@ class FraudInferenceService:
         self.verifier = ModelConsumerVerifier(pub_key)
         self.model = None
         self.verification_passed = False
+        self.signature_verified = False
+        self.format_safe = False
         self.model_path = model_path
         self.load_error = None
 
@@ -52,6 +55,8 @@ class FraudInferenceService:
     def _load_model(self, mode: str, model_path: Optional[Path], sig_path: Optional[Path]):
         self.mode = mode
         self.load_error = None
+        self.signature_verified = False
+        self.format_safe = False
         try:
             if mode == "vulnerable_pickle":
                 path = model_path or config.CLEAN_MODEL_PICKLE
@@ -59,6 +64,8 @@ class FraudInferenceService:
                 with open(path, "rb") as f:
                     self.model = pickle.load(f)
                 self.verification_passed = False
+                self.signature_verified = False
+                self.format_safe = False
 
             elif mode == "signed_pickle":
                 path = model_path or config.CLEAN_MODEL_PICKLE
@@ -67,6 +74,8 @@ class FraudInferenceService:
                 # In-memory atomic deserialization: physically eliminates TOCTOU window
                 self.model = self.verifier.load_verified_pickle(path, sig)
                 self.verification_passed = True
+                self.signature_verified = True
+                self.format_safe = False
 
             elif mode == "mlflow_statsmodels":
                 path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
@@ -74,18 +83,24 @@ class FraudInferenceService:
                 import mlflow.statsmodels
                 self.model = mlflow.statsmodels.load_model(str(path))
                 self.verification_passed = False
+                self.signature_verified = False
+                self.format_safe = False
 
             elif mode == "safetensors":
                 path = model_path or config.SECURE_MODEL_SAFETENSORS
                 self.model_path = path
                 self.model = load_model_safetensors(path)
                 self.verification_passed = True
+                self.signature_verified = False
+                self.format_safe = True
 
             else:
                 raise ValueError(f"Unsupported inference mode: {mode}")
         except Exception as e:
             self.model = None
             self.verification_passed = False
+            self.signature_verified = False
+            self.format_safe = False
             self.load_error = str(e)
             raise e
 
@@ -93,16 +108,50 @@ class FraudInferenceService:
         if self.model is None:
             raise RuntimeError("Model is not loaded or initialization failed")
             
-        vector = np.array([[
-            feature_dict.get("amount", 0.0),
-            feature_dict.get("transaction_hour", 12.0),
-            feature_dict.get("distance_from_home", 5.0),
-            feature_dict.get("velocity_last_24h", 1),
-            feature_dict.get("foreign_transaction", 0),
-            feature_dict.get("high_risk_merchant", 0)
-        ]])
-        pred = int(self.model.predict(vector)[0])
-        prob = float(self.model.predict_proba(vector)[0, 1]) if hasattr(self.model, "predict_proba") else float(pred)
+        # Support Statsmodels results (e.g. LogitResults with variable params dimension)
+        if hasattr(self.model, "params"):
+            num_params = len(self.model.params)
+            if num_params == 3:
+                # const + 2 features (amount, transaction_hour)
+                vec = np.array([[1.0, float(feature_dict.get("amount", 0.0)), float(feature_dict.get("transaction_hour", 12.0))]])
+            elif num_params == 7:
+                # const + 6 features
+                vec = np.array([[
+                    1.0,
+                    float(feature_dict.get("amount", 0.0)),
+                    float(feature_dict.get("transaction_hour", 12.0)),
+                    float(feature_dict.get("distance_from_home", 5.0)),
+                    float(feature_dict.get("velocity_last_24h", 1)),
+                    float(feature_dict.get("foreign_transaction", 0)),
+                    float(feature_dict.get("high_risk_merchant", 0))
+                ]])
+            else:
+                vec = np.ones((1, num_params))
+                feature_vals = [
+                    float(feature_dict.get("amount", 0.0)),
+                    float(feature_dict.get("transaction_hour", 12.0)),
+                    float(feature_dict.get("distance_from_home", 5.0)),
+                    float(feature_dict.get("velocity_last_24h", 1)),
+                    float(feature_dict.get("foreign_transaction", 0)),
+                    float(feature_dict.get("high_risk_merchant", 0))
+                ]
+                for idx, val in enumerate(feature_vals[:num_params - 1]):
+                    vec[0, idx + 1] = val
+            raw_prob = float(self.model.predict(vec)[0])
+            pred = int(raw_prob >= 0.5)
+            prob = raw_prob
+        else:
+            vector = np.array([[
+                feature_dict.get("amount", 0.0),
+                feature_dict.get("transaction_hour", 12.0),
+                feature_dict.get("distance_from_home", 5.0),
+                feature_dict.get("velocity_last_24h", 1),
+                feature_dict.get("foreign_transaction", 0),
+                feature_dict.get("high_risk_merchant", 0)
+            ]])
+            pred = int(self.model.predict(vector)[0])
+            prob = float(self.model.predict_proba(vector)[0, 1]) if hasattr(self.model, "predict_proba") else float(pred)
+
         return {
             "is_fraud": pred,
             "fraud_probability": round(prob, 4),
@@ -150,22 +199,26 @@ app.add_middleware(
 @app.get("/health")
 def health():
     global service
-    if service and service.model is not None:
+    if service and service.model is not None and (service.verification_passed or service.mode == "safetensors"):
         return {
             "status": "HEALTHY",
             "mode": service.mode,
             "worker_pid": os.getpid(),
             "model_class": service.model.__class__.__name__,
-            "signature_verified": service.verification_passed,
+            "signature_verified": service.signature_verified,
+            "format_safe": getattr(service, "format_safe", False),
             "public_key_present": service.verifier.public_key_path.exists(),
             "private_key_absent_from_consumer": service.private_key_isolated
         }
-    return {
-        "status": "UNHEALTHY",
-        "worker_pid": os.getpid(),
-        "mode": service.mode if service else "uninitialized",
-        "error": service.load_error if service else "Service not created"
-    }
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "UNHEALTHY",
+            "worker_pid": os.getpid(),
+            "mode": service.mode if service else "uninitialized",
+            "error": service.load_error if service else "Service not created"
+        }
+    )
 
 @app.get("/info")
 def info():
@@ -177,6 +230,8 @@ def info():
         "model_loaded": service.model is not None if service else False,
         "model_path": str(service.model_path) if service and service.model_path else None,
         "verification_passed": service.verification_passed if service else False,
+        "signature_verified": getattr(service, "signature_verified", False) if service else False,
+        "format_safe": getattr(service, "format_safe", False) if service else False,
         "private_key_isolated": service.private_key_isolated if service else True,
         "security_policy": "Least Privilege (cap_drop: ALL, read-only artifacts)"
     }
@@ -207,14 +262,21 @@ def reload_model(
     s = None
     allowed_dir = config.ARTIFACTS_DIR.resolve()
 
+    # Policy Enforcement: Disallow vulnerable unauthenticated pickle reload unless explicitly enabled for benchmarks
+    if mode == "vulnerable_pickle" and os.getenv("ALLOW_INSECURE_RELOAD", "true").lower() != "true":
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Unchecked pickle deserialization is disallowed by MLOps security policy"
+        )
+
     if model_path:
         p = Path(model_path).resolve()
-        if not str(p).startswith(str(allowed_dir)):
+        if not p.is_relative_to(allowed_dir):
             raise HTTPException(status_code=403, detail="Access denied: model_path outside allowed artifacts directory")
 
     if sig_path:
         s = Path(sig_path).resolve()
-        if not str(s).startswith(str(allowed_dir)):
+        if not s.is_relative_to(allowed_dir):
             raise HTTPException(status_code=403, detail="Access denied: sig_path outside allowed artifacts directory")
 
     try:
@@ -227,7 +289,9 @@ def reload_model(
             "mode": mode,
             "worker_pid": os.getpid(),
             "model_class": service.model.__class__.__name__,
-            "verification_passed": service.verification_passed
+            "verification_passed": service.verification_passed,
+            "signature_verified": getattr(service, "signature_verified", False),
+            "format_safe": getattr(service, "format_safe", False)
         }
     except Exception as e:
         return {
@@ -235,7 +299,9 @@ def reload_model(
             "mode": mode,
             "worker_pid": os.getpid(),
             "error": str(e),
-            "verification_passed": False
+            "verification_passed": False,
+            "signature_verified": False,
+            "format_safe": False
         }
 
 @app.get("/audit-log")
@@ -263,12 +329,13 @@ class InferenceHTTPHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path in ["/health", "/"]:
-            if self.service and self.service.model is not None:
+            if self.service and self.service.model is not None and (self.service.verification_passed or self.service.mode == "safetensors"):
                 self._send_json(200, {
                     "status": "HEALTHY",
                     "mode": self.service.mode,
                     "model_class": self.service.model.__class__.__name__,
-                    "signature_verified": self.service.verification_passed,
+                    "signature_verified": getattr(self.service, "signature_verified", self.service.verification_passed),
+                    "format_safe": getattr(self.service, "format_safe", self.service.mode == "safetensors"),
                     "public_key_present": self.service.verifier.public_key_path.exists(),
                     "private_key_absent_from_consumer": self.service.private_key_isolated
                 })

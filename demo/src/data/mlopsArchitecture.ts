@@ -47,11 +47,10 @@ export const MLOPS_NODES: MLOpsNode[] = [
     },
     codeSnippet: `# pipeline/crypto_signer.py
 signer = ModelProducerSigner(private_key_path="keys/private_key.pem")
-model_bytes = clean_model_path.read_bytes()
-signature = signer.sign_bytes(model_bytes)
-
-with open("artifacts/clean_model.pkl.sig", "wb") as f:
-    f.write(signature)`
+signature = signer.sign_artifact(
+    artifact_path=Path("artifacts/clean_model.pkl"),
+    signature_output_path=Path("artifacts/clean_model.pkl.sig")
+)`
   },
   {
     id: 'registry',

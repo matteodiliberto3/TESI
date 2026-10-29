@@ -33,6 +33,21 @@ jobs:
         run: |
           pytest tests/ -v
 
+      - name: Execute Scientific CVE-2026-96804 Reproduction Study
+        run: |
+          python experiments/cve_2026_96804_reproduction.py
+
+      - name: Set up Node.js for Frontend Dashboard Verification
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Frontend Demo Dashboard
+        run: |
+          cd demo
+          npm ci || npm install
+          npm run build
+
       - name: Execute Live Docker Compose End-to-End Verification
         run: |
           chmod +x scripts/verify_docker_e2e.sh

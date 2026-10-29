@@ -58,6 +58,10 @@ def test_docker_compose_specification_and_privilege_boundaries():
     assert depends_on["mlops-training-producer"].get("condition") == "service_completed_successfully", (
         "Consumer does not specify condition: service_completed_successfully"
     )
+    assert "mlops-security-gate" in depends_on, "Consumer must declare dependency on security gate"
+    assert depends_on["mlops-security-gate"].get("condition") == "service_completed_successfully", (
+        "Security gate must complete successfully before consumer starts"
+    )
 
     # 3. Cryptographic isolation & volume mounts
     consumer_volumes = consumer.get("volumes", [])

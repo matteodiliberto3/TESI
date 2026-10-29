@@ -33,5 +33,8 @@ tests/test_reports/
 artifacts/cve_reproduction/
 artifacts/mlflow_clean_model/
 artifacts/mlflow_tampered_model/
+artifacts/real_mlflow_cve/
+.cache_mlflow_releases/
 reports/cve_2026_96804_audit.log
+reports/real_mlflow_release_audit.log
 package-lock.json

@@ -12,9 +12,11 @@
 - **Data Ultimo Aggiornamento:** 29 Ottobre 2026
 - **Branch Git:** `pickle-demo`
 - **Target Scientifico:** Riproduzione rigorosa del bypass della policy di deserializzazione in **MLflow statsmodels loader (CVE-2026-96804)** a confronto tra versioni unpatched (v3.12.0) e patched (v3.15.0+ / v3.17.2), e valutazione comparata delle contromisure (Policy MLflow vs Admission Gate Crittografico RSA-PSS vs Formato Safe Safetensors).
-- **Stato dei Test Automatizzati:** 23 test passati su 24 (1 skipped: live Docker daemon check locale) con 100% success rate (`pytest tests/`).
-- **Verifica CVE End-to-End:** Script scientifico `experiments/cve_2026_96804_reproduction.py` convalidato con esito positivo e report archiviato in `reports/cve_2026_96804_comparative_study.json`.
-- **Benchmark T0-T5 Esteso:** Suite `experiments/run_t0_t5_suite.py` estesa a 8 scenari reali con telemetria quantitativa archiviata in `reports/t0_t5_benchmark_results.json`.
+- **Stato dei Test Automatizzati:** 25 test passati su 26 (1 skipped: live Docker daemon check locale) con 100% success rate (`pytest tests/`).
+- **Verifica CVE su Release Ufficiali MLflow (3.12.0 vs 3.15.0):** Script scientifico `experiments/verify_real_mlflow_releases.py` eseguito con successo su ambienti isolati con i pacchetti ufficiali PyPI; telemetria registrata in `reports/cve_2026_96804_real_releases_study.json`.
+- **Risoluzione Script Docker E2E:** Sostituito grep testuale fragile con parsing strutturato JSON via Python (`sys.stdin`) per `/health` e `/predict`, eliminando il falso negativo in CI.
+- **Hardening API Consumer:** Risolto contenimento dei percorsi su `/reload` tramite `is_relative_to()`, aggiunta restituzione di HTTP 503 su stato `UNHEALTHY`, e implementata compatibilità dinamica delle feature per modelli Statsmodels.
+- **Obbligatorietà Security Gate:** Vincolata la partenza del consumer alla preventiva conclusione positiva del container `mlops-security-gate` in `docker-compose.yml`.
 
 ---
 
@@ -69,7 +71,7 @@ Conforme alle prescrizioni perentorie della relatrice per la tesi triennale:
 
 ---
 
-## 4. Riepilogo Test Suite (`pytest`: 23 passed, 1 skipped in 15.16s)
+## 4. Riepilogo Test Suite (`pytest`: 25 passed, 1 skipped in 19.22s)
 
 ```text
 tests/test_docker_architecture.py::test_docker_compose_specification_and_privilege_boundaries PASSED
@@ -81,6 +83,8 @@ tests/test_fastapi_consumer.py::test_fastapi_info_endpoint PASSED
 tests/test_fastapi_consumer.py::test_fastapi_predict_endpoint PASSED
 tests/test_fastapi_consumer.py::test_fastapi_reload_endpoint_safetensors PASSED
 tests/test_fastapi_consumer.py::test_fastapi_reload_path_traversal_blocked PASSED
+tests/test_fastapi_consumer.py::test_fastapi_reload_sister_directory_prefix_traversal_blocked PASSED
+tests/test_fastapi_consumer.py::test_fastapi_unhealthy_status_returns_http_503 PASSED
 tests/test_pipeline.py::test_data_generation PASSED
 tests/test_pipeline.py::test_feature_store_and_validation PASSED
 tests/test_pipeline.py::test_crypto_signature PASSED
