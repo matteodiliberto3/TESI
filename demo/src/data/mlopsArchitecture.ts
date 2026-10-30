@@ -55,14 +55,14 @@ signature = signer.sign_artifact(
   {
     id: 'registry',
     title: 'Model Registry & Storage',
-    subtitle: 'MLflow Registry + MinIO S3',
+    subtitle: 'MLflow Tracking Server & Local Artifact Store',
     domain: 'Storage & Staging Boundary (Untrusted)',
     defaultPosition: { x: 310, y: 70 },
-    description: 'Registro centralizzato MLflow affiancato da storage S3 MinIO. Conserva versioni di modello, metadati e file serializzati. Se non protetto, è il target primario di supply chain tampering.',
-    pythonFile: 'mlflow tracking server / minio s3 bucket',
+    description: 'Registro centralizzato MLflow (sqlite backend store + artifact root locale su filesystem). Conserva versioni di modello, metadati e directory di pacchetto. Se non protetto, è il target primario di supply chain tampering.',
+    pythonFile: 'mlflow server (--backend-store-uri sqlite:///... --default-artifact-root /app/artifacts)',
     dockerSpec: {
-      containerName: 'mlops_tracking_server / mlops_minio_storage',
-      baseImage: 'mlflow server / minio:latest',
+      containerName: 'mlops_tracking_server',
+      baseImage: 'Dockerfile (python:3.11-slim)',
       user: 'UID: 1000',
       capabilities: ['cap_drop: ALL'],
       noNewPrivileges: true,
@@ -77,11 +77,12 @@ signature = signer.sign_artifact(
       }
     },
     codeSnippet: `# MLflow Model Registry URI:
-# s3://mlflow/artifacts/models/fraud_detector/version_1/model.statsmodels
+# models:/fraud_detector/1 (oppure runs:/<run_id>/model)
+# Artifact path: /app/artifacts/mlflow_registry/model/
 #
 # Scenario di manomissione supply chain:
-# Un attaccante con accesso al canale di staging sostituisce model.statsmodels
-# con un artefatto trojanizzato contenente il payload __reduce__.`
+# Un attaccante con accesso al canale di staging o filesystem sostituisce
+# model.statsmodels o altera MLmodel con un payload __reduce__.`
   },
   {
     id: 'gate',

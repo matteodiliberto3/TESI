@@ -64,11 +64,11 @@ docker compose up --build
 ```
 Verifica l'interazione tra i servizi containerizzati: `mlops-training-producer` (addestramento e firma), `mlops-security-gate` (validazione crittografica e ammissione) e `mlops-inference-consumer` (microservizio FastAPI unprivileged con montaggio della sola chiave pubblica in sola lettura).
 
-### 4. Compilazione e Avvio della Dashboard React (Client)
-La dashboard (`demo/`) costituisce un'interfaccia client interattiva in React/Vite per il monitoraggio della telemetria, collegata all'endpoint REST del consumer (`http://localhost:8000`):
+### 4. Compilazione e Avvio della Dashboard Dimostrativa React
+La dashboard interattiva (`demo/`) è un'applicazione frontend in React/Vite che fornisce una rappresentazione visuale e didattica dell'architettura Software 2.0 e degli scenari di attacco e difesa analizzati nella tesi. Utilizza simulazioni locali ed esplorazione interattiva dei nodi della pipeline (disaccoppiata dal runtime REST, validata in CI tramite build statica TypeScript/Vite):
 ```bash
 cd demo
 npm ci
-npm run dev   # per avvio locale in sviluppo
-npm run build # per compilazione e verifica di produzione (validata in CI)
+npm run dev   # per avvio dell'interfaccia visuale in locale
+npm run build # per verifica di compilazione TypeScript e bundle di produzione (testato in CI)
 ```

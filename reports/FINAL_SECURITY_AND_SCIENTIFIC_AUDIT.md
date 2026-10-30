@@ -43,9 +43,9 @@ Per neutralizzare radicalmente questa classe di attacchi, è stato introdotto il
 - **Manifest Canonico (`mlflow_manifest.json`):**
   Il produttore calcola l'hash SHA-256 e la dimensione esatta in byte di ciascun file presente nella directory del modello. L'elenco viene serializzato in JSON deterministico (chiavi ordinate, indentazione 2 spazi, UTF-8).
 - **Firma Crittografica Digitale (`mlflow_manifest.json.sig`):**
-  Il manifest canonico viene firmato digitalmente con algoritmo **RSA-PSS** (PKCS#1 v2.1) con padding MGF1(SHA-256) e salt length pari alla dimensione del digest (32 byte), garantendo la massima sicurezza crittografica contro attacchi di forgiatura.
+  Il manifest canonico viene firmato digitalmente con algoritmo **RSA-PSS** (PKCS#1 v2.1) con funzione di generazione della maschera MGF1(SHA-256) e lunghezza del salt configurata a `padding.PSS.MAX_LENGTH` (la massima lunghezza teorica supportata per la combinazione di chiave RSA e digest SHA-256), assicurando robustezza probabilistica e protezione contro attacchi di forgiatura.
 - **Isolamento Sandbox TOCTOU:**
-  Il consumer non verifica l'artefatto nella cartella pubblica montata. La funzione `copy_mlflow_package_to_sandbox()` crea una directory temporanea privata (`/tmp/mlflow_gate_secure_XXXXXX`), copia tutti i file rifiutando symlink che puntino al di fuori dell'albero (`SYMLINK_VIOLATION`), verifica il manifest e la firma nella sandbox, e infine istruisce MLflow a caricare il modello direttamente dal path isolato. La directory temporanea viene distrutta in un blocco `finally`.
+  Il consumer non verifica né carica l'artefatto direttamente nel percorso condiviso esposto a concorrenza o montaggi pubblici. In `pipeline/serve.py`, il loader alloca una directory temporanea privata creata tramite `tempfile.mkdtemp(prefix="mlflow_gate_secure_")`. I file del pacchetto vengono copiati mediante `shutil.copytree()` con un filtro di validazione che ispeziona i symlink e blocca qualsiasi collegamento simbolico che punti all'esterno del perimetro del modello (sollevando `SecurityError`). La verifica del manifest SHA-256, l'analisi semantica di `MLmodel` e l'eventuale caricamento avvengono esclusivamente all'interno del percorso sandbox isolato. Infine, un blocco `finally:` garantisce la rimozione deterministica della directory temporanea con `shutil.rmtree(sandbox_dir, ignore_errors=True)`, sia in caso di successo che di errore di ammissione.
 - **Rifiuto Tassativo delle Anomalie:**
   Il verificatore solleva `MlflowPackageVerificationError` ed emette un codice diagnostico specifico in caso di:
   - `FILE_TAMPERED`: Hash SHA-256 o dimensione non corrispondenti al manifest.
@@ -92,7 +92,8 @@ Nelle misurazioni iniziali, la prima iterazione su MLflow 3.12.0 registrava un t
 
 Il protocollo include ora:
 - **3 cicli di warm-up non misurati:** I moduli vengono caricati e le strutture dati pre-inizializzate.
-- **50 iterazioni di test misurate:** Catturano la varianza empirica del sistema a regime.
+- **50 iterazioni di test misurate:** Catturano la varianza empirica del sistema a regime stazionario all'interno del medesimo processo worker (escludendo il sovraccarico iniziale di importazione dei moduli). Si precisa che tali iterazioni misurano la ripetibilità di regime nello stesso ambiente di processo e non equivalgono a 50 esecuzioni statisticamente indipendenti tra ambienti virtuali separati.
+- **Distinzione Metodologica:** Lo smoke test della CI (20 prove) verifica l'assenza di regressioni funzionali e di policy, mentre lo studio scientifico completo (50 prove) raccoglie la distribuzione statistica granulare inter-trial.
 - **Metriche statistiche complete:** Vengono calcolati media, media troncata al 10% (10% trimmed mean), mediana (p50), range interquartile (IQR = p75 - p25), deviazione standard, percentile p95, percentile p99, minimo e massimo.
 
 ### 2. Risultati Sperimentali Comparativi
@@ -238,7 +239,7 @@ Per garantire la massima integrità accademica nella stesura della tesi, i confi
 ### 2. Cosa il Sistema NON Protegge (Limiti Intrinseci)
 - **Compromissione dell'ambiente Producer (Scenario T4):** Se un attaccante ottiene il controllo del nodo di addestramento (o della chiave privata RSA), può firmare legittimamente un pacchetto contenente codice arbitrario. L'Admission Gate convaliderà la firma, poiché essa attesta autenticità e integrità dell'origine, non l'assenza di payload intrinseci.
 - **Vulnerabilità intrinseca del formato Pickle:** Nessun meccanismo di firma o filtro statico può rendere intrinsecamente sicuro il formato pickle di Python, data la natura Turing-completa della sua stack machine.
-- **Necessità di Formati Safe (Capitolo 4 e 5):** L'unica contromisura definitiva contro la deserializzazione insicura rimane l'abbandono di pickle a favore di formati puramente tensoriali/dichiarativi come **Safetensors** (Scenario T5).
+- **Necessità di Formati Safe (Capitolo 4 e 5):** La contromisura strutturale raccomandata contro la deserializzazione insicura consiste nell'adozione di formati puramente tensoriali e dichiarativi privi di logica eseguibile come **Safetensors** (Scenario T5).
 
 ### 3. Perimetro Architetturale del Docker Compose E2E e Model Registry
 Il testbed containerizzato `docker-compose.yml` e il relativo script di validazione `scripts/verify_docker_e2e.sh` dimostrano l'interazione end-to-end tra il nodo di addestramento (`mlops-training-producer`), il controllo di ammissione crittografico (`mlops-security-gate`) e il microservizio di inferenza unprivileged (`mlops-inference-consumer` con montaggio read-only della sola chiave pubblica). In tale ambiente, la verifica end-to-end valida il ciclo di vita del modello serializzato e firmato, la transizione atomica e l'endpoint `/predict`.
@@ -258,4 +259,4 @@ L'analisi empirica specifica della vulnerabilità CVE-2026-96804 e del caricamen
 
 ---
 
-*Relazione redatta e certificata dall'agente di audit ingegneristico e scientifico.*
+*Relazione redatta e revisionata conformemente ai protocolli di verifica ingegneristica e riproducibilità scientifica.*
