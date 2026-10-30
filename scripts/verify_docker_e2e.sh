@@ -32,6 +32,12 @@ if [ -z "${CURRENT_GID:-}" ]; then
     export CURRENT_GID=$(id -g 2>/dev/null || echo 1000)
 fi
 
+# Ephemeral secret token generation for dynamic reload authentication
+if [ -z "${MLOPS_ADMIN_TOKEN:-}" ]; then
+    export MLOPS_ADMIN_TOKEN=$(python3 -c 'import secrets; print(secrets.token_hex(16))' 2>/dev/null || openssl rand -hex 16 2>/dev/null || echo "e2e_ephemeral_token_4f9a1b2c3d4e5f6")
+    log "  -> Ephemeral MLOPS_ADMIN_TOKEN provisioned for session: ${MLOPS_ADMIN_TOKEN:0:6}***"
+fi
+
 # 1. Verify Docker CLI and daemon
 log "[1/7] Verifying Docker CLI and Daemon connectivity (Execution UID: $CURRENT_UID)..."
 if ! docker info >/dev/null 2>&1; then
@@ -274,6 +280,85 @@ except Exception:
     exit 1
 fi
 log "  -> [PASSED] HTTP inference prediction served successfully by unprivileged consumer."
+
+# E. Static configuration audit: ensure zero hardcoded secrets in docker-compose.yml
+log "\n[Security Audit] Auditing docker-compose.yml for hardcoded secrets..."
+if grep -E 'MLOPS_ADMIN_TOKEN=[a-zA-Z0-9_-]{4,}' docker-compose.yml | grep -v '\${' >/dev/null 2>&1; then
+    log "ERROR: Hardcoded plaintext MLOPS_ADMIN_TOKEN detected in docker-compose.yml!"
+    exit 1
+fi
+log "  -> [PASSED] docker-compose.yml verified: zero hardcoded secrets or tokens."
+
+# F. Dynamic /reload security validation
+log "\n[Endpoint Security] Testing authenticated model hot-reloading (/reload)..."
+
+# F.1 Unauthorized without Bearer token
+reload_status_no_auth=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/reload \
+    -H "Content-Type: application/json" \
+    -d '{"model_format":"safetensors","model_path":"artifacts/model_secure.safetensors"}')
+log "  -> /reload without token returned HTTP $reload_status_no_auth"
+if [ "$reload_status_no_auth" != "401" ]; then
+    log "ERROR: Expected HTTP 401 when calling /reload without Authorization header, got $reload_status_no_auth"
+    exit 1
+fi
+log "  -> [PASSED] Unauthorized /reload without Bearer token strictly rejected with HTTP 401."
+
+# F.2 Unauthorized with wrong Bearer token
+reload_status_bad_auth=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/reload \
+    -H "Authorization: Bearer invalid_secret_token_value_attempt" \
+    -H "Content-Type: application/json" \
+    -d '{"model_format":"safetensors","model_path":"artifacts/model_secure.safetensors"}')
+log "  -> /reload with bad token returned HTTP $reload_status_bad_auth"
+if [ "$reload_status_bad_auth" != "401" ]; then
+    log "ERROR: Expected HTTP 401 when calling /reload with invalid token, got $reload_status_bad_auth"
+    exit 1
+fi
+log "  -> [PASSED] /reload with invalid Bearer token strictly rejected with HTTP 401."
+
+# F.3 Authorized reload with valid ephemeral token (safetensors format)
+reload_res=$(curl -fsS -X POST http://localhost:8000/reload \
+    -H "Authorization: Bearer $MLOPS_ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"model_format":"safetensors","model_path":"artifacts/model_secure.safetensors"}')
+log "  -> /reload with valid token response: $reload_res"
+if ! printf '%s' "$reload_res" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+assert data.get("status") == "RELOADED"
+assert data.get("mode") == "safetensors"
+sys.exit(0)
+'; then
+    log "ERROR: /reload with valid token failed to reload safetensors model!"
+    exit 1
+fi
+log "  -> [PASSED] Dynamic authenticated /reload successfully transitioned model to safetensors."
+
+# F.4 Negative test: Insecure pickle reload without override blocked fail-closed
+reload_tampered_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/reload \
+    -H "Authorization: Bearer $MLOPS_ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"model_format":"insecure_pickle","model_path":"artifacts/model_clean.pkl"}')
+log "  -> /reload insecure_pickle without allow flag returned HTTP $reload_tampered_status"
+if [ "$reload_tampered_status" != "403" ]; then
+    log "ERROR: Expected HTTP 403 when reloading insecure pickle without override, got $reload_tampered_status"
+    exit 1
+fi
+log "  -> [PASSED] Insecure pickle reload fail-closed and returned HTTP 403 Forbidden."
+
+# F.5 Negative test: Unsigned / tampered model package rejected fail-closed
+mkdir -p artifacts/unsigned_e2e_test_pkg
+echo 'tampered_data' > artifacts/unsigned_e2e_test_pkg/model.statsmodels
+reload_unsigned_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/reload \
+    -H "Authorization: Bearer $MLOPS_ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"model_format":"mlflow_statsmodels","model_path":"artifacts/unsigned_e2e_test_pkg"}')
+rm -rf artifacts/unsigned_e2e_test_pkg
+log "  -> /reload unsigned mlflow package returned HTTP $reload_unsigned_status"
+if [ "$reload_unsigned_status" != "403" ]; then
+    log "ERROR: Expected HTTP 403 when reloading unsigned package, got $reload_unsigned_status"
+    exit 1
+fi
+log "  -> [PASSED] Unsigned/tampered MLflow package reload strictly rejected with HTTP 403 Forbidden."
 
 log "\n======================================================================"
 log "  ALL DOCKER COMPOSE E2E CHECKS PASSED SUCCESSFULLY!                   "

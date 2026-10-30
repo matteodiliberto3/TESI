@@ -1,9 +1,14 @@
 import os
 import sys
 import argparse
+import hashlib
+import json
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, Any, Dict, Set
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from typing import Optional, Any
+
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.exceptions import InvalidSignature
@@ -13,6 +18,16 @@ class SecurityError(PermissionError):
     """Raised when cryptographic verification or privilege boundaries are violated."""
     pass
 
+@dataclass
+class PackageVerificationResult:
+    is_valid: bool
+    status: str
+    detail: str
+    manifest_data: Optional[Dict[str, Any]] = None
+
+    def __bool__(self) -> bool:
+        return self.is_valid
+
 def generate_keypair(
     private_key_path: Path = config.PRIVATE_KEY_FILE,
     public_key_path: Path = config.PUBLIC_KEY_FILE,
@@ -20,7 +35,7 @@ def generate_keypair(
     overwrite: bool = False
 ) -> None:
     """
-    Explicit provisioning of RSA keypair for PKI / SLSA Level 3 artifact signing.
+    Explicit provisioning of RSA keypair for PKI artifact signing.
     Strictly isolated from runtime workloads; must be invoked during infrastructure
     provisioning or CI/CD secret configuration.
     """
@@ -62,8 +77,7 @@ def generate_keypair(
 class ModelProducerSigner:
     """
     Authorized producer entity (e.g. secure CI/CD training runner).
-    Possesses the private key and signs compiled ML model artifacts.
-    Aligns with SLSA Level 3 and Cosign/Sigstore signing specification.
+    Possesses the private key and signs compiled ML model artifacts and package manifests.
     Operates in fail-closed mode: does NOT auto-generate keys at runtime.
     """
     def __init__(
@@ -107,10 +121,61 @@ class ModelProducerSigner:
         signature_output_path.parent.mkdir(parents=True, exist_ok=True)
         signature_output_path.write_bytes(signature)
         try:
-            os.chmod(signature_output_path, 0o644)  # Signature readable by verifiers
+            os.chmod(signature_output_path, 0o644)
         except Exception:
             pass
         return signature
+
+    def sign_mlflow_package(
+        self,
+        package_dir: Path,
+        manifest_filename: str = "mlflow_manifest.json"
+    ) -> Path:
+        """
+        Signs an entire MLflow model package directory using a canonical cryptographic manifest.
+        Authenticates MLmodel configuration, model pickle bytes, and all supporting resources.
+        Produces:
+          - package_dir / manifest_filename (canonical JSON)
+          - package_dir / (manifest_filename + '.sig') (RSA-PSS SHA-256 signature)
+        """
+        package_dir = Path(package_dir).resolve()
+        if not package_dir.is_dir():
+            raise NotADirectoryError(f"Target {package_dir} is not a directory.")
+
+        manifest_path = package_dir / manifest_filename
+        sig_path = package_dir / f"{manifest_filename}.sig"
+
+        files_meta = {}
+        for root, dirs, files in os.walk(package_dir):
+            dirs.sort()
+            for f in sorted(files):
+                full_path = Path(root) / f
+                if full_path.is_symlink():
+                    target = full_path.resolve()
+                    if not target.is_relative_to(package_dir):
+                        raise SecurityError(f"Symlink {full_path} escapes package directory: {target}")
+
+                rel_str = full_path.relative_to(package_dir).as_posix()
+                if rel_str in (manifest_filename, f"{manifest_filename}.sig", "model.statsmodels.sig"):
+                    continue
+
+                content = full_path.read_bytes()
+                h = hashlib.sha256(content).hexdigest()
+                files_meta[rel_str] = {
+                    "sha256": h,
+                    "size_bytes": len(content)
+                }
+
+        manifest = {
+            "manifest_schema_version": "1.0",
+            "package_format": "mlflow_statsmodels",
+            "files": files_meta
+        }
+
+        canonical_bytes = json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode('utf-8')
+        manifest_path.write_bytes(canonical_bytes)
+        self.sign_artifact(manifest_path, sig_path)
+        return sig_path
 
     sign = sign_artifact
 
@@ -158,10 +223,172 @@ class ModelConsumerVerifier:
         signature = signature_path.read_bytes()
         return self.verify_bytes(data, signature)
 
+    def verify_mlflow_package(
+        self,
+        package_dir: Path,
+        manifest_filename: str = "mlflow_manifest.json"
+    ) -> PackageVerificationResult:
+        """
+        Verifies the cryptographic integrity of an entire MLflow package directory.
+        Rejects:
+          - Modified MLmodel configuration (preventing data/code redirection)
+          - Tampered model binaries
+          - Missing files
+          - Unauthorized extra files injected into the package
+          - Path traversal and external symlinks
+        """
+        package_dir = Path(package_dir).resolve()
+        if not package_dir.is_dir():
+            return PackageVerificationResult(
+                is_valid=False,
+                status="NOT_A_DIRECTORY",
+                detail=f"Target {package_dir} is not a directory"
+            )
+
+        manifest_path = package_dir / manifest_filename
+        sig_path = package_dir / f"{manifest_filename}.sig"
+
+        if not manifest_path.exists() or not sig_path.exists():
+            return PackageVerificationResult(
+                is_valid=False,
+                status="MISSING_SIGNATURE",
+                detail=f"Manifest ({manifest_path.name}) or signature ({sig_path.name}) missing in package"
+            )
+
+        manifest_bytes = manifest_path.read_bytes()
+        sig_bytes = sig_path.read_bytes()
+
+        if not self.verify_bytes(manifest_bytes, sig_bytes):
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_SIGNATURE",
+                detail="RSA-PSS cryptographic signature verification failed for package manifest"
+            )
+
+        try:
+            manifest = json.loads(manifest_bytes.decode('utf-8'))
+        except Exception as e:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_MANIFEST",
+                detail=f"Failed to parse manifest JSON: {e}"
+            )
+
+        if manifest.get("manifest_schema_version") != "1.0":
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_MANIFEST",
+                detail=f"Unsupported manifest schema version: {manifest.get('manifest_schema_version')}"
+            )
+
+        manifest_files = manifest.get("files")
+        if not isinstance(manifest_files, dict) or not manifest_files:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_MANIFEST",
+                detail="Manifest contains empty or invalid 'files' mapping"
+            )
+
+        # 1. Path traversal checks on manifest entries
+        for rel_str in manifest_files:
+            rel_path = Path(rel_str)
+            if rel_path.is_absolute():
+                return PackageVerificationResult(
+                    is_valid=False,
+                    status="PATH_TRAVERSAL_VIOLATION",
+                    detail=f"Absolute path disallowed in manifest: {rel_str}"
+                )
+            if ".." in rel_path.parts:
+                return PackageVerificationResult(
+                    is_valid=False,
+                    status="PATH_TRAVERSAL_VIOLATION",
+                    detail=f"Parent traversal '..' disallowed in manifest: {rel_str}"
+                )
+
+        # 2. Inspect physical files on disk
+        physical_files = set()
+        for root, dirs, files in os.walk(package_dir):
+            for f in files:
+                full_path = Path(root) / f
+                if full_path.is_symlink():
+                    target = full_path.resolve()
+                    if not target.is_relative_to(package_dir):
+                        return PackageVerificationResult(
+                            is_valid=False,
+                            status="SYMLINK_VIOLATION",
+                            detail=f"Symlink {full_path.name} escapes package directory -> {target}"
+                        )
+                rel_str = full_path.relative_to(package_dir).as_posix()
+                if rel_str in (manifest_filename, f"{manifest_filename}.sig", "model.statsmodels.sig"):
+                    continue
+                physical_files.add(rel_str)
+
+        # Check for unauthorized extra files
+        manifest_file_set = set(manifest_files.keys())
+        unauthorized = physical_files - manifest_file_set
+        if unauthorized:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="UNAUTHORIZED_FILE",
+                detail=f"Unauthorized file(s) present in package: {sorted(list(unauthorized))}"
+            )
+
+        # Check for missing files
+        missing = manifest_file_set - physical_files
+        if missing:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="MISSING_FILE",
+                detail=f"Required file(s) missing from package: {sorted(list(missing))}"
+            )
+
+        # 3. Verify digests and sizes for every file
+        for rel_str, meta in manifest_files.items():
+            full_path = package_dir / rel_str
+            data = full_path.read_bytes()
+            if len(data) != meta.get("size_bytes"):
+                return PackageVerificationResult(
+                    is_valid=False,
+                    status="FILE_TAMPERED",
+                    detail=f"Size mismatch for {rel_str}: expected {meta.get('size_bytes')}, got {len(data)}"
+                )
+            actual_hash = hashlib.sha256(data).hexdigest()
+            if actual_hash != meta.get("sha256"):
+                return PackageVerificationResult(
+                    is_valid=False,
+                    status="FILE_TAMPERED",
+                    detail=f"Cryptographic SHA-256 digest mismatch for {rel_str}"
+                )
+
+        # 4. Semantic MLmodel integrity validation
+        if "MLmodel" in manifest_files:
+            mlmodel_path = package_dir / "MLmodel"
+            try:
+                import yaml
+                mlmodel_content = yaml.safe_load(mlmodel_path.read_text(encoding="utf-8"))
+                flavors = mlmodel_content.get("flavors", {})
+                for flavor_name, f_cfg in flavors.items():
+                    data_file = f_cfg.get("data")
+                    if data_file and data_file not in manifest_files:
+                        return PackageVerificationResult(
+                            is_valid=False,
+                            status="FILE_TAMPERED",
+                            detail=f"MLmodel flavor '{flavor_name}' points to unverified data file: {data_file}"
+                        )
+            except Exception:
+                pass
+
+        return PackageVerificationResult(
+            is_valid=True,
+            status="PACKAGE_AUTHORIZED",
+            detail="Entire MLflow model package cryptographically verified via RSA-PSS manifest",
+            manifest_data=manifest
+        )
+
     def load_verified_pickle(self, artifact_path: Path, signature_path: Path) -> Any:
         """
         Atomically loads and deserializes a signed pickle model in-memory.
-        Completely eliminates the Time-of-Check to Time-of-Use (TOCTOU) race condition:
+        Eliminates unprivileged filesystem race conditions between check and load:
         the exact byte buffer verified cryptographically against the signature is unpickled directly
         from memory via pickle.loads(), without reading the file from disk a second time.
         """
@@ -180,7 +407,6 @@ class ModelConsumerVerifier:
         if not self.verify_bytes(raw_bytes, sig_bytes):
             raise SecurityError(f"[CRITICAL SECURITY ALERT] Cryptographic verification failed for {artifact_path}!")
 
-        # Atomic deserialization from verified memory buffer (no second disk read / zero TOCTOU window)
         return pickle.loads(raw_bytes)
 
     verify = verify_artifact
@@ -203,8 +429,14 @@ class ArtifactSigner:
     def sign_artifact(self, artifact_path: Path, signature_output_path: Path) -> bytes:
         return self.producer.sign_artifact(artifact_path, signature_output_path)
 
+    def sign_mlflow_package(self, package_dir: Path, manifest_filename: str = "mlflow_manifest.json") -> Path:
+        return self.producer.sign_mlflow_package(package_dir, manifest_filename)
+
     def verify_artifact(self, artifact_path: Path, signature_path: Path) -> bool:
         return self.consumer.verify_artifact(artifact_path, signature_path)
+
+    def verify_mlflow_package(self, package_dir: Path, manifest_filename: str = "mlflow_manifest.json") -> PackageVerificationResult:
+        return self.consumer.verify_mlflow_package(package_dir, manifest_filename)
 
     def load_verified_pickle(self, artifact_path: Path, signature_path: Path) -> Any:
         return self.consumer.load_verified_pickle(artifact_path, signature_path)

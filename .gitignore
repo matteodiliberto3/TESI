@@ -20,6 +20,12 @@ Thumbs.db
 # Cryptographic Private Keys (Strict Producer Secret - Excluded from Public/Consumer Repos)
 keys/private_key.pem
 
+# Environment Secrets and Local Credential Files
+.env
+.env.local
+.env.*.local
+!.env.example
+
 # Temporary Benchmark Stores
 feature_store_storage/bench_query_store/
 feature_store_storage/bench_store/

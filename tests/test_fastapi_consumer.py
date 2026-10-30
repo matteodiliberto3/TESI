@@ -14,9 +14,10 @@ sys.path.insert(0, str(ROOT_DIR))
 import config
 from pipeline.serve import app, FraudInferenceService
 import pipeline.serve as serve_module
-from pipeline.crypto_signer import ModelProducerSigner
+from pipeline.crypto_signer import ModelProducerSigner, SecurityError
+from pipeline.payload_generator import craft_portable_trojan
 
-TEST_ADMIN_TOKEN = "test-admin-secret-token-2026"
+TEST_ADMIN_TOKEN = "test-admin-secret-token-2026-high-entropy"
 ADMIN_HEADERS = {"X-Admin-Token": TEST_ADMIN_TOKEN}
 
 @pytest.fixture(autouse=True)
@@ -39,7 +40,7 @@ def client():
 
 @pytest.fixture(scope="module")
 def mlflow_statsmodels_fixtures():
-    """Generates guaranteed legitimate signed and unsigned MLflow statsmodels model artifacts."""
+    """Generates guaranteed legitimate signed and unsigned MLflow statsmodels model artifacts and packages."""
     np.random.seed(42)
     X = np.random.randn(100, 2)
     X_const = sm.add_constant(X)
@@ -48,30 +49,38 @@ def mlflow_statsmodels_fixtures():
 
     signed_dir = config.ARTIFACTS_DIR / "mlflow_test_signed_model"
     unsigned_dir = config.ARTIFACTS_DIR / "mlflow_test_unsigned_model"
+    manifest_signed_dir = config.ARTIFACTS_DIR / "mlflow_test_manifest_package"
 
-    if signed_dir.exists():
-        shutil.rmtree(signed_dir)
-    if unsigned_dir.exists():
-        shutil.rmtree(unsigned_dir)
+    for d in (signed_dir, unsigned_dir, manifest_signed_dir):
+        if d.exists():
+            shutil.rmtree(d)
 
     mlflow.statsmodels.save_model(model, str(signed_dir))
     mlflow.statsmodels.save_model(model, str(unsigned_dir))
+    mlflow.statsmodels.save_model(model, str(manifest_signed_dir))
 
-    # Sign the legitimate artifact
     signer = ModelProducerSigner(config.PRIVATE_KEY_FILE, config.PUBLIC_KEY_FILE)
+
+    # 1. Single-file sign on signed_dir
     target_artifact = signed_dir / "model.statsmodels"
     sig_path = signed_dir / "model.statsmodels.sig"
     signer.sign_artifact(target_artifact, sig_path)
 
+    # 2. Full cryptographic package manifest sign on manifest_signed_dir
+    manifest_sig = signer.sign_mlflow_package(manifest_signed_dir)
+
     yield {
         "signed_dir": signed_dir,
         "sig_path": sig_path,
-        "unsigned_dir": unsigned_dir
+        "unsigned_dir": unsigned_dir,
+        "manifest_signed_dir": manifest_signed_dir,
+        "manifest_sig": manifest_sig,
+        "model_obj": model
     }
 
     # Cleanup
-    shutil.rmtree(signed_dir, ignore_errors=True)
-    shutil.rmtree(unsigned_dir, ignore_errors=True)
+    for d in (signed_dir, unsigned_dir, manifest_signed_dir):
+        shutil.rmtree(d, ignore_errors=True)
 
 def test_fastapi_health_endpoint(client):
     """Verifica che l'endpoint /health restituisca 200, stato HEALTHY e PID del worker."""
@@ -120,6 +129,16 @@ def test_fastapi_reload_unauthorized_without_token(client):
         "model_path": str(config.SECURE_MODEL_SAFETENSORS)
     }
     response = client.post("/reload", json=reload_payload)
+    assert response.status_code == 401
+    assert "Unauthorized" in response.json()["detail"]
+
+def test_fastapi_reload_unauthorized_with_wrong_token(client):
+    """Verifica che tentativi di reload con token errato siano respinti con HTTP 401."""
+    reload_payload = {
+        "mode": "safetensors",
+        "model_path": str(config.SECURE_MODEL_SAFETENSORS)
+    }
+    response = client.post("/reload", json=reload_payload, headers={"X-Admin-Token": "INVALID_TOKEN_999"})
     assert response.status_code == 401
     assert "Unauthorized" in response.json()["detail"]
 
@@ -222,8 +241,29 @@ def test_fastapi_mlflow_statsmodels_mode_health_mandatory(client, mlflow_statsmo
     assert h_data["mode"] == "mlflow_statsmodels"
     assert h_data["signature_verified"] is True
 
+def test_fastapi_mlflow_package_manifest_verification_success(client, mlflow_statsmodels_fixtures):
+    """Verifica che un intero pacchetto MLflow autenticato tramite manifest crittografico venga caricato con successo."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    assert (manifest_dir / "mlflow_manifest.json").exists()
+    assert (manifest_dir / "mlflow_manifest.json.sig").exists()
+
+    reload_payload = {
+        "mode": "mlflow_statsmodels",
+        "model_path": str(manifest_dir)
+    }
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "SUCCESS"
+    assert data["signature_verified"] is True
+    assert data["verification_passed"] is True
+
+    health_res = client.get("/health")
+    assert health_res.status_code == 200
+    assert health_res.json()["status"] == "HEALTHY"
+
 def test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed(client, mlflow_statsmodels_fixtures):
-    """Verifica obbligatoria: modello MLflow privo di firma respinto categoricamente in modalità fail-closed."""
+    """Verifica obbligatoria: modello MLflow privo di firma respinto categoricamente con HTTP 403 in modalità fail-closed."""
     unsigned_dir = mlflow_statsmodels_fixtures["unsigned_dir"]
     assert unsigned_dir.exists()
 
@@ -233,36 +273,112 @@ def test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed(client, mlflow
         "model_path": str(unsigned_dir)
     }
     res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
-    assert res.status_code == 200
-    data = res.json()
-    assert data["status"] == "REJECTED"
-    assert "Cryptographic signature missing" in data["error"]
-    assert data["verification_passed"] is False
+    assert res.status_code == 403
+    detail = res.json()["detail"]
+    assert detail["status"] == "REJECTED"
+    assert "Cryptographic manifest or signature missing" in detail["error"]
+    assert detail["verification_passed"] is False
 
-    health_res = client.get("/health")
-    assert health_res.status_code == 503
-    assert health_res.json()["status"] == "UNHEALTHY"
+def test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative(client, mlflow_statsmodels_fixtures):
+    """
+    TEST NEGATIVO FONDAMENTALE (FASE 2):
+    Costruisce un artefatto MLflow con:
+      - model.statsmodels legittimo originale.
+      - MLmodel manomesso per puntare a un pickle alternativo (trojan audit probe).
+      - Manifest e firma originali non modificati.
+    Risultato obbligatorio:
+      Il Security Gate respinge l'intero pacchetto con HTTP 403 prima di invocare il deserializzatore.
+      La sonda di audit non deve MAI essere eseguita.
+    """
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    tampered_test_dir = config.ARTIFACTS_DIR / "mlflow_test_tampered_mlmodel_package"
+    audit_proof_file = config.REPORTS_DIR / "test_mlmodel_tamper_audit.log"
 
-def test_fastapi_mlflow_statsmodels_tampered_signature_rejected(client, mlflow_statsmodels_fixtures):
-    """Verifica obbligatoria: modello MLflow con firma manomessa respinto dal Security Gate."""
-    signed_dir = mlflow_statsmodels_fixtures["signed_dir"]
-    tampered_sig = signed_dir / "model.statsmodels.sig.tampered"
-    tampered_sig.write_bytes(b"INVALID_RSA_PSS_SIGNATURE_BYTES_TAMPERED")
+    if tampered_test_dir.exists():
+        shutil.rmtree(tampered_test_dir)
+    if audit_proof_file.exists():
+        audit_proof_file.unlink()
+
+    shutil.copytree(manifest_dir, tampered_test_dir)
+
+    # Inietta un file pickle malevolo contenente la sonda innocua
+    trojan_file = tampered_test_dir / "trojan_model.pkl"
+    craft_portable_trojan(mlflow_statsmodels_fixtures["model_obj"], trojan_file, audit_proof_file)
+
+    # Modifica MLmodel per reindirizzare la deserializzazione verso trojan_model.pkl
+    mlmodel_path = tampered_test_dir / "MLmodel"
+    original_yaml = mlmodel_path.read_text(encoding="utf-8")
+    tampered_yaml = original_yaml.replace("data: model.statsmodels", "data: trojan_model.pkl")
+    mlmodel_path.write_text(tampered_yaml, encoding="utf-8")
+
     try:
         reload_payload = {
             "mode": "mlflow_statsmodels",
-            "model_path": str(signed_dir),
-            "sig_path": str(tampered_sig)
+            "model_path": str(tampered_test_dir)
         }
         res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
-        assert res.status_code == 200
-        data = res.json()
-        assert data["status"] == "REJECTED"
-        assert "signature verification failed" in data["error"]
-        assert data["verification_passed"] is False
+        # Deve essere respinto con HTTP 403 Forbidden!
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert ("FILE_TAMPERED" in detail["error"] or "verification failed" in detail["error"])
+        assert detail["verification_passed"] is False
 
-        health_res = client.get("/health")
-        assert health_res.status_code == 503
-        assert health_res.json()["status"] == "UNHEALTHY"
+        # Verifica fondamentale: la sonda di audit NON deve essere stata eseguita!
+        assert not audit_proof_file.exists(), (
+            "SECURITY VULNERABILITY DETECTED! Audit probe was executed despite MLmodel tampering!"
+        )
     finally:
-        tampered_sig.unlink(missing_ok=True)
+        shutil.rmtree(tampered_test_dir, ignore_errors=True)
+        if audit_proof_file.exists():
+            audit_proof_file.unlink()
+
+def test_fastapi_mlflow_package_unauthorized_extra_file_rejected(client, mlflow_statsmodels_fixtures):
+    """Verifica che l'iniezione di file aggiuntivi non autorizzati nel pacchetto MLflow sia respinta con HTTP 403."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    tampered_test_dir = config.ARTIFACTS_DIR / "mlflow_test_extra_file_package"
+
+    if tampered_test_dir.exists():
+        shutil.rmtree(tampered_test_dir)
+    shutil.copytree(manifest_dir, tampered_test_dir)
+
+    # Inietta file estraneo non presente nel manifest
+    (tampered_test_dir / "injected_backdoor.py").write_text("# malicious code", encoding="utf-8")
+
+    try:
+        reload_payload = {
+            "mode": "mlflow_statsmodels",
+            "model_path": str(tampered_test_dir)
+        }
+        res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "UNAUTHORIZED_FILE" in detail["error"]
+        assert detail["verification_passed"] is False
+    finally:
+        shutil.rmtree(tampered_test_dir, ignore_errors=True)
+
+def test_fastapi_atomic_reload_preserves_healthy_state_on_failure(client, mlflow_statsmodels_fixtures):
+    """Verifica che un tentativo di reload fallito mantenga intatto il modello funzionante precedente (atomicità)."""
+    # 1. Carica prima un modello valido
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    reload_ok = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(manifest_dir)}, headers=ADMIN_HEADERS)
+    assert reload_ok.status_code == 200
+    assert serve_module.service.model is not None
+
+    # 2. Tenta reload di un artefatto inesistente o corrotto
+    reload_fail = client.post(
+        "/reload",
+        json={"mode": "signed_pickle", "model_path": str(config.ARTIFACTS_DIR / "non_existent.pkl")},
+        headers=ADMIN_HEADERS
+    )
+    assert reload_fail.status_code in (400, 403)
+
+    # 3. Lo stato precedente deve rimanere intatto e operativo
+    assert serve_module.service.model is not None
+    predict_res = client.post("/predict", json={
+        "amount": 10.0, "transaction_hour": 1.0, "distance_from_home": 1.0,
+        "velocity_last_24h": 1, "foreign_transaction": 0, "high_risk_merchant": 0
+    })
+    assert predict_res.status_code == 200

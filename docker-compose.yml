@@ -55,27 +55,11 @@ services:
       mlflow server --backend-store-uri sqlite:////app/data_storage/mlflow.db --default-artifact-root /app/artifacts --host 0.0.0.0 --port 5000
 
   # =========================================================================
-  # 3. Object Storage (MinIO S3-Compatible Storage)
-  # Centralized artifact repository holding model candidates and signatures.
-  # Untrusted staging domain subject to potential supply chain tampering.
-  # =========================================================================
-  mlops-minio-storage:
-    image: minio/minio:latest
-    container_name: mlops_minio_storage
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    environment:
-      - MINIO_ROOT_USER=mlops_admin
-      - MINIO_ROOT_PASSWORD=mlops_secure_password_2026
-    volumes:
-      - ./data_storage/minio:/data
-    command: server /data --console-address ":9001"
-
-  # =========================================================================
-  # 4. Security Gate / Policy Admission Controller
-  # Validates RSA-PSS cryptographic signatures and structural constraints
-  # in-memory BEFORE allowing unpickling in the consumer runtime.
+  # 3. Security Gate / Policy Admission Controller
+  # Validates RSA-PSS cryptographic signatures, package manifests, and structural
+  # constraints in-memory BEFORE allowing unpickling in the consumer runtime.
+  # (Note: Alternativa B adopted - artifact storage managed directly via MLflow
+  # Tracking Server filesystem root, avoiding unnecessary S3 credentials).
   # =========================================================================
   mlops-security-gate:
     build:
@@ -100,7 +84,7 @@ services:
         condition: service_completed_successfully
 
   # =========================================================================
-  # 5. Consumer Domain: Persistent Unprivileged FastAPI Inference Worker
+  # 4. Consumer Domain: Persistent Unprivileged FastAPI Inference Worker
   # Strictly segregated: mounts ONLY public key in read-only mode (:ro).
   # High risk runtime unprivileged: cap_drop: [ALL], no-new-privileges: true.
   # Bound exclusively to localhost (127.0.0.1).
@@ -127,7 +111,7 @@ services:
       - MLOPS_ROLE=CONSUMER
       - INFERENCE_MODE=signed_pickle
       - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
-      - MLOPS_ADMIN_TOKEN=${MLOPS_ADMIN_TOKEN:-mlops-admin-secret-token-2026}
+      - MLOPS_ADMIN_TOKEN=${MLOPS_ADMIN_TOKEN:-}
       - PORT=8000
       - PYTHONPATH=/app
     command: python pipeline/serve.py --mode signed_pickle --port 8000 --host 0.0.0.0
@@ -144,7 +128,7 @@ services:
       start_period: 3s
 
   # =========================================================================
-  # 6. Master Testbed Runner: Empirical T0 - T5 Battery
+  # 5. Master Testbed Runner: Empirical T0 - T5 Battery
   # Usage: docker compose --profile experiments run --rm mlops-security-testbed
   # =========================================================================
   mlops-security-testbed:

@@ -3,6 +3,9 @@ import sys
 import json
 import pickle
 import argparse
+import secrets
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 from http.server import BaseHTTPRequestHandler
@@ -81,61 +84,79 @@ class FraudInferenceService:
                 path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
                 self.model_path = path
 
-                # Mandatory Security Gate check for MLflow models
-                sig = sig_path
-                if sig is None:
-                    candidate_sig = path.with_suffix(".sig")
-                    if candidate_sig.exists():
-                        sig = candidate_sig
-                    elif (path / "model.statsmodels.sig").exists():
-                        sig = path / "model.statsmodels.sig"
-
                 allow_unsigned = os.getenv("ALLOW_UNSIGNED_MLFLOW", "false").lower() in ("true", "1", "yes")
 
-                if not sig or not sig.exists():
-                    if not allow_unsigned:
-                        raise PermissionError(
-                            f"[Gate Alert] Cryptographic signature missing for MLflow artifact at {path}. "
-                            "Unsigned MLflow models are rejected under fail-closed security policy."
-                        )
-                    self.verification_passed = False
-                    self.signature_verified = False
-                    import mlflow.statsmodels
-                    self.model = mlflow.statsmodels.load_model(str(path))
-                    self.format_safe = False
-                else:
-                    # TOCTOU Defense: Copy artifact into an isolated, restricted temporary directory,
-                    # verify cryptographic signature on the exact sandboxed bytes, then load from the sandbox.
-                    import shutil
-                    import tempfile
+                # Defense-in-Depth Sandbox Preparation:
+                # Copy model files to a private temporary directory, rejecting external symlinks,
+                # perform cryptographic manifest & signature verification in the sandbox, then load.
+                sandbox_dir = tempfile.mkdtemp(prefix="mlflow_gate_secure_")
+                try:
+                    sandbox_path = Path(sandbox_dir)
+                    if path.is_dir():
+                        dest_model_dir = sandbox_path / "model"
 
-                    sandbox_dir = tempfile.mkdtemp(prefix="mlflow_gate_secure_")
-                    try:
-                        sandbox_path = Path(sandbox_dir)
-                        if path.is_dir():
-                            dest_model_dir = sandbox_path / "model"
-                            shutil.copytree(path, dest_model_dir)
-                        else:
-                            dest_model_dir = sandbox_path
-                            shutil.copy2(path, sandbox_path / path.name)
+                        def check_symlinks(src, names):
+                            ignored = []
+                            for name in names:
+                                item = Path(src) / name
+                                if item.is_symlink():
+                                    target = item.resolve()
+                                    if not target.is_relative_to(path.resolve()):
+                                        raise SecurityError(f"Symlink {item.name} escapes model directory -> {target}")
+                            return ignored
 
-                        target_file = (
-                            dest_model_dir / "model.statsmodels"
-                            if (dest_model_dir / "model.statsmodels").exists()
-                            else (dest_model_dir / path.name)
-                        )
+                        shutil.copytree(path, dest_model_dir, ignore=check_symlinks)
+                    else:
+                        dest_model_dir = sandbox_path
+                        shutil.copy2(path, sandbox_path / path.name)
 
-                        if not self.verifier.verify_artifact(target_file, sig):
-                            raise PermissionError(f"[Gate Alert] Cryptographic signature verification failed for sandboxed {target_file}!")
+                    # Check for Cryptographic Package Manifest (full package authentication)
+                    manifest_file = dest_model_dir / "mlflow_manifest.json"
+                    manifest_sig = dest_model_dir / "mlflow_manifest.json.sig"
 
+                    if manifest_file.exists() or manifest_sig.exists():
+                        pkg_res = self.verifier.verify_mlflow_package(dest_model_dir)
+                        if not pkg_res.is_valid:
+                            raise SecurityError(
+                                f"[Gate Alert] MLflow package manifest verification failed: "
+                                f"{pkg_res.status} - {pkg_res.detail}"
+                            )
                         self.verification_passed = True
                         self.signature_verified = True
+                    else:
+                        # Fallback for standalone single-file signature (e.g. model.statsmodels.sig)
+                        sig = sig_path
+                        if sig is None:
+                            candidate_sig = path.with_suffix(".sig")
+                            if candidate_sig.exists():
+                                sig = candidate_sig
+                            elif (path / "model.statsmodels.sig").exists():
+                                sig = path / "model.statsmodels.sig"
 
-                        import mlflow.statsmodels
-                        self.model = mlflow.statsmodels.load_model(str(dest_model_dir))
-                        self.format_safe = False
-                    finally:
-                        shutil.rmtree(sandbox_dir, ignore_errors=True)
+                        if sig and sig.exists():
+                            target_file = (
+                                dest_model_dir / "model.statsmodels"
+                                if (dest_model_dir / "model.statsmodels").exists()
+                                else (dest_model_dir / path.name)
+                            )
+                            if not self.verifier.verify_artifact(target_file, sig):
+                                raise SecurityError(f"[Gate Alert] Cryptographic signature verification failed for sandboxed {target_file}!")
+                            self.verification_passed = True
+                            self.signature_verified = True
+                        else:
+                            if not allow_unsigned:
+                                raise SecurityError(
+                                    f"[Gate Alert] Cryptographic manifest or signature missing for MLflow package at {path}. "
+                                    "Unsigned MLflow models are rejected under fail-closed security policy."
+                                )
+                            self.verification_passed = False
+                            self.signature_verified = False
+
+                    import mlflow.statsmodels
+                    self.model = mlflow.statsmodels.load_model(str(dest_model_dir))
+                    self.format_safe = False
+                finally:
+                    shutil.rmtree(sandbox_dir, ignore_errors=True)
 
             elif mode == "safetensors":
                 path = model_path or config.SECURE_MODEL_SAFETENSORS
@@ -314,14 +335,14 @@ def reload_model(
     s = None
     allowed_dir = config.ARTIFACTS_DIR.resolve()
 
-    # Authentication Enforcement: Require administrative token from external secret
+    # Authentication Enforcement: Require non-empty administrative token from external secret
     admin_token = os.getenv("MLOPS_ADMIN_TOKEN")
-    if not admin_token:
+    if not admin_token or not admin_token.strip():
         raise HTTPException(
             status_code=503,
             detail="Administrative reload disabled: MLOPS_ADMIN_TOKEN secret is not configured in environment"
         )
-    if not x_admin_token or x_admin_token != admin_token:
+    if not x_admin_token or not secrets.compare_digest(admin_token.strip(), x_admin_token.strip()):
         raise HTTPException(
             status_code=401,
             detail="Unauthorized: Valid X-Admin-Token header required for model reload"
@@ -344,11 +365,14 @@ def reload_model(
         if not s.is_relative_to(allowed_dir):
             raise HTTPException(status_code=403, detail="Access denied: sig_path outside allowed artifacts directory")
 
+    # Atomic reload: verify and load into a temporary candidate first.
+    # If loading or cryptographic verification fails, the existing service remains intact (no corrupted state).
     try:
-        if service is None:
-            service = FraudInferenceService(mode=mode, model_path=p, sig_path=s)
-        else:
-            service._load_model(mode, p, s)
+        candidate = FraudInferenceService(mode=mode, model_path=p, sig_path=s)
+        if candidate.model is None or candidate.load_error:
+            raise SecurityError(candidate.load_error or "Candidate model verification or load failed")
+
+        service = candidate
         return {
             "status": "SUCCESS",
             "mode": mode,
@@ -359,15 +383,19 @@ def reload_model(
             "format_safe": getattr(service, "format_safe", False)
         }
     except Exception as e:
-        return {
-            "status": "REJECTED",
-            "mode": mode,
-            "worker_pid": os.getpid(),
-            "error": str(e),
-            "verification_passed": False,
-            "signature_verified": False,
-            "format_safe": False
-        }
+        status_code = 403 if isinstance(e, (SecurityError, PermissionError)) else 400
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "status": "REJECTED",
+                "mode": mode,
+                "worker_pid": os.getpid(),
+                "error": str(e),
+                "verification_passed": False,
+                "signature_verified": False,
+                "format_safe": False
+            }
+        )
 
 @app.get("/audit-log")
 def read_audit_log():
