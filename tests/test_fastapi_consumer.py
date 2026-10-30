@@ -382,3 +382,22 @@ def test_fastapi_atomic_reload_preserves_healthy_state_on_failure(client, mlflow
         "velocity_last_24h": 1, "foreign_transaction": 0, "high_risk_merchant": 0
     })
     assert predict_res.status_code == 200
+
+def test_fastapi_reload_bearer_authorization_header(client):
+    """Verifica che l'autenticazione funzioni anche con header standard Authorization: Bearer <TOKEN>."""
+    bearer_headers = {"Authorization": f"Bearer {TEST_ADMIN_TOKEN}"}
+    reload_payload = {
+        "model_format": "safetensors",
+        "model_path": str(config.SECURE_MODEL_SAFETENSORS)
+    }
+    response = client.post("/reload", json=reload_payload, headers=bearer_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "SUCCESS"
+    assert data["mode"] == "safetensors"
+
+def test_fastapi_reload_unauthorized_without_payload(client):
+    """Verifica che una richiesta /reload priva di payload e senza token restituisca 401 anziche 422."""
+    response = client.post("/reload")
+    assert response.status_code == 401
+    assert "Unauthorized" in response.json()["detail"]

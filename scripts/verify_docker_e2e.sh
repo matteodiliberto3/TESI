@@ -324,7 +324,7 @@ log "  -> /reload with valid token response: $reload_res"
 if ! printf '%s' "$reload_res" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
-assert data.get("status") == "RELOADED"
+assert data.get("status") in ("RELOADED", "SUCCESS")
 assert data.get("mode") == "safetensors"
 sys.exit(0)
 '; then

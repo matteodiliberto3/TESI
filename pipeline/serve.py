@@ -325,15 +325,23 @@ def predict(payload: Dict[str, Any] = Body(...)):
 
 @app.post("/reload")
 def reload_model(
-    mode: str = Body(..., embed=True),
-    model_path: Optional[str] = Body(None, embed=True),
-    sig_path: Optional[str] = Body(None, embed=True),
-    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")
+    payload: Optional[Dict[str, Any]] = Body(None),
+    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
     global service
     p = None
     s = None
     allowed_dir = config.ARTIFACTS_DIR.resolve()
+
+    # Extract token from X-Admin-Token or Authorization header
+    token = x_admin_token
+    if not token and authorization:
+        parts = authorization.strip().split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1]
+        elif len(parts) == 1:
+            token = parts[0]
 
     # Authentication Enforcement: Require non-empty administrative token from external secret
     admin_token = os.getenv("MLOPS_ADMIN_TOKEN")
@@ -342,14 +350,26 @@ def reload_model(
             status_code=503,
             detail="Administrative reload disabled: MLOPS_ADMIN_TOKEN secret is not configured in environment"
         )
-    if not x_admin_token or not secrets.compare_digest(admin_token.strip(), x_admin_token.strip()):
+    if not token or not secrets.compare_digest(admin_token.strip(), token.strip()):
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Valid X-Admin-Token header required for model reload"
+            detail="Unauthorized: Valid authentication token required for model reload"
         )
 
+    # Safe parsing of payload dictionary
+    req = payload or {}
+    mode = req.get("mode") or req.get("model_format")
+    if not mode:
+        raise HTTPException(
+            status_code=400,
+            detail="Bad Request: Missing required 'mode' or 'model_format' in reload body"
+        )
+
+    model_path = req.get("model_path")
+    sig_path = req.get("sig_path")
+
     # Policy Enforcement: Fail-closed by default for unverified pickle reload
-    if mode == "vulnerable_pickle" and os.getenv("ALLOW_INSECURE_RELOAD", "false").lower() != "true":
+    if mode in ("vulnerable_pickle", "insecure_pickle") and os.getenv("ALLOW_INSECURE_RELOAD", "false").lower() != "true":
         raise HTTPException(
             status_code=403,
             detail="Forbidden: Unchecked pickle deserialization is disallowed by MLOps security policy"

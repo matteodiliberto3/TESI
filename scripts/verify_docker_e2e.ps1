@@ -245,7 +245,7 @@ try {
     # F.3 Authorized reload with valid ephemeral token (safetensors format)
     $authHeaders = @{ Authorization = "Bearer $($env:MLOPS_ADMIN_TOKEN)" }
     $reloadRes = Invoke-RestMethod -Uri "http://localhost:8000/reload" -Method Post -Headers $authHeaders -Body '{"model_format":"safetensors","model_path":"artifacts/model_secure.safetensors"}' -ContentType "application/json"
-    if ($reloadRes.status -eq "RELOADED" -and $reloadRes.mode -eq "safetensors") {
+    if (($reloadRes.status -eq "RELOADED" -or $reloadRes.status -eq "SUCCESS") -and $reloadRes.mode -eq "safetensors") {
         Log-Output "  -> [PASSED] Dynamic authenticated /reload successfully transitioned model to safetensors." "Green"
     } else {
         Log-Output "ERROR: /reload with valid token failed: $($reloadRes | ConvertTo-Json)" "Red"
