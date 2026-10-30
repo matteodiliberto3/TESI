@@ -37,31 +37,16 @@ def e2e_pipeline_fixtures():
     explicit artifact storage location, and trained Statsmodels Logit model.
 
     Guarantees 100% test autonomy and clean state restoration:
-      - Preserves and restores global mlflow.get_tracking_uri() and registry URI.
+      - Preserves and restores global mlflow tracking URI and registry URI.
+      - Uses local NumPy default_rng(42) to eliminate global random state pollution.
+      - Avoids global mlflow.set_experiment() by passing experiment_id directly to runs.
+      - Tracks active runs and terminates only the test's specific run on teardown.
       - Generates temporary 2048-bit RSA keys (no reliance on repo artifacts/keys).
       - Confines all downloads and staging to a private workspace (no artifacts/ pollution).
-      - Preserves and restores FastAPI serve_module.service and MLOPS_ADMIN_TOKEN.
+      - Preserves and restores FastAPI serve_module.service, config paths, and MLOPS_ADMIN_TOKEN.
+      - Wraps entire lifecycle in comprehensive try/finally for failure resilience.
     """
-    tmp_workspace = Path(tempfile.mkdtemp(prefix="mlflow_e2e_isolated_"))
-    db_file = tmp_workspace / "mlflow_registry.db"
-    artifacts_root = tmp_workspace / "mlflow_artifacts"
-    artifacts_root.mkdir(parents=True, exist_ok=True)
-    consumer_artifacts = tmp_workspace / "consumer_artifacts"
-    consumer_artifacts.mkdir(parents=True, exist_ok=True)
-    keys_dir = tmp_workspace / "keys"
-    keys_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1. Ephemeral Dedicated RSA Keypair (Decoupled from global lab state)
-    test_priv_key = keys_dir / "private_key.pem"
-    test_pub_key = keys_dir / "public_key.pem"
-    generate_keypair(
-        private_key_path=test_priv_key,
-        public_key_path=test_pub_key,
-        key_size=2048,
-        overwrite=True
-    )
-
-    # 2. Preserve Global State for Strict Teardown Restoration
+    # 1. Capture initial global states before any modification
     old_tracking_uri = mlflow.get_tracking_uri()
     old_registry_uri = mlflow.get_registry_uri()
     old_service = serve_module.service
@@ -70,49 +55,73 @@ def e2e_pipeline_fixtures():
     orig_priv_key = config.PRIVATE_KEY_FILE
     orig_artifacts_dir = config.ARTIFACTS_DIR
 
-    # 3. Patch Config to Confine Execution into Temporary Workspace
-    config.PUBLIC_KEY_FILE = test_pub_key
-    config.PRIVATE_KEY_FILE = test_priv_key
-    config.ARTIFACTS_DIR = consumer_artifacts
-    os.environ["MLOPS_ADMIN_TOKEN"] = TEST_ADMIN_TOKEN
-
-    tracking_uri = f"sqlite:///{db_file.as_posix()}"
-    mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_registry_uri(tracking_uri)
-
-    experiment_name = f"e2e_gate_exp_{uuid.uuid4().hex[:8]}"
-    experiment_id = mlflow.create_experiment(
-        name=experiment_name,
-        artifact_location=artifacts_root.as_uri()
-    )
-    mlflow.set_experiment(experiment_name)
+    tmp_workspace = None
+    created_run_id = None
 
     try:
-        # 4. Train legitimate Statsmodels Logit Model (7 parameters: const + 6 features)
-        np.random.seed(42)
+        tmp_workspace = Path(tempfile.mkdtemp(prefix="mlflow_e2e_isolated_"))
+        db_file = tmp_workspace / "mlflow_registry.db"
+        artifacts_root = tmp_workspace / "mlflow_artifacts"
+        artifacts_root.mkdir(parents=True, exist_ok=True)
+        consumer_artifacts = tmp_workspace / "consumer_artifacts"
+        consumer_artifacts.mkdir(parents=True, exist_ok=True)
+        keys_dir = tmp_workspace / "keys"
+        keys_dir.mkdir(parents=True, exist_ok=True)
+
+        # 2. Ephemeral Dedicated RSA Keypair (Decoupled from global lab state)
+        test_priv_key = keys_dir / "private_key.pem"
+        test_pub_key = keys_dir / "public_key.pem"
+        generate_keypair(
+            private_key_path=test_priv_key,
+            public_key_path=test_pub_key,
+            key_size=2048,
+            overwrite=True
+        )
+
+        # 3. Patch Config to Confine Execution into Temporary Workspace
+        config.PUBLIC_KEY_FILE = test_pub_key
+        config.PRIVATE_KEY_FILE = test_priv_key
+        config.ARTIFACTS_DIR = consumer_artifacts
+        os.environ["MLOPS_ADMIN_TOKEN"] = TEST_ADMIN_TOKEN
+
+        tracking_uri = f"sqlite:///{db_file.as_posix()}"
+        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_registry_uri(tracking_uri)
+
+        experiment_name = f"e2e_gate_exp_{uuid.uuid4().hex[:8]}"
+        experiment_id = mlflow.create_experiment(
+            name=experiment_name,
+            artifact_location=artifacts_root.as_uri()
+        )
+
+        # 4. Train legitimate Statsmodels Logit Model with local RNG
+        rng = np.random.default_rng(42)
         n_samples = 200
-        X = np.random.randn(n_samples, 6)
+        X = rng.standard_normal((n_samples, 6))
         X_const = sm.add_constant(X)
         true_beta = np.array([-1.5, 0.8, -0.2, 0.4, 0.6, 1.2, 0.9])
         logits = X_const @ true_beta
         probs = 1.0 / (1.0 + np.exp(-logits))
-        y = np.random.binomial(1, probs, n_samples)
+        y = rng.binomial(1, probs, n_samples)
         logit_model = sm.Logit(y, X_const).fit(disp=False)
 
-        # 5. Log and register model in MLflow Model Registry
+        # 5. Log and register model in MLflow Model Registry using explicit experiment_id
         model_name = "E2EFraudDetectionModel"
         with mlflow.start_run(experiment_id=experiment_id) as run:
+            created_run_id = run.info.run_id
             mlflow.statsmodels.log_model(
                 logit_model,
                 artifact_path="model",
                 registered_model_name=model_name
             )
-            run_id = run.info.run_id
 
         # 6. Cryptographically authenticate the logged artifact package (Producer)
         client = mlflow.tracking.MlflowClient()
         model_version = client.get_model_version(model_name, "1")
         logged_model_dir = Path(mlflow.artifacts.download_artifacts(artifact_uri=model_version.source))
+        assert logged_model_dir.is_dir()
+        assert (logged_model_dir / "MLmodel").is_file()
+        assert (logged_model_dir / "model.statsmodels").is_file()
 
         signer = ModelProducerSigner(
             private_key_path=test_priv_key,
@@ -120,12 +129,28 @@ def e2e_pipeline_fixtures():
         )
         manifest_sig_path = signer.sign_mlflow_package(logged_model_dir)
 
+        # Pre-stage a verified, immutable baseline model package in consumer_artifacts
+        baseline_staging_parent = consumer_artifacts / "e2e_active_baseline_model"
+        baseline_staging_parent.mkdir(parents=True, exist_ok=True)
+        baseline_model_dir = Path(
+            mlflow.artifacts.download_artifacts(
+                artifact_uri=model_version.source,
+                dst_path=str(baseline_staging_parent)
+            )
+        )
+        assert baseline_model_dir.is_dir()
+        assert (baseline_model_dir / "MLmodel").is_file()
+        assert (baseline_model_dir / "mlflow_manifest.json").is_file()
+        assert (baseline_model_dir / "mlflow_manifest.json.sig").is_file()
+        assert (baseline_model_dir / "model.statsmodels").is_file()
+
         yield {
             "workspace": tmp_workspace,
-            "run_id": run_id,
+            "run_id": created_run_id,
             "model_name": model_name,
             "model_source_uri": model_version.source,
             "logged_model_dir": logged_model_dir,
+            "baseline_model_dir": baseline_model_dir,
             "manifest_sig_path": manifest_sig_path,
             "logit_model": logit_model,
             "signer": signer,
@@ -136,16 +161,18 @@ def e2e_pipeline_fixtures():
 
     finally:
         # 7. Guaranteed Teardown and Complete Environment Restoration
-        while mlflow.active_run():
-            mlflow.end_run()
+        if created_run_id:
+            active_run = mlflow.active_run()
+            if active_run and active_run.info.run_id == created_run_id:
+                mlflow.end_run()
 
         try:
             if old_tracking_uri is not None:
                 mlflow.set_tracking_uri(old_tracking_uri)
             if old_registry_uri is not None:
                 mlflow.set_registry_uri(old_registry_uri)
-        except Exception:
-            pass
+        except Exception as exc:
+            sys.stderr.write(f"[Teardown Warning] Failed to restore MLflow URIs: {exc}\n")
 
         serve_module.service = old_service
 
@@ -158,7 +185,8 @@ def e2e_pipeline_fixtures():
         config.PRIVATE_KEY_FILE = orig_priv_key
         config.ARTIFACTS_DIR = orig_artifacts_dir
 
-        shutil.rmtree(tmp_workspace, ignore_errors=True)
+        if tmp_workspace and tmp_workspace.exists():
+            shutil.rmtree(tmp_workspace, ignore_errors=True)
 
 
 class TestMLflowRegistrySecurityGateE2E:
@@ -174,26 +202,23 @@ class TestMLflowRegistrySecurityGateE2E:
         """
         Initializes serve_module.service with a legitimate candidate verified by the
         ephemeral public key prior to each test method, and resets it in teardown.
-        Eliminates any cross-test ordering dependencies and ensures atomic reload
-        preservation tests have an active baseline model even when executed in isolation.
+        Eliminates cross-test ordering dependencies and provides an active verified model.
         """
-        source_uri = e2e_pipeline_fixtures["model_source_uri"]
+        baseline_dir = e2e_pipeline_fixtures["baseline_model_dir"]
         test_pub_key = e2e_pipeline_fixtures["test_pub_key"]
-        baseline_staging_dir = e2e_pipeline_fixtures["consumer_artifacts"] / "e2e_active_baseline_model"
-        if not baseline_staging_dir.exists():
-            baseline_staging_dir.mkdir(parents=True, exist_ok=True)
-            mlflow.artifacts.download_artifacts(
-                artifact_uri=source_uri,
-                dst_path=str(baseline_staging_dir)
-            )
 
-        serve_module.service = FraudInferenceService(
+        baseline_service = FraudInferenceService(
             mode="mlflow_statsmodels",
-            model_path=baseline_staging_dir,
+            model_path=baseline_dir,
             public_key_path=test_pub_key
         )
+        assert baseline_service.verification_passed is True
+        assert baseline_service.signature_verified is True
+        assert baseline_service.model is not None
 
-        yield
+        serve_module.service = baseline_service
+
+        yield baseline_service
 
         serve_module.service = None
 
@@ -214,11 +239,11 @@ class TestMLflowRegistrySecurityGateE2E:
                 dst_path=str(download_target_parent)
             )
         )
-        assert downloaded_path.exists()
-        assert (downloaded_path / "MLmodel").exists()
-        assert (downloaded_path / "model.statsmodels").exists()
-        assert (downloaded_path / "mlflow_manifest.json").exists()
-        assert (downloaded_path / "mlflow_manifest.json.sig").exists()
+        assert downloaded_path.is_dir()
+        assert (downloaded_path / "MLmodel").is_file()
+        assert (downloaded_path / "model.statsmodels").is_file()
+        assert (downloaded_path / "mlflow_manifest.json").is_file()
+        assert (downloaded_path / "mlflow_manifest.json.sig").is_file()
 
         # 2. Security Gate Verification with Public Key Only
         verifier = ModelConsumerVerifier(public_key_path=test_pub_key)
@@ -265,6 +290,11 @@ class TestMLflowRegistrySecurityGateE2E:
                 dst_path=str(staging_dir)
             )
         )
+        assert downloaded_package.is_dir()
+        assert (downloaded_package / "MLmodel").is_file()
+        assert (downloaded_package / "mlflow_manifest.json").is_file()
+        assert (downloaded_package / "mlflow_manifest.json.sig").is_file()
+        assert (downloaded_package / "model.statsmodels").is_file()
 
         with TestClient(app) as client:
             reload_res = client.post(
@@ -302,9 +332,11 @@ class TestMLflowRegistrySecurityGateE2E:
         """
         Negative test: Tampering with the model binary in the downloaded package
         triggers SecurityError and preserves active model state atomically.
+        Verifies exact object identity preservation on failed rollback.
         """
         source_uri = e2e_pipeline_fixtures["model_source_uri"]
         test_pub_key = e2e_pipeline_fixtures["test_pub_key"]
+        baseline_dir = e2e_pipeline_fixtures["baseline_model_dir"]
         tamper_dir = e2e_pipeline_fixtures["consumer_artifacts"] / "e2e_tampered_binary"
         tamper_dir.mkdir(parents=True, exist_ok=True)
 
@@ -314,10 +346,11 @@ class TestMLflowRegistrySecurityGateE2E:
                 dst_path=str(tamper_dir)
             )
         )
+        assert pkg_dir.is_dir()
         model_file = pkg_dir / "model.statsmodels"
-        assert model_file.exists()
+        assert model_file.is_file()
 
-        # Tamper binary: flip bytes
+        # Tamper binary: flip bytes on separate copy
         content = bytearray(model_file.read_bytes())
         content[10] ^= 0xFF
         model_file.write_bytes(content)
@@ -339,12 +372,25 @@ class TestMLflowRegistrySecurityGateE2E:
 
         # 3. Atomic reload via FastAPI: Service state must remain intact
         with TestClient(app) as client:
+            # Explicitly initialize baseline within TestClient context to prevent lifespan override
+            baseline_service = FraudInferenceService(
+                mode="mlflow_statsmodels",
+                model_path=baseline_dir,
+                public_key_path=test_pub_key
+            )
+            serve_module.service = baseline_service
+            assert baseline_service is not None
+            assert baseline_service.verification_passed is True
+            assert baseline_service.signature_verified is True
+            assert baseline_service.model is not None
+
             # Baseline predict before failed reload
             base_pred = client.post(
                 "/predict",
                 json={"amount": 50.0, "transaction_hour": 10.0}
             )
             assert base_pred.status_code == 200
+            base_prob = base_pred.json()["fraud_probability"]
 
             # Attempt reload with tampered package
             reload_res = client.post(
@@ -360,13 +406,16 @@ class TestMLflowRegistrySecurityGateE2E:
             assert reload_err["detail"]["status"] == "REJECTED"
             assert reload_err["detail"]["verification_passed"] is False
 
-            # Active service must still function without disruption
+            # Strict identity check: active service instance is exactly the baseline instance
+            assert serve_module.service is baseline_service
+
+            # Active service must still function without disruption and yield identical prediction
             post_pred = client.post(
                 "/predict",
                 json={"amount": 50.0, "transaction_hour": 10.0}
             )
             assert post_pred.status_code == 200
-            assert post_pred.json()["fraud_probability"] == base_pred.json()["fraud_probability"]
+            assert post_pred.json()["fraud_probability"] == base_prob
 
     def test_negative_tampered_mlmodel_descriptor_rejected(self, e2e_pipeline_fixtures):
         """
@@ -384,10 +433,11 @@ class TestMLflowRegistrySecurityGateE2E:
                 dst_path=str(tamper_dir)
             )
         )
+        assert pkg_dir.is_dir()
         mlmodel_file = pkg_dir / "MLmodel"
-        assert mlmodel_file.exists()
+        assert mlmodel_file.is_file()
 
-        # Tamper MLmodel content
+        # Tamper MLmodel content on separate copy
         lines = mlmodel_file.read_text(encoding="utf-8").splitlines()
         lines.append("injected_unauthorized_key: malicious_value")
         mlmodel_file.write_text("\n".join(lines), encoding="utf-8")
@@ -420,10 +470,11 @@ class TestMLflowRegistrySecurityGateE2E:
                 dst_path=str(unsigned_pkg_dir)
             )
         )
+        assert pkg_dir.is_dir()
 
-        # Remove signature file
+        # Remove signature file from separate copy
         sig_file = pkg_dir / "mlflow_manifest.json.sig"
-        assert sig_file.exists()
+        assert sig_file.is_file()
         sig_file.unlink()
 
         verifier = ModelConsumerVerifier(public_key_path=test_pub_key)
@@ -446,28 +497,29 @@ class TestMLflowRegistrySecurityGateE2E:
         """
         test_pub_key = e2e_pipeline_fixtures["test_pub_key"]
         consumer_key_dir = Path(tempfile.mkdtemp(prefix="consumer_keys_"))
-        public_key_copy = consumer_key_dir / "public_key.pem"
-        shutil.copy2(test_pub_key, public_key_copy)
+        try:
+            public_key_copy = consumer_key_dir / "public_key.pem"
+            shutil.copy2(test_pub_key, public_key_copy)
 
-        # 1. Consumer verifier works with isolated public key alone
-        isolated_verifier = ModelConsumerVerifier(public_key_path=public_key_copy)
-        logged_dir = e2e_pipeline_fixtures["logged_model_dir"]
-        res = isolated_verifier.verify_mlflow_package(logged_dir)
-        assert res.is_valid is True
+            # 1. Consumer verifier works with isolated public key alone
+            isolated_verifier = ModelConsumerVerifier(public_key_path=public_key_copy)
+            logged_dir = e2e_pipeline_fixtures["logged_model_dir"]
+            res = isolated_verifier.verify_mlflow_package(logged_dir)
+            assert res.is_valid is True
 
-        # 2. Consumer possesses no signing interface or private key attributes
-        assert not hasattr(isolated_verifier, "private_key")
-        assert not hasattr(isolated_verifier, "sign")
-        assert not hasattr(isolated_verifier, "sign_artifact")
-        assert not hasattr(isolated_verifier, "sign_mlflow_package")
+            # 2. Consumer possesses no signing interface or private key attributes
+            assert not hasattr(isolated_verifier, "private_key")
+            assert not hasattr(isolated_verifier, "sign")
+            assert not hasattr(isolated_verifier, "sign_artifact")
+            assert not hasattr(isolated_verifier, "sign_mlflow_package")
 
-        # 3. ModelProducerSigner cannot be instantiated in consumer environment
-        non_existent_priv_key = consumer_key_dir / "private_key.pem"
-        assert not non_existent_priv_key.exists()
-        with pytest.raises(FileNotFoundError):
-            ModelProducerSigner(
-                private_key_path=non_existent_priv_key,
-                public_key_path=public_key_copy
-            )
-
-        shutil.rmtree(consumer_key_dir, ignore_errors=True)
+            # 3. ModelProducerSigner cannot be instantiated in consumer environment
+            non_existent_priv_key = consumer_key_dir / "private_key.pem"
+            assert not non_existent_priv_key.exists()
+            with pytest.raises(FileNotFoundError):
+                ModelProducerSigner(
+                    private_key_path=non_existent_priv_key,
+                    public_key_path=public_key_copy
+                )
+        finally:
+            shutil.rmtree(consumer_key_dir, ignore_errors=True)
