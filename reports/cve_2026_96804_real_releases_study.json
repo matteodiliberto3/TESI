@@ -5,22 +5,537 @@
     "return_code": 0,
     "policy_bypassed": true,
     "arbitrary_code_executed": true,
-    "trace": "[SECURITY AUDIT TRACE] Timestamp: 1793315470.345347 | WORKER_PID: 24596 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
+    "vulnerability_reproduction_rate": 1.0,
+    "trace_sample": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.082551 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
     "status": "VULNERABILITY_CONFIRMED",
     "semantic_operation": "Arbitrary Code Execution (Full Deserialization + Payload Run)",
+    "environment_metadata": {
+      "mlflow_version_requested": "3.12.0",
+      "mlflow_version_verified": "3.12.0",
+      "python_version": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executable": "C:\\Users\\matti\\Documents\\TESI\\.cache_mlflow_releases\\venv_mlflow_3_12\\Scripts\\python.exe",
+      "pip_check_passed": true,
+      "pip_check_output": "No broken requirements found.",
+      "isolated_venv": true,
+      "system_site_packages_inherited": false,
+      "installed_packages_count": 96
+    },
     "benchmark": {
       "trials": 50,
       "warmup_cycles_excluded": 3,
-      "mean_ms": 3.576,
-      "trimmed_mean_10pct_ms": 3.464,
-      "median_ms": 3.347,
-      "iqr_ms": 1.783,
-      "p95_ms": 5.505,
-      "p99_ms": 5.739,
-      "min_ms": 2.492,
-      "max_ms": 5.803,
-      "std_ms": 1.014
-    }
+      "mean_ms": 3.975,
+      "trimmed_mean_10pct_ms": 3.693,
+      "median_ms": 3.35,
+      "iqr_ms": 1.427,
+      "p95_ms": 6.463,
+      "p99_ms": 8.97,
+      "min_ms": 2.892,
+      "max_ms": 9.364,
+      "std_ms": 1.407
+    },
+    "trials_detail": [
+      {
+        "trial_index": 1,
+        "latency_ms": 3.2027,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.082551 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 2,
+        "latency_ms": 3.2646,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.091226 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 3,
+        "latency_ms": 3.191,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1007123 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 4,
+        "latency_ms": 2.9634,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1090367 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 5,
+        "latency_ms": 2.8919,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1179557 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 6,
+        "latency_ms": 3.3592,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.12616 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 7,
+        "latency_ms": 2.955,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1348045 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 8,
+        "latency_ms": 3.2125,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1433237 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 9,
+        "latency_ms": 2.9495,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.152437 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 10,
+        "latency_ms": 3.0673,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1615834 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 11,
+        "latency_ms": 3.4532,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.170019 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 12,
+        "latency_ms": 2.908,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1778722 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 13,
+        "latency_ms": 3.2832,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1870005 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 14,
+        "latency_ms": 4.1662,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.1980731 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 15,
+        "latency_ms": 3.6057,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2100744 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 16,
+        "latency_ms": 4.5103,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2207773 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 17,
+        "latency_ms": 3.1643,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.230699 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 18,
+        "latency_ms": 3.5031,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2402892 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 19,
+        "latency_ms": 3.0871,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.249615 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 20,
+        "latency_ms": 2.9491,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2575357 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 21,
+        "latency_ms": 3.3404,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.267045 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 22,
+        "latency_ms": 2.9942,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2758133 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 23,
+        "latency_ms": 2.9753,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2841594 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 24,
+        "latency_ms": 3.4076,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.2934177 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 25,
+        "latency_ms": 3.0407,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3022425 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 26,
+        "latency_ms": 2.9571,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3106792 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 27,
+        "latency_ms": 2.9203,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.319205 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 28,
+        "latency_ms": 3.4981,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3287935 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 29,
+        "latency_ms": 2.9644,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3379915 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 30,
+        "latency_ms": 2.9701,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3471348 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 31,
+        "latency_ms": 3.0925,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3564577 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 32,
+        "latency_ms": 5.3864,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3678057 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 33,
+        "latency_ms": 4.7238,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.3808699 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 34,
+        "latency_ms": 9.3637,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.396575 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 35,
+        "latency_ms": 4.9175,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.420737 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 36,
+        "latency_ms": 5.4464,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.4363697 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 37,
+        "latency_ms": 6.3747,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.4511812 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 38,
+        "latency_ms": 8.5594,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.4644692 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 39,
+        "latency_ms": 6.5356,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.4832783 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 40,
+        "latency_ms": 4.1073,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5043073 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 41,
+        "latency_ms": 3.5815,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5192578 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 42,
+        "latency_ms": 4.1161,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5341015 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 43,
+        "latency_ms": 5.0768,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5479681 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 44,
+        "latency_ms": 3.9782,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5577333 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 45,
+        "latency_ms": 5.347,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5721438 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 46,
+        "latency_ms": 3.0509,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5860581 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 47,
+        "latency_ms": 5.3411,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.5985532 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 48,
+        "latency_ms": 5.5562,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.6119294 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 49,
+        "latency_ms": 3.0764,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.62312 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 50,
+        "latency_ms": 4.3518,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793350922.636913 | WORKER_PID: 35224 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      }
+    ]
   },
   "MLflow_3_15_0_Official_Release": {
     "version": "3.15.0",
@@ -28,25 +543,543 @@
     "return_code": 2,
     "policy_bypassed": false,
     "arbitrary_code_executed": false,
+    "policy_block_rate": 1.0,
     "trace": null,
     "status": "PATCH_CONFIRMED",
     "semantic_operation": "Fast-Fail Policy Interception (MlflowException Raised Pre-Unpickler)",
+    "environment_metadata": {
+      "mlflow_version_requested": "3.15.0",
+      "mlflow_version_verified": "3.15.0",
+      "python_version": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executable": "C:\\Users\\matti\\Documents\\TESI\\.cache_mlflow_releases\\venv_mlflow_3_15\\Scripts\\python.exe",
+      "pip_check_passed": true,
+      "pip_check_output": "No broken requirements found.",
+      "isolated_venv": true,
+      "system_site_packages_inherited": false,
+      "installed_packages_count": 96
+    },
     "benchmark": {
       "trials": 50,
       "warmup_cycles_excluded": 3,
-      "mean_ms": 3.184,
-      "trimmed_mean_10pct_ms": 2.985,
-      "median_ms": 2.744,
-      "iqr_ms": 1.833,
-      "p95_ms": 5.059,
-      "p99_ms": 7.837,
-      "min_ms": 1.796,
-      "max_ms": 10.389,
-      "std_ms": 1.471
-    }
+      "mean_ms": 1.881,
+      "trimmed_mean_10pct_ms": 1.831,
+      "median_ms": 1.816,
+      "iqr_ms": 0.119,
+      "p95_ms": 2.213,
+      "p99_ms": 2.877,
+      "min_ms": 1.643,
+      "max_ms": 3.247,
+      "std_ms": 0.252
+    },
+    "trials_detail": [
+      {
+        "trial_index": 1,
+        "latency_ms": 1.8581,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 2,
+        "latency_ms": 1.8448,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 3,
+        "latency_ms": 1.7121,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 4,
+        "latency_ms": 1.7911,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 5,
+        "latency_ms": 1.7281,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 6,
+        "latency_ms": 1.8673,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 7,
+        "latency_ms": 1.7473,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 8,
+        "latency_ms": 1.7675,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 9,
+        "latency_ms": 1.7219,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 10,
+        "latency_ms": 1.7701,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 11,
+        "latency_ms": 1.7747,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 12,
+        "latency_ms": 2.4926,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 13,
+        "latency_ms": 3.2466,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 14,
+        "latency_ms": 1.8406,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 15,
+        "latency_ms": 1.786,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 16,
+        "latency_ms": 1.7273,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 17,
+        "latency_ms": 2.0196,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 18,
+        "latency_ms": 1.7633,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 19,
+        "latency_ms": 1.7375,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 20,
+        "latency_ms": 1.849,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 21,
+        "latency_ms": 1.8408,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 22,
+        "latency_ms": 2.1527,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 23,
+        "latency_ms": 2.263,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 24,
+        "latency_ms": 1.9083,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 25,
+        "latency_ms": 2.1328,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 26,
+        "latency_ms": 2.1071,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 27,
+        "latency_ms": 1.9636,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 28,
+        "latency_ms": 2.1093,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 29,
+        "latency_ms": 1.9829,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 30,
+        "latency_ms": 1.8681,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 31,
+        "latency_ms": 1.7801,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 32,
+        "latency_ms": 1.8235,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 33,
+        "latency_ms": 1.816,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 34,
+        "latency_ms": 1.8167,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 35,
+        "latency_ms": 1.7128,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 36,
+        "latency_ms": 1.8105,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 37,
+        "latency_ms": 1.7037,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 38,
+        "latency_ms": 1.7096,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 39,
+        "latency_ms": 1.8017,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 40,
+        "latency_ms": 1.8257,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 41,
+        "latency_ms": 1.7711,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 42,
+        "latency_ms": 1.7683,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 43,
+        "latency_ms": 1.7259,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 44,
+        "latency_ms": 1.8198,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 45,
+        "latency_ms": 1.8202,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 46,
+        "latency_ms": 1.9737,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 47,
+        "latency_ms": 1.7373,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 48,
+        "latency_ms": 1.722,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 49,
+        "latency_ms": 1.6428,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 50,
+        "latency_ms": 1.8713,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      }
+    ]
   },
-  "methodology_metadata": {
-    "scientific_interpretation": "Timing differences reflect fundamentally distinct computational semantics (full deserialization + payload execution vs pre-deserialization policy rejection), not an algorithmic performance comparison.",
-    "warmup_handling": "3 unmeasured warm-up iterations were executed before timing to prime module imports and prevent cold-start distortion."
+  "study_protocol": {
+    "protocol_mode": "FULL_SCIENTIFIC_STUDY",
+    "trials_requested": 50,
+    "warmup_iterations": 3,
+    "scientific_interpretation": "Timing differences reflect fundamentally distinct computational semantics: full deserialization + payload execution in unpatched MLflow 3.12.0 vs pre-deserialization policy interception in patched MLflow 3.15.0. They are NOT an algorithmic speed comparison.",
+    "distinction_notice": "CI smoke execution runs 20 trials for automated regression; full scientific study protocol runs 50 trials with complete inter-trial variance logging."
   }
 }

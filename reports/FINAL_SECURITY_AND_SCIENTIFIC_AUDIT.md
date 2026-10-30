@@ -102,15 +102,15 @@ Dati estratti da `reports/cve_2026_96804_real_releases_study.json`:
 | Parametro Statistico | MLflow 3.12.0 (Unpatched — Sonda Eseguita) | MLflow 3.15.0 (Patched — Bloccato da Policy) |
 | :--- | :--- | :--- |
 | **Esito di Sicurezza** | **100% Vulnerabile** (Sonda eseguita in-process) | **100% Protetto** (`MlflowException` fail-closed) |
-| **Iterazioni Eseguite** | 50 prove (+ 3 warm-up) | 50 prove (+ 3 warm-up) |
-| **Tempo Medio** | **3.58 ms** | **3.18 ms** |
-| **Media Troncata (10%)** | **3.56 ms** | **3.17 ms** |
-| **Mediana (p50)** | **3.58 ms** | **3.18 ms** |
-| **Range Interquartile (IQR)** | **0.17 ms** (p25: 3.51 ms, p75: 3.68 ms) | **0.15 ms** (p25: 3.11 ms, p75: 3.26 ms) |
-| **95° Percentile (p95)** | **3.77 ms** | **3.31 ms** |
-| **99° Percentile (p99)** | **3.89 ms** | **3.37 ms** |
-| **Min / Max** | 3.24 ms / 4.02 ms | 2.87 ms / 3.42 ms |
-| **Deviazione Standard** | 0.14 ms | 0.12 ms |
+| **Protocollo Sperimentale** | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] |
+| **Tempo Medio** | **3.975 ms** | **1.881 ms** |
+| **Media Troncata (10%)** | **3.693 ms** | **1.831 ms** |
+| **Mediana (p50)** | **3.35 ms** | **1.816 ms** |
+| **Range Interquartile (IQR)** | **1.427 ms** | **0.119 ms** |
+| **95° Percentile (p95)** | **6.463 ms** | **2.213 ms** |
+| **99° Percentile (p99)** | **8.97 ms** | **2.877 ms** |
+| **Min / Max** | 2.892 ms / 9.364 ms | 1.643 ms / 3.247 ms |
+| **Deviazione Standard** | 1.407 ms | 0.252 ms |
 
 ### 3. Spiegazione Tecnica della Differenza di Latenza
 La differenza di circa 0.40 ms tra le due versioni è pienamente giustificata dal percorso di esecuzione del codice:
