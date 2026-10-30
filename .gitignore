@@ -20,9 +20,26 @@ Thumbs.db
 # Cryptographic Private Keys (Strict Producer Secret - Excluded from Public/Consumer Repos)
 keys/private_key.pem
 
+# Environment Secrets and Local Credential Files
+.env
+.env.local
+.env.*.local
+!.env.example
+
 # Temporary Benchmark Stores
 feature_store_storage/bench_query_store/
 feature_store_storage/bench_store/
 
 # Testbed E2E Transient Backups
 .cache_test_*/
+
+# Transient test artifacts
+tests/test_artifacts/
+tests/test_reports/
+artifacts/cve_reproduction/
+artifacts/mlflow_clean_model/
+artifacts/mlflow_tampered_model/
+artifacts/real_mlflow_cve/
+.cache_mlflow_releases/
+reports/cve_2026_96804_audit.log
+reports/real_mlflow_release_audit.log

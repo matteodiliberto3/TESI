@@ -1,10 +1,10 @@
-name: MLOps Security CI & Docker E2E
+name: MLOPS Security CI & Docker E2E
 
 on:
   push:
-    branches: [ main, audit ]
+    branches: [ main, audit, pickle-demo ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, pickle-demo ]
 
 jobs:
   testbed-ci:
@@ -33,9 +33,25 @@ jobs:
         run: |
           pytest tests/ -v
 
+      - name: Execute Scientific CVE-2026-96804 Reproduction Study on Official Releases
+        run: |
+          python experiments/verify_real_mlflow_releases.py 20
+
+      - name: Set up Node.js for Frontend Dashboard Verification
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Frontend Demo Dashboard
+        run: |
+          cd demo
+          npm ci
+          npm run build
+
       - name: Execute Live Docker Compose End-to-End Verification
         run: |
           chmod +x scripts/verify_docker_e2e.sh
+          export MLOPS_ADMIN_TOKEN=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
           ./scripts/verify_docker_e2e.sh
 
       - name: Upload Docker E2E Verification Log
@@ -44,4 +60,12 @@ jobs:
         with:
           name: docker-e2e-verification-log
           path: reports/docker_e2e_verification.log
+          if-no-files-found: ignore
+
+      - name: Upload Scientific Study Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cve-2026-96804-scientific-study
+          path: reports/cve_2026_96804_real_releases_study.json
           if-no-files-found: ignore

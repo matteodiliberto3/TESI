@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-29 20:34:10",
+  "trials": 500,
+  "file_sizes": {
+    "pickle_clean_bytes": 964,
+    "signature_bytes": 256,
+    "safetensors_bytes": 380,
+    "trojan_pickle_bytes": 2442
+  },
+  "latency_stats": {
+    "pickle_raw": {
+      "mean_ms": 0.0824,
+      "std_ms": 0.0125,
+      "min_ms": 0.0747,
+      "p50_ms": 0.0782,
+      "p95_ms": 0.1022,
+      "p99_ms": 0.133,
+      "max_ms": 0.2183
+    },
+    "pickle_signed_rsa_pss": {
+      "mean_ms": 0.3586,
+      "std_ms": 0.3079,
+      "min_ms": 0.2749,
+      "p50_ms": 0.3125,
+      "p95_ms": 0.5195,
+      "p99_ms": 0.6259,
+      "max_ms": 6.9863
+    },
+    "safetensors": {
+      "mean_ms": 0.0873,
+      "std_ms": 0.3621,
+      "min_ms": 0.064,
+      "p50_ms": 0.0671,
+      "p95_ms": 0.0904,
+      "p99_ms": 0.148,
+      "max_ms": 8.1721
+    }
+  },
+  "rsa_cryptographic_overhead": {
+    "absolute_overhead_mean_ms": 0.2762,
+    "relative_overhead_percent": 335.19,
+    "breakdown_mean_ms": {
+      "io_read_ms": 0.1657,
+      "rsa_pss_verify_ms": 0.1589,
+      "in_memory_unpickle_ms": 0.0334
+    }
+  },
+  "functional_stealthness": {
+    "clean_model": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "trojan_model": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "prediction_mismatches_count": 0,
+    "max_probability_divergence": 0.0,
+    "arbitrary_code_executed": true,
+    "stealthness_perfect": true
+  }
+}

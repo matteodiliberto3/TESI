@@ -1,8 +1,8 @@
 services:
   # =========================================================================
   # 1. Producer Domain: CI/CD Build & Model Training Pipeline
-  # Authorized signing entity possessing private RSA key (SLSA Level 3).
-  # Provisions RSA keypair if missing on clean clone, trains, and signs artifact.
+  # Authorized signing entity possessing private RSA key.
+  # Provisions RSA keypair, trains model, logs to MLflow, signs artifact.
   # =========================================================================
   mlops-training-producer:
     build:
@@ -23,15 +23,71 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=PRODUCER
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
       - PYTHONPATH=/app
     command: >
       sh -c "python pipeline/crypto_signer.py --generate-keys &&
              python pipeline/train.py"
+    depends_on:
+      - mlops-tracking-server
 
   # =========================================================================
-  # 2. Consumer Domain: Persistent Unprivileged Production Inference Worker
+  # 2. MLflow Tracking & Model Registry Server
+  # Centralized MLflow Tracking Server managing runs, models, and metadata.
+  # =========================================================================
+  mlops-tracking-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_tracking_server
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./data_storage:/app/data_storage
+      - ./artifacts:/app/artifacts
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      mlflow server --backend-store-uri sqlite:////app/data_storage/mlflow.db --default-artifact-root /app/artifacts --host 0.0.0.0 --port 5000
+
+  # =========================================================================
+  # 3. Security Gate / Policy Admission Controller
+  # Validates RSA-PSS cryptographic signatures, package manifests, and structural
+  # constraints in-memory BEFORE allowing unpickling in the consumer runtime.
+  # (Note: Alternativa B adopted - artifact storage managed directly via MLflow
+  # Tracking Server filesystem root, avoiding unnecessary S3 credentials).
+  # =========================================================================
+  mlops-security-gate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops_security_gate
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./keys/public_key.pem:/app/keys/public_key.pem:ro
+      - ./reports:/app/reports
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    command: >
+      sh -c "python -c 'from pipeline.crypto_signer import ModelConsumerVerifier; import config; v = ModelConsumerVerifier(config.PUBLIC_KEY_FILE); v.load_verified_pickle(config.CLEAN_MODEL_PICKLE, config.SIGNATURE_FILE); print(\"[Gate] Gate admission check passed: clean model verified.\")'"
+    depends_on:
+      mlops-training-producer:
+        condition: service_completed_successfully
+
+  # =========================================================================
+  # 4. Consumer Domain: Persistent Unprivileged FastAPI Inference Worker
   # Strictly segregated: mounts ONLY public key in read-only mode (:ro).
-  # Starts ONLY after producer completes successfully; serves HTTP predictions.
+  # High risk runtime unprivileged: cap_drop: [ALL], no-new-privileges: true.
+  # Bound exclusively to localhost (127.0.0.1).
   # =========================================================================
   mlops-inference-consumer:
     build:
@@ -44,20 +100,25 @@ services:
     cap_drop:
       - ALL
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./artifacts:/app/artifacts:ro
       - ./feature_store_storage:/app/feature_store_storage:ro
       - ./keys/public_key.pem:/app/keys/public_key.pem:ro
+      - ./reports:/app/reports
     environment:
       - PYTHONUNBUFFERED=1
       - MLOPS_ROLE=CONSUMER
       - INFERENCE_MODE=signed_pickle
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
+      - MLOPS_ADMIN_TOKEN=${MLOPS_ADMIN_TOKEN:-}
       - PORT=8000
       - PYTHONPATH=/app
-    command: python pipeline/serve.py
+    command: python pipeline/serve.py --mode signed_pickle --port 8000 --host 0.0.0.0
     depends_on:
       mlops-training-producer:
+        condition: service_completed_successfully
+      mlops-security-gate:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
@@ -67,8 +128,7 @@ services:
       start_period: 3s
 
   # =========================================================================
-  # 3. Master Testbed Runner: Battery of Empirical Security Experiments
-  # Kept in a dedicated profile to prevent concurrent volume write collisions.
+  # 5. Master Testbed Runner: Empirical T0 - T5 Battery
   # Usage: docker compose --profile experiments run --rm mlops-security-testbed
   # =========================================================================
   mlops-security-testbed:
@@ -90,4 +150,6 @@ services:
       - ./keys:/app/keys
     environment:
       - PYTHONUNBUFFERED=1
-    command: python experiments/run_all_experiments.py
+      - MLFLOW_TRACKING_URI=http://mlops-tracking-server:5000
+      - PYTHONPATH=/app
+    command: python experiments/run_t0_t5_suite.py

