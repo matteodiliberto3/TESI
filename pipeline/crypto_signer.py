@@ -156,7 +156,7 @@ class ModelProducerSigner:
                         raise SecurityError(f"Symlink {full_path} escapes package directory: {target}")
 
                 rel_str = full_path.relative_to(package_dir).as_posix()
-                if rel_str in (manifest_filename, f"{manifest_filename}.sig", "model.statsmodels.sig"):
+                if rel_str in (manifest_filename, f"{manifest_filename}.sig"):
                     continue
 
                 content = full_path.read_bytes()
@@ -319,7 +319,7 @@ class ModelConsumerVerifier:
                             detail=f"Symlink {full_path.name} escapes package directory -> {target}"
                         )
                 rel_str = full_path.relative_to(package_dir).as_posix()
-                if rel_str in (manifest_filename, f"{manifest_filename}.sig", "model.statsmodels.sig"):
+                if rel_str in (manifest_filename, f"{manifest_filename}.sig"):
                     continue
                 physical_files.add(rel_str)
 
@@ -361,22 +361,81 @@ class ModelConsumerVerifier:
                 )
 
         # 4. Semantic MLmodel integrity validation
-        if "MLmodel" in manifest_files:
-            mlmodel_path = package_dir / "MLmodel"
-            try:
-                import yaml
-                mlmodel_content = yaml.safe_load(mlmodel_path.read_text(encoding="utf-8"))
-                flavors = mlmodel_content.get("flavors", {})
-                for flavor_name, f_cfg in flavors.items():
-                    data_file = f_cfg.get("data")
-                    if data_file and data_file not in manifest_files:
+        if "MLmodel" not in manifest_files:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="MISSING_MLMODEL",
+                detail="Package manifest does not declare mandatory descriptor 'MLmodel'"
+            )
+
+        mlmodel_path = package_dir / "MLmodel"
+        if not mlmodel_path.exists():
+            return PackageVerificationResult(
+                is_valid=False,
+                status="MISSING_FILE",
+                detail="Descriptor file 'MLmodel' does not exist in package directory"
+            )
+
+        try:
+            import yaml
+            mlmodel_raw = mlmodel_path.read_text(encoding="utf-8")
+            mlmodel_content = yaml.safe_load(mlmodel_raw)
+        except Exception as e:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_YAML",
+                detail=f"MLmodel descriptor failed YAML parsing: {e}"
+            )
+
+        if not isinstance(mlmodel_content, dict):
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_YAML",
+                detail="MLmodel root element is not a YAML mapping dictionary"
+            )
+
+        flavors = mlmodel_content.get("flavors")
+        if not isinstance(flavors, dict) or not flavors:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_MLMODEL_FLAVORS",
+                detail="MLmodel does not specify a valid 'flavors' dictionary"
+            )
+
+        if "statsmodels" not in flavors:
+            return PackageVerificationResult(
+                is_valid=False,
+                status="INVALID_MLMODEL_FLAVORS",
+                detail="MLmodel does not declare required 'statsmodels' flavor"
+            )
+
+        # Validate that all pointers in all flavors refer to files declared in the manifest and existing on disk
+        for flavor_name, f_cfg in flavors.items():
+            if not isinstance(f_cfg, dict):
+                continue
+            for ptr_key in ("data", "model_data", "code"):
+                ptr_val = f_cfg.get(ptr_key)
+                if ptr_val:
+                    ptr_path = Path(ptr_val)
+                    if ptr_path.is_absolute() or ".." in ptr_path.parts:
                         return PackageVerificationResult(
                             is_valid=False,
-                            status="FILE_TAMPERED",
-                            detail=f"MLmodel flavor '{flavor_name}' points to unverified data file: {data_file}"
+                            status="PATH_TRAVERSAL_VIOLATION",
+                            detail=f"MLmodel flavor '{flavor_name}' pointer '{ptr_val}' attempts path traversal"
                         )
-            except Exception:
-                pass
+                    rel_ptr = ptr_path.as_posix()
+                    if rel_ptr not in manifest_files:
+                        return PackageVerificationResult(
+                            is_valid=False,
+                            status="UNAUTHORIZED_POINTER",
+                            detail=f"MLmodel flavor '{flavor_name}' references file '{ptr_val}' not declared in signed manifest"
+                        )
+                    if not (package_dir / rel_ptr).exists():
+                        return PackageVerificationResult(
+                            is_valid=False,
+                            status="MISSING_FILE",
+                            detail=f"MLmodel flavor '{flavor_name}' references file '{ptr_val}' which is missing on disk"
+                        )
 
         return PackageVerificationResult(
             is_valid=True,

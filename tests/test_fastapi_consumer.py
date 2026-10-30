@@ -216,16 +216,14 @@ def test_fastapi_unhealthy_status_returns_http_503(client):
         serve_module.service.model = original_model
 
 def test_fastapi_mlflow_statsmodels_mode_health_mandatory(client, mlflow_statsmodels_fixtures):
-    """Verifica obbligatoria: modello MLflow crittograficamente firmato caricato con successo e stato HEALTHY (HTTP 200)."""
-    signed_dir = mlflow_statsmodels_fixtures["signed_dir"]
-    sig_path = mlflow_statsmodels_fixtures["sig_path"]
-    assert signed_dir.exists(), "Test fixture error: signed MLflow model directory must exist!"
-    assert sig_path.exists(), "Test fixture error: signature must exist!"
+    """Verifica obbligatoria: modello MLflow crittograficamente firmato tramite manifest caricato con successo e stato HEALTHY (HTTP 200)."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    assert (manifest_dir / "mlflow_manifest.json").exists()
+    assert (manifest_dir / "mlflow_manifest.json.sig").exists()
 
     reload_payload = {
         "mode": "mlflow_statsmodels",
-        "model_path": str(signed_dir),
-        "sig_path": str(sig_path)
+        "model_path": str(manifest_dir)
     }
     res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
     assert res.status_code == 200
@@ -240,6 +238,24 @@ def test_fastapi_mlflow_statsmodels_mode_health_mandatory(client, mlflow_statsmo
     assert h_data["status"] == "HEALTHY"
     assert h_data["mode"] == "mlflow_statsmodels"
     assert h_data["signature_verified"] is True
+
+def test_fastapi_mlflow_statsmodels_legacy_signature_rejected(client, mlflow_statsmodels_fixtures):
+    """Verifica obbligatoria: pacchetto MLflow con sola firma legacy (model.statsmodels.sig) respinto categoricamente (HTTP 403)."""
+    signed_dir = mlflow_statsmodels_fixtures["signed_dir"]
+    assert signed_dir.exists()
+    assert (signed_dir / "model.statsmodels.sig").exists()
+    assert not (signed_dir / "mlflow_manifest.json").exists()
+
+    reload_payload = {
+        "mode": "mlflow_statsmodels",
+        "model_path": str(signed_dir)
+    }
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 403
+    detail = res.json()["detail"]
+    assert detail["status"] == "REJECTED"
+    assert "Cryptographic manifest" in detail["error"] or "missing" in detail["error"]
+    assert detail["verification_passed"] is False
 
 def test_fastapi_mlflow_package_manifest_verification_success(client, mlflow_statsmodels_fixtures):
     """Verifica che un intero pacchetto MLflow autenticato tramite manifest crittografico venga caricato con successo."""
@@ -263,11 +279,12 @@ def test_fastapi_mlflow_package_manifest_verification_success(client, mlflow_sta
     assert health_res.json()["status"] == "HEALTHY"
 
 def test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed(client, mlflow_statsmodels_fixtures):
-    """Verifica obbligatoria: modello MLflow privo di firma respinto categoricamente con HTTP 403 in modalità fail-closed."""
+    """Verifica obbligatoria: modello MLflow privo di firma respinto categoricamente anche se ALLOW_UNSIGNED_MLFLOW=true."""
     unsigned_dir = mlflow_statsmodels_fixtures["unsigned_dir"]
     assert unsigned_dir.exists()
 
-    os.environ["ALLOW_UNSIGNED_MLFLOW"] = "false"
+    # Even if ALLOW_UNSIGNED_MLFLOW is explicitly true in environment, protected mode must fail-closed!
+    os.environ["ALLOW_UNSIGNED_MLFLOW"] = "true"
     reload_payload = {
         "mode": "mlflow_statsmodels",
         "model_path": str(unsigned_dir)
@@ -276,7 +293,7 @@ def test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed(client, mlflow
     assert res.status_code == 403
     detail = res.json()["detail"]
     assert detail["status"] == "REJECTED"
-    assert "Cryptographic manifest or signature missing" in detail["error"]
+    assert "Cryptographic manifest" in detail["error"] or "missing" in detail["error"]
     assert detail["verification_passed"] is False
 
 def test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative(client, mlflow_statsmodels_fixtures):
@@ -401,3 +418,134 @@ def test_fastapi_reload_unauthorized_without_payload(client):
     response = client.post("/reload")
     assert response.status_code == 401
     assert "Unauthorized" in response.json()["detail"]
+
+def test_fastapi_mlflow_missing_manifest_rejected(client, mlflow_statsmodels_fixtures):
+    """Test negativo FASE A.8: pacchetto senza mlflow_manifest.json rifiutato con HTTP 403."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    test_dir = config.ARTIFACTS_DIR / "test_missing_manifest_pkg"
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    shutil.copytree(manifest_dir, test_dir)
+    (test_dir / "mlflow_manifest.json").unlink()
+
+    try:
+        res = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(test_dir)}, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "missing" in detail["error"]
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+def test_fastapi_mlflow_missing_signature_rejected(client, mlflow_statsmodels_fixtures):
+    """Test negativo FASE A.8: pacchetto senza mlflow_manifest.json.sig rifiutato con HTTP 403."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    test_dir = config.ARTIFACTS_DIR / "test_missing_sig_pkg"
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    shutil.copytree(manifest_dir, test_dir)
+    (test_dir / "mlflow_manifest.json.sig").unlink()
+
+    try:
+        res = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(test_dir)}, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "missing" in detail["error"]
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+def test_fastapi_mlflow_invalid_signature_rejected(client, mlflow_statsmodels_fixtures):
+    """Test negativo FASE A.8: firma RSA-PSS alterata rifiutata con HTTP 403 e status INVALID_SIGNATURE."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    test_dir = config.ARTIFACTS_DIR / "test_invalid_sig_pkg"
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    shutil.copytree(manifest_dir, test_dir)
+    # Corrompi la firma con byte casuali
+    (test_dir / "mlflow_manifest.json.sig").write_bytes(b"\x00" * 256)
+
+    try:
+        res = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(test_dir)}, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "INVALID_SIGNATURE" in detail["error"]
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+def test_fastapi_mlflow_invalid_yaml_rejected(client, mlflow_statsmodels_fixtures):
+    """Test negativo FASE A.8: descrittore MLmodel non valido come YAML rifiutato con HTTP 403 e status INVALID_YAML."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    test_dir = config.ARTIFACTS_DIR / "test_invalid_yaml_pkg"
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    shutil.copytree(manifest_dir, test_dir)
+    (test_dir / "MLmodel").write_text("invalid_yaml: [unclosed_bracket: {", encoding="utf-8")
+    # Rigenera la firma per superare il check SHA-256 e far scattare la validazione semantica MLmodel
+    signer = ModelProducerSigner(config.PRIVATE_KEY_FILE)
+    signer.sign_mlflow_package(test_dir)
+
+    try:
+        res = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(test_dir)}, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "INVALID_YAML" in detail["error"]
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+def test_fastapi_mlflow_unauthorized_pointer_rejected(client, mlflow_statsmodels_fixtures):
+    """Test negativo FASE A.8: MLmodel che punta a un file non dichiarato nel manifest rifiutato con HTTP 403 e UNAUTHORIZED_POINTER."""
+    manifest_dir = mlflow_statsmodels_fixtures["manifest_signed_dir"]
+    test_dir = config.ARTIFACTS_DIR / "test_unauth_ptr_pkg"
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    shutil.copytree(manifest_dir, test_dir)
+
+    # Modifica MLmodel per puntare a un file non esistente o non autorizzato
+    mlmodel_text = (test_dir / "MLmodel").read_text(encoding="utf-8")
+    mlmodel_text = mlmodel_text.replace("data: model.statsmodels", "data: non_manifest_pointer.pkl")
+    (test_dir / "MLmodel").write_text(mlmodel_text, encoding="utf-8")
+    signer = ModelProducerSigner(config.PRIVATE_KEY_FILE)
+    signer.sign_mlflow_package(test_dir)
+
+    try:
+        res = client.post("/reload", json={"mode": "mlflow_statsmodels", "model_path": str(test_dir)}, headers=ADMIN_HEADERS)
+        assert res.status_code == 403
+        detail = res.json()["detail"]
+        assert detail["status"] == "REJECTED"
+        assert "UNAUTHORIZED_POINTER" in detail["error"] or "MISSING_FILE" in detail["error"]
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+def test_fastapi_reload_conflicting_mode_and_format_rejected(client):
+    """Test FASE B: rifiuto esplicito di richieste /reload con valori conflittuali di mode e model_format (HTTP 400)."""
+    reload_payload = {
+        "mode": "safetensors",
+        "model_format": "signed_pickle"
+    }
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 400
+    assert "Conflicting parameters" in res.json()["detail"]
+
+def test_fastapi_reload_insecure_pickle_normalization(client):
+    """Test FASE B: verifica che insecure_pickle sia normalizzato in vulnerable_pickle prima dei controlli di policy."""
+    reload_payload = {
+        "model_format": "insecure_pickle",
+        "model_path": str(config.CLEAN_MODEL_PICKLE)
+    }
+    # Con ALLOW_INSECURE_RELOAD disabilitato -> HTTP 403
+    os.environ["ALLOW_INSECURE_RELOAD"] = "false"
+    res = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+    assert res.status_code == 403
+    assert "Forbidden" in res.json()["detail"]
+
+    # Con ALLOW_INSECURE_RELOAD abilitato -> HTTP 200 e mode 'vulnerable_pickle'
+    os.environ["ALLOW_INSECURE_RELOAD"] = "true"
+    try:
+        res_ok = client.post("/reload", json=reload_payload, headers=ADMIN_HEADERS)
+        assert res_ok.status_code == 200
+        assert res_ok.json()["mode"] == "vulnerable_pickle"
+    finally:
+        os.environ["ALLOW_INSECURE_RELOAD"] = "false"
