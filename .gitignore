@@ -42,6 +42,7 @@ artifacts/mlflow_tampered_model/
 artifacts/real_mlflow_cve/
 artifacts/e2e_*/
 mlruns/
+mlflow.db*
 .cache_mlflow_releases/
 reports/cve_2026_96804_audit.log
 reports/real_mlflow_release_audit.log

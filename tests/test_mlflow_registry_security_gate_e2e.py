@@ -136,6 +136,9 @@ def e2e_pipeline_fixtures():
 
     finally:
         # 7. Guaranteed Teardown and Complete Environment Restoration
+        while mlflow.active_run():
+            mlflow.end_run()
+
         try:
             if old_tracking_uri is not None:
                 mlflow.set_tracking_uri(old_tracking_uri)
@@ -165,6 +168,34 @@ class TestMLflowRegistrySecurityGateE2E:
       Cryptographic Security Gate Manifest Verification (RSA-PSS) ->
       Isolated Temporary Sandbox Deserialization -> Live Inference & Hot-Reload.
     """
+
+    @pytest.fixture(autouse=True)
+    def isolate_service_state(self, e2e_pipeline_fixtures):
+        """
+        Initializes serve_module.service with a legitimate candidate verified by the
+        ephemeral public key prior to each test method, and resets it in teardown.
+        Eliminates any cross-test ordering dependencies and ensures atomic reload
+        preservation tests have an active baseline model even when executed in isolation.
+        """
+        source_uri = e2e_pipeline_fixtures["model_source_uri"]
+        test_pub_key = e2e_pipeline_fixtures["test_pub_key"]
+        baseline_staging_dir = e2e_pipeline_fixtures["consumer_artifacts"] / "e2e_active_baseline_model"
+        if not baseline_staging_dir.exists():
+            baseline_staging_dir.mkdir(parents=True, exist_ok=True)
+            mlflow.artifacts.download_artifacts(
+                artifact_uri=source_uri,
+                dst_path=str(baseline_staging_dir)
+            )
+
+        serve_module.service = FraudInferenceService(
+            mode="mlflow_statsmodels",
+            model_path=baseline_staging_dir,
+            public_key_path=test_pub_key
+        )
+
+        yield
+
+        serve_module.service = None
 
     def test_end_to_end_registry_download_verification_and_inference(self, e2e_pipeline_fixtures):
         """
