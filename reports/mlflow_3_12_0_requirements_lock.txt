@@ -1,5 +1,7 @@
 # MLflow 3.12.0 Standalone Isolated Environment Lockfile
 # Generated for Academic Reproducibility Study (EXP1: CVE-2026-96804 Empirical Analysis)
+# Environment Role: Local Development & Experiment Host Snapshot (Windows 11 AMD64, CPython 3.13)
+# Note: Production CI/CD & Docker testbeds run on Ubuntu Linux (Python 3.11-slim) via requirements-lock.txt
 # Python Version: 3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]
 # Platform: Windows-11-10.0.26200-SP0
 # Environment Isolation: Isolated Virtualenv (--no-site-packages)
