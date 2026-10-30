@@ -27,11 +27,11 @@ Dati estratti dal protocollo scientifico a 50 iterazioni (`reports/cve_2026_9680
 | :--- | :--- | :--- |
 | **Esito di Sicurezza** | **100% Vulnerabile** (Sonda eseguita in-process) | **100% Protetto** (`MlflowException` fail-closed) |
 | **Protocollo Sperimentale** | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] |
-| **Tempo Medio** | **3.975 ms** | **1.881 ms** |
-| **Media Troncata (10%)** | **3.693 ms** | **1.831 ms** |
-| **Mediana (p50)** | **3.35 ms** | **1.816 ms** |
-| **Range Interquartile (IQR)** | **1.427 ms** | **0.119 ms** |
-| **Deviazione Standard** | **1.407 ms** | **0.252 ms** |
+| **Tempo Medio** | **2.936 ms** | **1.795 ms** |
+| **Media Troncata (10%)** | **2.911 ms** | **1.771 ms** |
+| **Mediana (p50)** | **2.926 ms** | **1.757 ms** |
+| **Range Interquartile (IQR)** | **0.229 ms** | **0.105 ms** |
+| **Deviazione Standard** | **0.198 ms** | **0.148 ms** |
 
 *Nota metodologica: la differenza temporale riflette l'intercettazione anticipata pre-unpickler in MLflow 3.15.0 rispetto al completamento della deserializzazione del grafo di oggetti in MLflow 3.12.0, non un confronto algoritmico.*
 
@@ -62,4 +62,13 @@ python experiments/verify_real_mlflow_releases.py 50
 ```bash
 docker compose up --build
 ```
-Verifica l'interazione tra Producer, Security Gate, Consumer FastAPI e Dashboard React in ambiente di rete isolato.
+Verifica l'interazione tra i servizi containerizzati: `mlops-training-producer` (addestramento e firma), `mlops-security-gate` (validazione crittografica e ammissione) e `mlops-inference-consumer` (microservizio FastAPI unprivileged con montaggio della sola chiave pubblica in sola lettura).
+
+### 4. Compilazione e Avvio della Dashboard React (Client)
+La dashboard (`demo/`) costituisce un'interfaccia client interattiva in React/Vite per il monitoraggio della telemetria, collegata all'endpoint REST del consumer (`http://localhost:8000`):
+```bash
+cd demo
+npm ci
+npm run dev   # per avvio locale in sviluppo
+npm run build # per compilazione e verifica di produzione (validata in CI)
+```

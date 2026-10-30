@@ -65,11 +65,11 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
         pkgs = [
             "pip>=24.0",
             "numpy>=1.26.0,<3.0.0",
-            "scipy>=1.13.0",
-            "pandas>=2.2.0",
-            "statsmodels>=0.14.0",
-            "cloudpickle>=3.0.0",
-            "pyyaml>=6.0",
+            "scipy>=1.13.0,<2.0.0",
+            "pandas>=2.2.0,<3.1.0",
+            "statsmodels>=0.14.0,<1.0.0",
+            "cloudpickle>=3.0.0,<4.0.0",
+            "pyyaml>=6.0,<7.0.0",
             f"mlflow=={mlflow_version}"
         ]
         install_res = subprocess.run(
@@ -81,7 +81,7 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
             print(f"ERROR installing packages in venv: {install_res.stderr}")
             raise RuntimeError(f"Pip installation failed for MLflow {mlflow_version}: {install_res.stderr}")
 
-    # Verify pip check (consistency check)
+    # Verify pip check (consistency check) - MUST fail closed
     print("                     Running pip check for dependency consistency...")
     pip_check_res = subprocess.run(
         [str(pip_bin), "check"],
@@ -90,8 +90,12 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
     )
     pip_check_ok = (pip_check_res.returncode == 0)
     pip_check_output = pip_check_res.stdout.strip() if pip_check_ok else pip_check_res.stderr.strip()
+    if not pip_check_ok:
+        raise RuntimeError(
+            f"FATAL: Dependency consistency check 'pip check' failed for MLflow {mlflow_version}:\n{pip_check_output}"
+        )
 
-    # Collect environment metadata
+    # Collect environment metadata and enforce MLflow version match
     ver_check = subprocess.run(
         [str(py_bin), "-c", "import mlflow; print(mlflow.__version__)"],
         capture_output=True,
@@ -99,6 +103,10 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
         check=True
     )
     installed_ver = ver_check.stdout.strip()
+    if installed_ver != mlflow_version:
+        raise RuntimeError(
+            f"FATAL: Installed MLflow version '{installed_ver}' does not match requested version '{mlflow_version}'"
+        )
     print(f"                     Verified installed MLflow version: {installed_ver}")
 
     pip_list_res = subprocess.run(
@@ -111,6 +119,8 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
     except Exception:
         installed_packages = []
 
+    packages_map = {p["name"]: p["version"] for p in installed_packages if "name" in p and "version" in p}
+
     env_metadata = {
         "mlflow_version_requested": mlflow_version,
         "mlflow_version_verified": installed_ver,
@@ -121,7 +131,9 @@ def create_venv_with_mlflow_version(venv_dir: Path, mlflow_version: str) -> tupl
         "pip_check_output": pip_check_output or "No broken requirements found.",
         "isolated_venv": True,
         "system_site_packages_inherited": False,
-        "installed_packages_count": len(installed_packages)
+        "installed_packages_count": len(installed_packages),
+        "installed_packages": installed_packages,
+        "installed_packages_map": packages_map
     }
 
     return py_bin, env_metadata
@@ -463,12 +475,19 @@ def sync_markdown_report_from_json(json_path: Path):
 | **Min / Max** | {b12.get('min_ms')} ms / {b12.get('max_ms')} ms | {b15.get('min_ms')} ms / {b15.get('max_ms')} ms |
 | **Deviazione Standard** | {b12.get('std_ms')} ms | {b15.get('std_ms')} ms |"""
 
+    diff_mean = round(abs(float(b12.get('mean_ms', 0.0)) - float(b15.get('mean_ms', 0.0))), 3)
+
     md_content = audit_md_path.read_text(encoding="utf-8")
     import re
     # Match the table between "| Parametro Statistico" and the section explanation
     pattern = r"\| Parametro Statistico \| MLflow 3\.12\.0.*?\n\| \*\*Deviazione Standard\*\* \| [^\n]+"
     if re.search(pattern, md_content, flags=re.DOTALL):
         updated_md = re.sub(pattern, new_table, md_content, flags=re.DOTALL)
+        # Also reconcile Section D.3 latency difference explanation
+        diff_pattern = r"La differenza di circa [0-9\.]+ ms tra le due versioni è pienamente giustificata"
+        diff_replacement = f"La differenza di circa {diff_mean} ms tra le due versioni è pienamente giustificata"
+        updated_md = re.sub(diff_pattern, diff_replacement, updated_md)
+
         audit_md_path.write_text(updated_md, encoding="utf-8")
         print(f"[✓] Reconciled Markdown table in {audit_md_path.name} with JSON benchmark measurements.")
 
