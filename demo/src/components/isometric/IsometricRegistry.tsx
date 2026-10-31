@@ -64,7 +64,7 @@ export const IsometricRegistry: React.FC<IsometricProps> = ({ size = 180, isHove
         strokeWidth="1"
       />
 
-      {/* Layer 3: Top Bucket Head / S3 Vault */}
+      {/* Layer 3: Top Registry Storage / Artifact Vault */}
       <path
         d="M55,50 C55,62 75,72 100,72 C125,72 145,62 145,50 L145,66 C145,78 125,88 100,88 C75,88 55,78 55,66 Z"
         fill="url(#regCylGrad)"

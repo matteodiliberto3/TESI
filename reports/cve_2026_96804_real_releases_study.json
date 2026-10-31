@@ -5,22 +5,1021 @@
     "return_code": 0,
     "policy_bypassed": true,
     "arbitrary_code_executed": true,
-    "trace": "[SECURITY AUDIT TRACE] Timestamp: 1793315470.345347 | WORKER_PID: 24596 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
+    "vulnerability_reproduction_rate": 1.0,
+    "trace_sample": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2474864 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED",
     "status": "VULNERABILITY_CONFIRMED",
     "semantic_operation": "Arbitrary Code Execution (Full Deserialization + Payload Run)",
+    "environment_metadata": {
+      "mlflow_version_requested": "3.12.0",
+      "mlflow_version_verified": "3.12.0",
+      "python_version": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executable": "C:\\Users\\matti\\Documents\\TESI\\.cache_mlflow_releases\\venv_mlflow_3_12\\Scripts\\python.exe",
+      "pip_check_passed": true,
+      "pip_check_output": "No broken requirements found.",
+      "isolated_venv": true,
+      "system_site_packages_inherited": false,
+      "installed_packages_count": 96,
+      "installed_packages": [
+        {
+          "name": "aiohappyeyeballs",
+          "version": "2.7.1"
+        },
+        {
+          "name": "aiohttp",
+          "version": "3.14.5"
+        },
+        {
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "name": "alembic",
+          "version": "1.20.1"
+        },
+        {
+          "name": "annotated-doc",
+          "version": "0.0.5"
+        },
+        {
+          "name": "annotated-types",
+          "version": "0.8.0"
+        },
+        {
+          "name": "anyio",
+          "version": "4.15.1"
+        },
+        {
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "name": "blinker",
+          "version": "1.9.0"
+        },
+        {
+          "name": "cachetools",
+          "version": "7.2.7"
+        },
+        {
+          "name": "certifi",
+          "version": "2026.10.23"
+        },
+        {
+          "name": "cffi",
+          "version": "2.1.1"
+        },
+        {
+          "name": "charset-normalizer",
+          "version": "3.5.2"
+        },
+        {
+          "name": "click",
+          "version": "8.5.0"
+        },
+        {
+          "name": "cloudpickle",
+          "version": "3.1.2"
+        },
+        {
+          "name": "contourpy",
+          "version": "1.4.0"
+        },
+        {
+          "name": "cryptography",
+          "version": "46.0.7"
+        },
+        {
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "name": "databricks-sdk",
+          "version": "0.158.0"
+        },
+        {
+          "name": "docker",
+          "version": "7.2.0"
+        },
+        {
+          "name": "fastapi",
+          "version": "0.162.0"
+        },
+        {
+          "name": "Flask",
+          "version": "3.1.3"
+        },
+        {
+          "name": "flask-cors",
+          "version": "6.0.5"
+        },
+        {
+          "name": "fonttools",
+          "version": "4.68.0"
+        },
+        {
+          "name": "formulaic",
+          "version": "1.2.2"
+        },
+        {
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "name": "gitdb",
+          "version": "4.0.12"
+        },
+        {
+          "name": "GitPython",
+          "version": "3.2.1"
+        },
+        {
+          "name": "google-auth",
+          "version": "2.62.0"
+        },
+        {
+          "name": "graphene",
+          "version": "3.4.3"
+        },
+        {
+          "name": "graphql-core",
+          "version": "3.2.13"
+        },
+        {
+          "name": "graphql-relay",
+          "version": "3.2.0"
+        },
+        {
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "name": "huey",
+          "version": "2.6.0"
+        },
+        {
+          "name": "idna",
+          "version": "3.20"
+        },
+        {
+          "name": "importlib_metadata",
+          "version": "9.1.0"
+        },
+        {
+          "name": "interface_meta",
+          "version": "2.0.1"
+        },
+        {
+          "name": "itsdangerous",
+          "version": "2.2.0"
+        },
+        {
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "name": "joblib",
+          "version": "1.6.0"
+        },
+        {
+          "name": "kiwisolver",
+          "version": "1.5.1"
+        },
+        {
+          "name": "Mako",
+          "version": "1.4.3"
+        },
+        {
+          "name": "MarkupSafe",
+          "version": "3.0.4"
+        },
+        {
+          "name": "matplotlib",
+          "version": "3.11.2"
+        },
+        {
+          "name": "mlflow",
+          "version": "3.12.0"
+        },
+        {
+          "name": "mlflow-skinny",
+          "version": "3.12.0"
+        },
+        {
+          "name": "mlflow-tracing",
+          "version": "3.12.0"
+        },
+        {
+          "name": "multidict",
+          "version": "7.2.1"
+        },
+        {
+          "name": "narwhals",
+          "version": "2.28.0"
+        },
+        {
+          "name": "numpy",
+          "version": "2.5.4"
+        },
+        {
+          "name": "opentelemetry-api",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-proto",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-sdk",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-semantic-conventions",
+          "version": "0.66b2"
+        },
+        {
+          "name": "packaging",
+          "version": "26.3"
+        },
+        {
+          "name": "pandas",
+          "version": "2.3.3"
+        },
+        {
+          "name": "patsy",
+          "version": "1.0.3"
+        },
+        {
+          "name": "pillow",
+          "version": "13.0.0"
+        },
+        {
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "name": "prettytable",
+          "version": "3.18.0"
+        },
+        {
+          "name": "propcache",
+          "version": "0.5.4"
+        },
+        {
+          "name": "protobuf",
+          "version": "7.36.2"
+        },
+        {
+          "name": "pyarrow",
+          "version": "23.0.1"
+        },
+        {
+          "name": "pyasn1",
+          "version": "0.6.5"
+        },
+        {
+          "name": "pyasn1_modules",
+          "version": "0.4.2"
+        },
+        {
+          "name": "pycparser",
+          "version": "3.12"
+        },
+        {
+          "name": "pydantic",
+          "version": "2.14.2"
+        },
+        {
+          "name": "pydantic_core",
+          "version": "2.50.2"
+        },
+        {
+          "name": "pyparsing",
+          "version": "3.3.3"
+        },
+        {
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "name": "python-dotenv",
+          "version": "1.2.4"
+        },
+        {
+          "name": "pytz",
+          "version": "2026.6"
+        },
+        {
+          "name": "pywin32",
+          "version": "312"
+        },
+        {
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "name": "scikit-learn",
+          "version": "1.9.1"
+        },
+        {
+          "name": "scipy",
+          "version": "1.18.1"
+        },
+        {
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "name": "skops",
+          "version": "0.16.0"
+        },
+        {
+          "name": "smmap",
+          "version": "5.0.3"
+        },
+        {
+          "name": "SQLAlchemy",
+          "version": "2.1.6"
+        },
+        {
+          "name": "sqlparse",
+          "version": "0.6.0"
+        },
+        {
+          "name": "starlette",
+          "version": "0.52.1"
+        },
+        {
+          "name": "statsmodels",
+          "version": "0.15.0"
+        },
+        {
+          "name": "threadpoolctl",
+          "version": "3.7.0"
+        },
+        {
+          "name": "typing_extensions",
+          "version": "4.16.0"
+        },
+        {
+          "name": "typing-inspection",
+          "version": "0.4.4"
+        },
+        {
+          "name": "tzdata",
+          "version": "2026.6"
+        },
+        {
+          "name": "urllib3",
+          "version": "2.8.0"
+        },
+        {
+          "name": "uvicorn",
+          "version": "0.54.0"
+        },
+        {
+          "name": "waitress",
+          "version": "3.0.2"
+        },
+        {
+          "name": "wcwidth",
+          "version": "0.9.4"
+        },
+        {
+          "name": "Werkzeug",
+          "version": "3.1.9"
+        },
+        {
+          "name": "wrapt",
+          "version": "2.6.0.dev1"
+        },
+        {
+          "name": "yarl",
+          "version": "1.25.1"
+        },
+        {
+          "name": "zipp",
+          "version": "4.1.2"
+        }
+      ],
+      "installed_packages_map": {
+        "aiohappyeyeballs": "2.7.1",
+        "aiohttp": "3.14.5",
+        "aiosignal": "1.4.0",
+        "alembic": "1.20.1",
+        "annotated-doc": "0.0.5",
+        "annotated-types": "0.8.0",
+        "anyio": "4.15.1",
+        "attrs": "26.1.0",
+        "blinker": "1.9.0",
+        "cachetools": "7.2.7",
+        "certifi": "2026.10.23",
+        "cffi": "2.1.1",
+        "charset-normalizer": "3.5.2",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "contourpy": "1.4.0",
+        "cryptography": "46.0.7",
+        "cycler": "0.12.1",
+        "databricks-sdk": "0.158.0",
+        "docker": "7.2.0",
+        "fastapi": "0.162.0",
+        "Flask": "3.1.3",
+        "flask-cors": "6.0.5",
+        "fonttools": "4.68.0",
+        "formulaic": "1.2.2",
+        "frozenlist": "1.8.0",
+        "gitdb": "4.0.12",
+        "GitPython": "3.2.1",
+        "google-auth": "2.62.0",
+        "graphene": "3.4.3",
+        "graphql-core": "3.2.13",
+        "graphql-relay": "3.2.0",
+        "h11": "0.16.0",
+        "huey": "2.6.0",
+        "idna": "3.20",
+        "importlib_metadata": "9.1.0",
+        "interface_meta": "2.0.1",
+        "itsdangerous": "2.2.0",
+        "Jinja2": "3.1.6",
+        "joblib": "1.6.0",
+        "kiwisolver": "1.5.1",
+        "Mako": "1.4.3",
+        "MarkupSafe": "3.0.4",
+        "matplotlib": "3.11.2",
+        "mlflow": "3.12.0",
+        "mlflow-skinny": "3.12.0",
+        "mlflow-tracing": "3.12.0",
+        "multidict": "7.2.1",
+        "narwhals": "2.28.0",
+        "numpy": "2.5.4",
+        "opentelemetry-api": "1.45.2",
+        "opentelemetry-proto": "1.45.2",
+        "opentelemetry-sdk": "1.45.2",
+        "opentelemetry-semantic-conventions": "0.66b2",
+        "packaging": "26.3",
+        "pandas": "2.3.3",
+        "patsy": "1.0.3",
+        "pillow": "13.0.0",
+        "pip": "26.1.2",
+        "prettytable": "3.18.0",
+        "propcache": "0.5.4",
+        "protobuf": "7.36.2",
+        "pyarrow": "23.0.1",
+        "pyasn1": "0.6.5",
+        "pyasn1_modules": "0.4.2",
+        "pycparser": "3.12",
+        "pydantic": "2.14.2",
+        "pydantic_core": "2.50.2",
+        "pyparsing": "3.3.3",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.4",
+        "pytz": "2026.6",
+        "pywin32": "312",
+        "PyYAML": "6.0.3",
+        "requests": "2.34.2",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "skops": "0.16.0",
+        "smmap": "5.0.3",
+        "SQLAlchemy": "2.1.6",
+        "sqlparse": "0.6.0",
+        "starlette": "0.52.1",
+        "statsmodels": "0.15.0",
+        "threadpoolctl": "3.7.0",
+        "typing_extensions": "4.16.0",
+        "typing-inspection": "0.4.4",
+        "tzdata": "2026.6",
+        "urllib3": "2.8.0",
+        "uvicorn": "0.54.0",
+        "waitress": "3.0.2",
+        "wcwidth": "0.9.4",
+        "Werkzeug": "3.1.9",
+        "wrapt": "2.6.0.dev1",
+        "yarl": "1.25.1",
+        "zipp": "4.1.2"
+      }
+    },
     "benchmark": {
       "trials": 50,
       "warmup_cycles_excluded": 3,
-      "mean_ms": 3.576,
-      "trimmed_mean_10pct_ms": 3.464,
-      "median_ms": 3.347,
-      "iqr_ms": 1.783,
-      "p95_ms": 5.505,
-      "p99_ms": 5.739,
-      "min_ms": 2.492,
-      "max_ms": 5.803,
-      "std_ms": 1.014
-    }
+      "mean_ms": 2.936,
+      "trimmed_mean_10pct_ms": 2.911,
+      "median_ms": 2.926,
+      "iqr_ms": 0.229,
+      "p95_ms": 3.232,
+      "p99_ms": 3.633,
+      "min_ms": 2.665,
+      "max_ms": 3.672,
+      "std_ms": 0.198
+    },
+    "trials_detail": [
+      {
+        "trial_index": 1,
+        "latency_ms": 2.941,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2474864 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 2,
+        "latency_ms": 2.8837,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2563431 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 3,
+        "latency_ms": 2.9326,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2645366 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 4,
+        "latency_ms": 2.7739,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.272741 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 5,
+        "latency_ms": 2.9451,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2809808 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 6,
+        "latency_ms": 2.7083,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.2891092 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 7,
+        "latency_ms": 3.1087,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.297612 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 8,
+        "latency_ms": 2.8644,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3058102 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 9,
+        "latency_ms": 2.8402,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.313661 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 10,
+        "latency_ms": 2.887,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.322133 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 11,
+        "latency_ms": 2.7098,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3297017 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 12,
+        "latency_ms": 3.1987,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3381627 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 13,
+        "latency_ms": 2.7255,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3456702 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 14,
+        "latency_ms": 2.9697,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3540366 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 15,
+        "latency_ms": 2.8,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3618863 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 16,
+        "latency_ms": 3.6724,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3709245 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 17,
+        "latency_ms": 2.7637,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.378489 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 18,
+        "latency_ms": 2.9954,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.387009 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 19,
+        "latency_ms": 2.8644,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.3949714 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 20,
+        "latency_ms": 3.0297,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4032452 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 21,
+        "latency_ms": 2.6654,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4107914 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 22,
+        "latency_ms": 2.9392,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4186053 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 23,
+        "latency_ms": 2.8171,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4275594 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 24,
+        "latency_ms": 3.5917,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4359488 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 25,
+        "latency_ms": 2.9339,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4443293 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 26,
+        "latency_ms": 2.7928,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4529107 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 27,
+        "latency_ms": 2.9322,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4617298 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 28,
+        "latency_ms": 3.0515,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4695725 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 29,
+        "latency_ms": 2.817,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4778345 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 30,
+        "latency_ms": 3.0538,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4859 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 31,
+        "latency_ms": 2.8613,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.4967084 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 32,
+        "latency_ms": 2.9882,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5043151 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 33,
+        "latency_ms": 2.7694,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5124931 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 34,
+        "latency_ms": 2.7633,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.521597 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 35,
+        "latency_ms": 2.87,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5321076 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 36,
+        "latency_ms": 3.1449,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5407162 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 37,
+        "latency_ms": 3.0389,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.54861 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 38,
+        "latency_ms": 3.2584,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5571735 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 39,
+        "latency_ms": 2.7858,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5650463 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 40,
+        "latency_ms": 3.0111,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.573682 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 41,
+        "latency_ms": 3.1454,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.581595 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 42,
+        "latency_ms": 2.9203,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.590027 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 43,
+        "latency_ms": 2.788,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.5979986 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 44,
+        "latency_ms": 3.0277,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6068888 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 45,
+        "latency_ms": 2.9594,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6147346 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 46,
+        "latency_ms": 3.0753,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6243196 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 47,
+        "latency_ms": 2.7204,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6320114 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 48,
+        "latency_ms": 2.811,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6407332 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 49,
+        "latency_ms": 2.9546,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6485367 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      },
+      {
+        "trial_index": 50,
+        "latency_ms": 2.688,
+        "status": "LOADED",
+        "audit_probe_executed": true,
+        "policy_exception_caught": false,
+        "exception_type": null,
+        "exception_detail": null,
+        "audit_trace": "[SECURITY AUDIT TRACE] Timestamp: 1793353907.6566467 | WORKER_PID: 32964 | EVENT: ARBITRARY_CODE_EXECUTION_TRIGGERED"
+      }
+    ]
   },
   "MLflow_3_15_0_Official_Release": {
     "version": "3.15.0",
@@ -28,25 +1027,1027 @@
     "return_code": 2,
     "policy_bypassed": false,
     "arbitrary_code_executed": false,
+    "policy_block_rate": 1.0,
     "trace": null,
     "status": "PATCH_CONFIRMED",
     "semantic_operation": "Fast-Fail Policy Interception (MlflowException Raised Pre-Unpickler)",
+    "environment_metadata": {
+      "mlflow_version_requested": "3.15.0",
+      "mlflow_version_verified": "3.15.0",
+      "python_version": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executable": "C:\\Users\\matti\\Documents\\TESI\\.cache_mlflow_releases\\venv_mlflow_3_15\\Scripts\\python.exe",
+      "pip_check_passed": true,
+      "pip_check_output": "No broken requirements found.",
+      "isolated_venv": true,
+      "system_site_packages_inherited": false,
+      "installed_packages_count": 96,
+      "installed_packages": [
+        {
+          "name": "aiohappyeyeballs",
+          "version": "2.7.1"
+        },
+        {
+          "name": "aiohttp",
+          "version": "3.14.5"
+        },
+        {
+          "name": "aiosignal",
+          "version": "1.4.0"
+        },
+        {
+          "name": "alembic",
+          "version": "1.20.1"
+        },
+        {
+          "name": "annotated-doc",
+          "version": "0.0.5"
+        },
+        {
+          "name": "annotated-types",
+          "version": "0.8.0"
+        },
+        {
+          "name": "anyio",
+          "version": "4.15.1"
+        },
+        {
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "name": "blinker",
+          "version": "1.9.0"
+        },
+        {
+          "name": "cachetools",
+          "version": "7.2.7"
+        },
+        {
+          "name": "certifi",
+          "version": "2026.10.23"
+        },
+        {
+          "name": "cffi",
+          "version": "2.1.1"
+        },
+        {
+          "name": "charset-normalizer",
+          "version": "3.5.2"
+        },
+        {
+          "name": "click",
+          "version": "8.5.0"
+        },
+        {
+          "name": "cloudpickle",
+          "version": "3.1.2"
+        },
+        {
+          "name": "contourpy",
+          "version": "1.4.0"
+        },
+        {
+          "name": "cryptography",
+          "version": "49.0.0"
+        },
+        {
+          "name": "cycler",
+          "version": "0.12.1"
+        },
+        {
+          "name": "databricks-sdk",
+          "version": "0.158.0"
+        },
+        {
+          "name": "docker",
+          "version": "7.2.0"
+        },
+        {
+          "name": "fastapi",
+          "version": "0.162.0"
+        },
+        {
+          "name": "Flask",
+          "version": "3.1.3"
+        },
+        {
+          "name": "flask-cors",
+          "version": "6.0.5"
+        },
+        {
+          "name": "fonttools",
+          "version": "4.68.0"
+        },
+        {
+          "name": "formulaic",
+          "version": "1.2.2"
+        },
+        {
+          "name": "frozenlist",
+          "version": "1.8.0"
+        },
+        {
+          "name": "gitdb",
+          "version": "4.0.12"
+        },
+        {
+          "name": "GitPython",
+          "version": "3.2.1"
+        },
+        {
+          "name": "google-auth",
+          "version": "2.62.0"
+        },
+        {
+          "name": "graphene",
+          "version": "3.4.3"
+        },
+        {
+          "name": "graphql-core",
+          "version": "3.2.13"
+        },
+        {
+          "name": "graphql-relay",
+          "version": "3.2.0"
+        },
+        {
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "name": "huey",
+          "version": "3.5.3"
+        },
+        {
+          "name": "idna",
+          "version": "3.20"
+        },
+        {
+          "name": "importlib_metadata",
+          "version": "9.1.0"
+        },
+        {
+          "name": "interface_meta",
+          "version": "2.0.1"
+        },
+        {
+          "name": "itsdangerous",
+          "version": "2.2.0"
+        },
+        {
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "name": "joblib",
+          "version": "1.6.0"
+        },
+        {
+          "name": "kiwisolver",
+          "version": "1.5.1"
+        },
+        {
+          "name": "Mako",
+          "version": "1.4.3"
+        },
+        {
+          "name": "MarkupSafe",
+          "version": "3.0.4"
+        },
+        {
+          "name": "matplotlib",
+          "version": "3.11.2"
+        },
+        {
+          "name": "mlflow",
+          "version": "3.15.0"
+        },
+        {
+          "name": "mlflow-skinny",
+          "version": "3.15.0"
+        },
+        {
+          "name": "mlflow-tracing",
+          "version": "3.15.0"
+        },
+        {
+          "name": "multidict",
+          "version": "7.2.1"
+        },
+        {
+          "name": "narwhals",
+          "version": "2.28.0"
+        },
+        {
+          "name": "numpy",
+          "version": "2.5.4"
+        },
+        {
+          "name": "opentelemetry-api",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-proto",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-sdk",
+          "version": "1.45.2"
+        },
+        {
+          "name": "opentelemetry-semantic-conventions",
+          "version": "0.66b2"
+        },
+        {
+          "name": "packaging",
+          "version": "26.3"
+        },
+        {
+          "name": "pandas",
+          "version": "2.3.3"
+        },
+        {
+          "name": "patsy",
+          "version": "1.0.3"
+        },
+        {
+          "name": "pillow",
+          "version": "13.0.0"
+        },
+        {
+          "name": "pip",
+          "version": "26.1.2"
+        },
+        {
+          "name": "prettytable",
+          "version": "3.18.0"
+        },
+        {
+          "name": "propcache",
+          "version": "0.5.4"
+        },
+        {
+          "name": "protobuf",
+          "version": "7.36.2"
+        },
+        {
+          "name": "pyarrow",
+          "version": "25.0.1"
+        },
+        {
+          "name": "pyasn1",
+          "version": "0.6.5"
+        },
+        {
+          "name": "pyasn1_modules",
+          "version": "0.4.2"
+        },
+        {
+          "name": "pycparser",
+          "version": "3.12"
+        },
+        {
+          "name": "pydantic",
+          "version": "2.14.2"
+        },
+        {
+          "name": "pydantic_core",
+          "version": "2.50.2"
+        },
+        {
+          "name": "pyparsing",
+          "version": "3.3.3"
+        },
+        {
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "name": "python-dotenv",
+          "version": "1.2.4"
+        },
+        {
+          "name": "pytz",
+          "version": "2026.6"
+        },
+        {
+          "name": "pywin32",
+          "version": "312"
+        },
+        {
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "name": "scikit-learn",
+          "version": "1.9.1"
+        },
+        {
+          "name": "scipy",
+          "version": "1.18.1"
+        },
+        {
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "name": "skops",
+          "version": "0.16.0"
+        },
+        {
+          "name": "smmap",
+          "version": "5.0.3"
+        },
+        {
+          "name": "SQLAlchemy",
+          "version": "2.1.6"
+        },
+        {
+          "name": "sqlparse",
+          "version": "0.6.0"
+        },
+        {
+          "name": "starlette",
+          "version": "1.10.0"
+        },
+        {
+          "name": "statsmodels",
+          "version": "0.15.0"
+        },
+        {
+          "name": "threadpoolctl",
+          "version": "3.7.0"
+        },
+        {
+          "name": "typing_extensions",
+          "version": "4.16.0"
+        },
+        {
+          "name": "typing-inspection",
+          "version": "0.4.4"
+        },
+        {
+          "name": "tzdata",
+          "version": "2026.6"
+        },
+        {
+          "name": "urllib3",
+          "version": "2.8.0"
+        },
+        {
+          "name": "uvicorn",
+          "version": "0.54.0"
+        },
+        {
+          "name": "waitress",
+          "version": "3.0.2"
+        },
+        {
+          "name": "wcwidth",
+          "version": "0.9.4"
+        },
+        {
+          "name": "Werkzeug",
+          "version": "3.1.9"
+        },
+        {
+          "name": "wrapt",
+          "version": "2.6.0.dev1"
+        },
+        {
+          "name": "yarl",
+          "version": "1.25.1"
+        },
+        {
+          "name": "zipp",
+          "version": "4.1.2"
+        }
+      ],
+      "installed_packages_map": {
+        "aiohappyeyeballs": "2.7.1",
+        "aiohttp": "3.14.5",
+        "aiosignal": "1.4.0",
+        "alembic": "1.20.1",
+        "annotated-doc": "0.0.5",
+        "annotated-types": "0.8.0",
+        "anyio": "4.15.1",
+        "attrs": "26.1.0",
+        "blinker": "1.9.0",
+        "cachetools": "7.2.7",
+        "certifi": "2026.10.23",
+        "cffi": "2.1.1",
+        "charset-normalizer": "3.5.2",
+        "click": "8.5.0",
+        "cloudpickle": "3.1.2",
+        "contourpy": "1.4.0",
+        "cryptography": "49.0.0",
+        "cycler": "0.12.1",
+        "databricks-sdk": "0.158.0",
+        "docker": "7.2.0",
+        "fastapi": "0.162.0",
+        "Flask": "3.1.3",
+        "flask-cors": "6.0.5",
+        "fonttools": "4.68.0",
+        "formulaic": "1.2.2",
+        "frozenlist": "1.8.0",
+        "gitdb": "4.0.12",
+        "GitPython": "3.2.1",
+        "google-auth": "2.62.0",
+        "graphene": "3.4.3",
+        "graphql-core": "3.2.13",
+        "graphql-relay": "3.2.0",
+        "h11": "0.16.0",
+        "huey": "3.5.3",
+        "idna": "3.20",
+        "importlib_metadata": "9.1.0",
+        "interface_meta": "2.0.1",
+        "itsdangerous": "2.2.0",
+        "Jinja2": "3.1.6",
+        "joblib": "1.6.0",
+        "kiwisolver": "1.5.1",
+        "Mako": "1.4.3",
+        "MarkupSafe": "3.0.4",
+        "matplotlib": "3.11.2",
+        "mlflow": "3.15.0",
+        "mlflow-skinny": "3.15.0",
+        "mlflow-tracing": "3.15.0",
+        "multidict": "7.2.1",
+        "narwhals": "2.28.0",
+        "numpy": "2.5.4",
+        "opentelemetry-api": "1.45.2",
+        "opentelemetry-proto": "1.45.2",
+        "opentelemetry-sdk": "1.45.2",
+        "opentelemetry-semantic-conventions": "0.66b2",
+        "packaging": "26.3",
+        "pandas": "2.3.3",
+        "patsy": "1.0.3",
+        "pillow": "13.0.0",
+        "pip": "26.1.2",
+        "prettytable": "3.18.0",
+        "propcache": "0.5.4",
+        "protobuf": "7.36.2",
+        "pyarrow": "25.0.1",
+        "pyasn1": "0.6.5",
+        "pyasn1_modules": "0.4.2",
+        "pycparser": "3.12",
+        "pydantic": "2.14.2",
+        "pydantic_core": "2.50.2",
+        "pyparsing": "3.3.3",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.4",
+        "pytz": "2026.6",
+        "pywin32": "312",
+        "PyYAML": "6.0.3",
+        "requests": "2.34.2",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "six": "1.17.0",
+        "skops": "0.16.0",
+        "smmap": "5.0.3",
+        "SQLAlchemy": "2.1.6",
+        "sqlparse": "0.6.0",
+        "starlette": "1.10.0",
+        "statsmodels": "0.15.0",
+        "threadpoolctl": "3.7.0",
+        "typing_extensions": "4.16.0",
+        "typing-inspection": "0.4.4",
+        "tzdata": "2026.6",
+        "urllib3": "2.8.0",
+        "uvicorn": "0.54.0",
+        "waitress": "3.0.2",
+        "wcwidth": "0.9.4",
+        "Werkzeug": "3.1.9",
+        "wrapt": "2.6.0.dev1",
+        "yarl": "1.25.1",
+        "zipp": "4.1.2"
+      }
+    },
     "benchmark": {
       "trials": 50,
       "warmup_cycles_excluded": 3,
-      "mean_ms": 3.184,
-      "trimmed_mean_10pct_ms": 2.985,
-      "median_ms": 2.744,
-      "iqr_ms": 1.833,
-      "p95_ms": 5.059,
-      "p99_ms": 7.837,
-      "min_ms": 1.796,
-      "max_ms": 10.389,
-      "std_ms": 1.471
-    }
+      "mean_ms": 1.795,
+      "trimmed_mean_10pct_ms": 1.771,
+      "median_ms": 1.757,
+      "iqr_ms": 0.105,
+      "p95_ms": 2.058,
+      "p99_ms": 2.342,
+      "min_ms": 1.621,
+      "max_ms": 2.531,
+      "std_ms": 0.148
+    },
+    "trials_detail": [
+      {
+        "trial_index": 1,
+        "latency_ms": 2.0998,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 2,
+        "latency_ms": 1.926,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 3,
+        "latency_ms": 2.1458,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 4,
+        "latency_ms": 1.8624,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 5,
+        "latency_ms": 1.8234,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 6,
+        "latency_ms": 1.817,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 7,
+        "latency_ms": 1.8283,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 8,
+        "latency_ms": 1.8187,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 9,
+        "latency_ms": 2.5312,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 10,
+        "latency_ms": 1.8167,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 11,
+        "latency_ms": 1.6301,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 12,
+        "latency_ms": 1.6242,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 13,
+        "latency_ms": 1.6895,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 14,
+        "latency_ms": 1.6214,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 15,
+        "latency_ms": 1.7244,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 16,
+        "latency_ms": 1.668,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 17,
+        "latency_ms": 1.6622,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 18,
+        "latency_ms": 1.7552,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 19,
+        "latency_ms": 1.7081,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 20,
+        "latency_ms": 1.6899,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 21,
+        "latency_ms": 1.7885,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 22,
+        "latency_ms": 1.7523,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 23,
+        "latency_ms": 1.7241,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 24,
+        "latency_ms": 1.8094,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 25,
+        "latency_ms": 1.9353,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 26,
+        "latency_ms": 1.8377,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 27,
+        "latency_ms": 2.0065,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 28,
+        "latency_ms": 1.7481,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 29,
+        "latency_ms": 1.722,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 30,
+        "latency_ms": 1.6742,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 31,
+        "latency_ms": 1.759,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 32,
+        "latency_ms": 1.7101,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 33,
+        "latency_ms": 1.7741,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 34,
+        "latency_ms": 1.8068,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 35,
+        "latency_ms": 1.8206,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 36,
+        "latency_ms": 1.7063,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 37,
+        "latency_ms": 1.7131,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 38,
+        "latency_ms": 1.7386,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 39,
+        "latency_ms": 1.7517,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 40,
+        "latency_ms": 1.7444,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 41,
+        "latency_ms": 1.7505,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 42,
+        "latency_ms": 1.7254,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 43,
+        "latency_ms": 1.7816,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 44,
+        "latency_ms": 1.748,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 45,
+        "latency_ms": 1.7043,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 46,
+        "latency_ms": 1.8432,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 47,
+        "latency_ms": 1.7681,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 48,
+        "latency_ms": 1.7749,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 49,
+        "latency_ms": 1.7711,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      },
+      {
+        "trial_index": 50,
+        "latency_ms": 1.9137,
+        "status": "BLOCKED_BY_POLICY",
+        "audit_probe_executed": false,
+        "policy_exception_caught": true,
+        "exception_type": "MlflowException",
+        "exception_detail": "Deserializing model using pickle is disallowed, but this model is saved in pickle format. The workaround is to set environment variable 'MLFLOW_ALLOW_PICKLE_DESERIALIZATION' to 'true'.",
+        "audit_trace": null
+      }
+    ]
   },
-  "methodology_metadata": {
-    "scientific_interpretation": "Timing differences reflect fundamentally distinct computational semantics (full deserialization + payload execution vs pre-deserialization policy rejection), not an algorithmic performance comparison.",
-    "warmup_handling": "3 unmeasured warm-up iterations were executed before timing to prime module imports and prevent cold-start distortion."
+  "study_protocol": {
+    "protocol_mode": "FULL_SCIENTIFIC_STUDY",
+    "trials_requested": 50,
+    "warmup_iterations": 3,
+    "scientific_interpretation": "Timing differences reflect fundamentally distinct computational semantics: full deserialization + payload execution in unpatched MLflow 3.12.0 vs pre-deserialization policy interception in patched MLflow 3.15.0. They are NOT an algorithmic speed comparison.",
+    "distinction_notice": "CI smoke execution runs 20 trials for automated regression; full scientific study protocol runs 50 trials with complete inter-trial variance logging."
   }
 }

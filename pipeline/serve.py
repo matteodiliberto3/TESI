@@ -56,6 +56,10 @@ class FraudInferenceService:
         self._load_model(mode, model_path, sig_path)
 
     def _load_model(self, mode: str, model_path: Optional[Path], sig_path: Optional[Path]):
+        # Normalize insecure_pickle alias to vulnerable_pickle
+        if mode in ("insecure_pickle", "vulnerable_pickle"):
+            mode = "vulnerable_pickle"
+
         self.mode = mode
         self.load_error = None
         self.signature_verified = False
@@ -84,8 +88,6 @@ class FraudInferenceService:
                 path = model_path or (config.ARTIFACTS_DIR / "mlflow_clean_model")
                 self.model_path = path
 
-                allow_unsigned = os.getenv("ALLOW_UNSIGNED_MLFLOW", "false").lower() in ("true", "1", "yes")
-
                 # Defense-in-Depth Sandbox Preparation:
                 # Copy model files to a private temporary directory, rejecting external symlinks,
                 # perform cryptographic manifest & signature verification in the sandbox, then load.
@@ -110,47 +112,27 @@ class FraudInferenceService:
                         dest_model_dir = sandbox_path
                         shutil.copy2(path, sandbox_path / path.name)
 
-                    # Check for Cryptographic Package Manifest (full package authentication)
+                    # Full package authentication via Cryptographic Package Manifest is MANDATORY
+                    # Protected mode mlflow_statsmodels strictly forbids single-file fallback signatures or unsigned packages
                     manifest_file = dest_model_dir / "mlflow_manifest.json"
                     manifest_sig = dest_model_dir / "mlflow_manifest.json.sig"
 
-                    if manifest_file.exists() or manifest_sig.exists():
-                        pkg_res = self.verifier.verify_mlflow_package(dest_model_dir)
-                        if not pkg_res.is_valid:
-                            raise SecurityError(
-                                f"[Gate Alert] MLflow package manifest verification failed: "
-                                f"{pkg_res.status} - {pkg_res.detail}"
-                            )
-                        self.verification_passed = True
-                        self.signature_verified = True
-                    else:
-                        # Fallback for standalone single-file signature (e.g. model.statsmodels.sig)
-                        sig = sig_path
-                        if sig is None:
-                            candidate_sig = path.with_suffix(".sig")
-                            if candidate_sig.exists():
-                                sig = candidate_sig
-                            elif (path / "model.statsmodels.sig").exists():
-                                sig = path / "model.statsmodels.sig"
+                    if not manifest_file.exists() or not manifest_sig.exists():
+                        raise SecurityError(
+                            f"[Gate Alert] Cryptographic manifest ({manifest_file.name}) or signature ({manifest_sig.name}) missing "
+                            f"in MLflow package at {path}. Single-file fallback signatures (e.g. model.statsmodels.sig) and "
+                            f"unsigned packages are strictly disallowed under protected MLflow security policy."
+                        )
 
-                        if sig and sig.exists():
-                            target_file = (
-                                dest_model_dir / "model.statsmodels"
-                                if (dest_model_dir / "model.statsmodels").exists()
-                                else (dest_model_dir / path.name)
-                            )
-                            if not self.verifier.verify_artifact(target_file, sig):
-                                raise SecurityError(f"[Gate Alert] Cryptographic signature verification failed for sandboxed {target_file}!")
-                            self.verification_passed = True
-                            self.signature_verified = True
-                        else:
-                            if not allow_unsigned:
-                                raise SecurityError(
-                                    f"[Gate Alert] Cryptographic manifest or signature missing for MLflow package at {path}. "
-                                    "Unsigned MLflow models are rejected under fail-closed security policy."
-                                )
-                            self.verification_passed = False
-                            self.signature_verified = False
+                    pkg_res = self.verifier.verify_mlflow_package(dest_model_dir)
+                    if not pkg_res.is_valid:
+                        raise SecurityError(
+                            f"[Gate Alert] MLflow package manifest verification failed: "
+                            f"{pkg_res.status} - {pkg_res.detail}"
+                        )
+
+                    self.verification_passed = True
+                    self.signature_verified = True
 
                     import mlflow.statsmodels
                     self.model = mlflow.statsmodels.load_model(str(dest_model_dir))
@@ -329,6 +311,31 @@ def reload_model(
     x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token"),
     authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
+    """
+    Administrative Endpoint for Hot-Reloading Model Artifacts.
+
+    Contract:
+      - Authentication: Requires valid secret token matching environment MLOPS_ADMIN_TOKEN via:
+          * Header 'Authorization: Bearer <TOKEN>' OR
+          * Header 'X-Admin-Token: <TOKEN>'
+          * Fails with HTTP 503 if server secret is unconfigured.
+          * Fails with HTTP 401 if token is absent, empty, or mismatched (timing-safe check).
+      - Request Body (JSON):
+          * 'mode' OR 'model_format' (string, required): One of:
+              - 'signed_pickle' (verified RSA-PSS single pickle)
+              - 'safetensors' (safe declarative tensor format)
+              - 'mlflow_statsmodels' (full package manifest verified MLflow directory)
+              - 'vulnerable_pickle' (deliberately unverified pickle; alias 'insecure_pickle')
+          * Conflicting 'mode' and 'model_format' parameters are rejected with HTTP 400.
+          * 'insecure_pickle' is strictly normalized to 'vulnerable_pickle' prior to policy enforcement.
+          * 'model_path' (string, optional): Filesystem path within 'artifacts/' directory.
+          * 'sig_path' (string, optional): Cryptographic signature path within 'artifacts/'.
+      - Security & Isolation:
+          * Strict path confinement: Paths outside artifacts/ rejected with HTTP 403.
+          * Insecure pickle reload disallowed by default unless ALLOW_INSECURE_RELOAD='true' (HTTP 403).
+          * Atomic Candidate Loading: Verifies and instantiates model before state transition.
+            On verification or load failure, previous active model remains intact and HTTP 400/403 is returned.
+    """
     global service
     p = None
     s = None
@@ -358,18 +365,41 @@ def reload_model(
 
     # Safe parsing of payload dictionary
     req = payload or {}
-    mode = req.get("mode") or req.get("model_format")
-    if not mode:
+    raw_mode = req.get("mode")
+    raw_fmt = req.get("model_format")
+
+    if not raw_mode and not raw_fmt:
         raise HTTPException(
             status_code=400,
             detail="Bad Request: Missing required 'mode' or 'model_format' in reload body"
         )
 
+    def normalize_mode_val(val: Optional[Any]) -> Optional[str]:
+        if val is None:
+            return None
+        v = str(val).strip().lower()
+        if v in ("insecure_pickle", "vulnerable_pickle"):
+            return "vulnerable_pickle"
+        return v
+
+    norm_mode = normalize_mode_val(raw_mode)
+    norm_fmt = normalize_mode_val(raw_fmt)
+
+    # Reject conflicting parameters if both are provided
+    if norm_mode is not None and norm_fmt is not None and norm_mode != norm_fmt:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Conflicting parameters: 'mode' ('{raw_mode}') and 'model_format' ('{raw_fmt}') specify different modes"
+        )
+
+    mode = norm_mode if norm_mode is not None else norm_fmt
+    assert mode is not None
+
     model_path = req.get("model_path")
     sig_path = req.get("sig_path")
 
     # Policy Enforcement: Fail-closed by default for unverified pickle reload
-    if mode in ("vulnerable_pickle", "insecure_pickle") and os.getenv("ALLOW_INSECURE_RELOAD", "false").lower() != "true":
+    if mode == "vulnerable_pickle" and os.getenv("ALLOW_INSECURE_RELOAD", "false").lower() != "true":
         raise HTTPException(
             status_code=403,
             detail="Forbidden: Unchecked pickle deserialization is disallowed by MLOps security policy"

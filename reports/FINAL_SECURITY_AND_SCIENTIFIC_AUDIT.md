@@ -43,9 +43,9 @@ Per neutralizzare radicalmente questa classe di attacchi, è stato introdotto il
 - **Manifest Canonico (`mlflow_manifest.json`):**
   Il produttore calcola l'hash SHA-256 e la dimensione esatta in byte di ciascun file presente nella directory del modello. L'elenco viene serializzato in JSON deterministico (chiavi ordinate, indentazione 2 spazi, UTF-8).
 - **Firma Crittografica Digitale (`mlflow_manifest.json.sig`):**
-  Il manifest canonico viene firmato digitalmente con algoritmo **RSA-PSS** (PKCS#1 v2.1) con padding MGF1(SHA-256) e salt length pari alla dimensione del digest (32 byte), garantendo la massima sicurezza crittografica contro attacchi di forgiatura.
+  Il manifest canonico viene firmato digitalmente con algoritmo **RSA-PSS** (PKCS#1 v2.1) con funzione di generazione della maschera MGF1(SHA-256) e lunghezza del salt configurata a `padding.PSS.MAX_LENGTH` (la massima lunghezza teorica supportata per la combinazione di chiave RSA e digest SHA-256), assicurando robustezza probabilistica e protezione contro attacchi di forgiatura.
 - **Isolamento Sandbox TOCTOU:**
-  Il consumer non verifica l'artefatto nella cartella pubblica montata. La funzione `copy_mlflow_package_to_sandbox()` crea una directory temporanea privata (`/tmp/mlflow_gate_secure_XXXXXX`), copia tutti i file rifiutando symlink che puntino al di fuori dell'albero (`SYMLINK_VIOLATION`), verifica il manifest e la firma nella sandbox, e infine istruisce MLflow a caricare il modello direttamente dal path isolato. La directory temporanea viene distrutta in un blocco `finally`.
+  Il consumer non verifica né carica l'artefatto direttamente nel percorso condiviso esposto a concorrenza o montaggi pubblici. In `pipeline/serve.py`, il loader alloca una directory temporanea privata creata tramite `tempfile.mkdtemp(prefix="mlflow_gate_secure_")`. I file del pacchetto vengono copiati mediante `shutil.copytree()` con un filtro di validazione che ispeziona i symlink e blocca qualsiasi collegamento simbolico che punti all'esterno del perimetro del modello (sollevando `SecurityError`). La verifica del manifest SHA-256, l'analisi semantica di `MLmodel` e l'eventuale caricamento avvengono esclusivamente all'interno del percorso sandbox isolato. Infine, un blocco `finally:` garantisce la rimozione deterministica della directory temporanea con `shutil.rmtree(sandbox_dir, ignore_errors=True)`, sia in caso di successo che di errore di ammissione.
 - **Rifiuto Tassativo delle Anomalie:**
   Il verificatore solleva `MlflowPackageVerificationError` ed emette un codice diagnostico specifico in caso di:
   - `FILE_TAMPERED`: Hash SHA-256 o dimensione non corrispondenti al manifest.
@@ -92,7 +92,8 @@ Nelle misurazioni iniziali, la prima iterazione su MLflow 3.12.0 registrava un t
 
 Il protocollo include ora:
 - **3 cicli di warm-up non misurati:** I moduli vengono caricati e le strutture dati pre-inizializzate.
-- **50 iterazioni di test misurate:** Catturano la varianza empirica del sistema a regime.
+- **50 iterazioni di test misurate:** Catturano la varianza empirica del sistema a regime stazionario all'interno del medesimo processo worker (escludendo il sovraccarico iniziale di importazione dei moduli). Si precisa che tali iterazioni misurano la ripetibilità di regime nello stesso ambiente di processo e non equivalgono a 50 esecuzioni statisticamente indipendenti tra ambienti virtuali separati.
+- **Distinzione Metodologica:** Lo smoke test della CI (20 prove) verifica l'assenza di regressioni funzionali e di policy, mentre lo studio scientifico completo (50 prove) raccoglie la distribuzione statistica granulare inter-trial.
 - **Metriche statistiche complete:** Vengono calcolati media, media troncata al 10% (10% trimmed mean), mediana (p50), range interquartile (IQR = p75 - p25), deviazione standard, percentile p95, percentile p99, minimo e massimo.
 
 ### 2. Risultati Sperimentali Comparativi
@@ -102,18 +103,18 @@ Dati estratti da `reports/cve_2026_96804_real_releases_study.json`:
 | Parametro Statistico | MLflow 3.12.0 (Unpatched — Sonda Eseguita) | MLflow 3.15.0 (Patched — Bloccato da Policy) |
 | :--- | :--- | :--- |
 | **Esito di Sicurezza** | **100% Vulnerabile** (Sonda eseguita in-process) | **100% Protetto** (`MlflowException` fail-closed) |
-| **Iterazioni Eseguite** | 50 prove (+ 3 warm-up) | 50 prove (+ 3 warm-up) |
-| **Tempo Medio** | **3.58 ms** | **3.18 ms** |
-| **Media Troncata (10%)** | **3.56 ms** | **3.17 ms** |
-| **Mediana (p50)** | **3.58 ms** | **3.18 ms** |
-| **Range Interquartile (IQR)** | **0.17 ms** (p25: 3.51 ms, p75: 3.68 ms) | **0.15 ms** (p25: 3.11 ms, p75: 3.26 ms) |
-| **95° Percentile (p95)** | **3.77 ms** | **3.31 ms** |
-| **99° Percentile (p99)** | **3.89 ms** | **3.37 ms** |
-| **Min / Max** | 3.24 ms / 4.02 ms | 2.87 ms / 3.42 ms |
-| **Deviazione Standard** | 0.14 ms | 0.12 ms |
+| **Protocollo Sperimentale** | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] |
+| **Tempo Medio** | **2.936 ms** | **1.795 ms** |
+| **Media Troncata (10%)** | **2.911 ms** | **1.771 ms** |
+| **Mediana (p50)** | **2.926 ms** | **1.757 ms** |
+| **Range Interquartile (IQR)** | **0.229 ms** | **0.105 ms** |
+| **95° Percentile (p95)** | **3.232 ms** | **2.058 ms** |
+| **99° Percentile (p99)** | **3.633 ms** | **2.342 ms** |
+| **Min / Max** | 2.665 ms / 3.672 ms | 1.621 ms / 2.531 ms |
+| **Deviazione Standard** | 0.198 ms | 0.148 ms |
 
 ### 3. Spiegazione Tecnica della Differenza di Latenza
-La differenza di circa 0.40 ms tra le due versioni è pienamente giustificata dal percorso di esecuzione del codice:
+La differenza di circa 1.141 ms tra le due versioni è pienamente giustificata dal percorso di esecuzione del codice:
 - In **MLflow 3.15.0**, la guardia di sicurezza verifica il flag `_is_pickle_deserialization_allowed()` all'inizio della funzione `_load_model()`. Riscontrando il valore `false`, solleva immediatamente `MlflowException` prima di accedere al disco per deserializzare l'oggetto.
 - In **MLflow 3.12.0**, l'assenza del controllo costringe la libreria ad aprire il file su disco, instanziare l'unpickler Python, ricostruire l'albero degli oggetti in memoria ed eseguire il payload `__reduce__` iniettato, operazione computazionalmente più onerosa.
 
@@ -132,15 +133,17 @@ In merito alla gestione dello storage degli artefatti, è stata formalmente sele
 
 ## Sezione F — Tabella Comparativa della Matrice di Test
 
-La test suite è passata da 25 a **36 test totali** (35 superati, 1 saltato condizionalmente per l'assenza del daemon Docker in ambienti virtuali senza permessi root).
+La test suite completa raccoglie **55 test totali** (54 superati regolarmente, 1 saltato condizionalmente per l'assenza del daemon Docker in ambienti host/CI privi di socket Docker root attivo).
 
 | Modulo di Test | N° Test Precedenti | N° Test Attuali | Nuovi Test Negativi e di Sicurezza Integrati |
 | :--- | :--- | :--- | :--- |
-| `tests/test_docker_architecture.py` | 4 | 4 | Verifica permessi file 0600 su chiavi e assenza chiave privata nel container. |
-| `tests/test_fastapi_consumer.py` | 8 | 17 | - `test_fastapi_reload_unauthorized_without_token`<br>- `test_fastapi_reload_unauthorized_with_wrong_token`<br>- `test_fastapi_reload_disabled_when_server_secret_unset`<br>- `test_fastapi_reload_insecure_pickle_fail_closed_by_default`<br>- `test_fastapi_reload_sister_directory_prefix_traversal_blocked`<br>- `test_fastapi_mlflow_package_manifest_verification_success`<br>- `test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed`<br>- `test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative`<br>- `test_fastapi_mlflow_package_unauthorized_extra_file_rejected`<br>- `test_fastapi_atomic_reload_preserves_healthy_state_on_failure` |
+| `tests/test_docker_architecture.py` | 4 | 4 | Verifica permessi file 0600 su chiavi, isolamento unprivileged e assenza chiave privata nel container. |
+| `tests/test_fastapi_consumer.py` | 8 | 27 | - `test_fastapi_reload_unauthorized_without_token`<br>- `test_fastapi_reload_unauthorized_with_wrong_token`<br>- `test_fastapi_reload_disabled_when_server_secret_unset`<br>- `test_fastapi_reload_insecure_pickle_fail_closed_by_default`<br>- `test_fastapi_reload_sister_directory_prefix_traversal_blocked`<br>- `test_fastapi_mlflow_package_manifest_verification_success`<br>- `test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed`<br>- `test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative`<br>- `test_fastapi_mlflow_package_unauthorized_extra_file_rejected`<br>- `test_fastapi_atomic_reload_preserves_healthy_state_on_failure`<br>- `test_fastapi_mlflow_missing_manifest_rejected`<br>- `test_fastapi_mlflow_missing_signature_rejected`<br>- `test_fastapi_mlflow_invalid_signature_rejected`<br>- `test_fastapi_mlflow_invalid_yaml_rejected`<br>- `test_fastapi_mlflow_unauthorized_pointer_rejected`<br>- `test_fastapi_reload_conflicting_mode_and_format_rejected`<br>- `test_fastapi_reload_insecure_pickle_normalization`<br>- `test_fastapi_mlflow_statsmodels_legacy_signature_rejected` |
+| `tests/test_mlflow_registry_security_gate_e2e.py` | 0 | 6 | - `test_end_to_end_registry_download_verification_and_inference`<br>- `test_fastapi_hot_reload_and_prediction_endpoint_e2e`<br>- `test_negative_tampered_model_binary_rejected_fail_closed`<br>- `test_negative_tampered_mlmodel_descriptor_rejected`<br>- `test_negative_omitted_manifest_or_signature_rejected`<br>- `test_consumer_privilege_separation_and_polp`<br>*(Validazione integrata e autonoma: Model Registry con backend SQLite locale, chiavi RSA temporanee effimere, isolamento workspace e ripristino globale)* |
 | `tests/test_pipeline.py` | 7 | 8 | Test anti-TOCTOU in-memory e validazione crittografica RSA-PSS su pickle. |
 | `tests/test_scenarios_t0_t5.py` | 6 | 7 | Validazione comparata reale CVE (T0, T1 vulnerabile, T1-H mitigata, T2 crittografia, T3 unsigned, T4 producer compromesso, T5 Safetensors). |
-| **Totale Complessivo** | **25** | **36** | **11 nuovi test di sicurezza e hardening negativo** |
+| `tests/test_scientific_consistency.py` | 0 | 3 | Validazione automatica a livello di singola cella della riconciliazione al 100% tra report JSON e Markdown. |
+| **Totale Complessivo** | **25** | **55** | **30 nuovi test di sicurezza, robustezza negativa, E2E registry e riconciliazione empirica** |
 
 ### Dettaglio del Test Negativo Fondamentale (`test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative`)
 Questo test simula l'attacco mirato descritto nella Sezione B: l'attaccante manomette il solo file `MLmodel` per reindirizzare il deserializzatore verso `trojan.pkl`. Il test dimostra che:
@@ -158,7 +161,7 @@ Comando eseguito: `python -m pytest tests/ -v`
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.13.14, pytest-9.2.0, pluggy-1.6.0
-collected 36 items
+collected 55 items
 
 tests/test_docker_architecture.py::test_docker_compose_specification_and_privilege_boundaries PASSED
 tests/test_docker_architecture.py::test_clean_provisioning_and_producer_consumer_flow PASSED
@@ -176,11 +179,27 @@ tests/test_fastapi_consumer.py::test_fastapi_reload_path_traversal_blocked PASSE
 tests/test_fastapi_consumer.py::test_fastapi_reload_sister_directory_prefix_traversal_blocked PASSED
 tests/test_fastapi_consumer.py::test_fastapi_unhealthy_status_returns_http_503 PASSED
 tests/test_fastapi_consumer.py::test_fastapi_mlflow_statsmodels_mode_health_mandatory PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_statsmodels_legacy_signature_rejected PASSED
 tests/test_fastapi_consumer.py::test_fastapi_mlflow_package_manifest_verification_success PASSED
 tests/test_fastapi_consumer.py::test_fastapi_mlflow_statsmodels_unsigned_rejected_fail_closed PASSED
 tests/test_fastapi_consumer.py::test_fastapi_mlflow_package_tampered_mlmodel_fundamental_negative PASSED
 tests/test_fastapi_consumer.py::test_fastapi_mlflow_package_unauthorized_extra_file_rejected PASSED
 tests/test_fastapi_consumer.py::test_fastapi_atomic_reload_preserves_healthy_state_on_failure PASSED
+tests/test_fastapi_consumer.py::test_fastapi_reload_bearer_authorization_header PASSED
+tests/test_fastapi_consumer.py::test_fastapi_reload_unauthorized_without_payload PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_missing_manifest_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_missing_signature_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_invalid_signature_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_invalid_yaml_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_mlflow_unauthorized_pointer_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_reload_conflicting_mode_and_format_rejected PASSED
+tests/test_fastapi_consumer.py::test_fastapi_reload_insecure_pickle_normalization PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_end_to_end_registry_download_verification_and_inference PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_fastapi_hot_reload_and_prediction_endpoint_e2e PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_negative_tampered_model_binary_rejected_fail_closed PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_negative_tampered_mlmodel_descriptor_rejected PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_negative_omitted_manifest_or_signature_rejected PASSED
+tests/test_mlflow_registry_security_gate_e2e.py::TestMLflowRegistrySecurityGateE2E::test_consumer_privilege_separation_and_polp PASSED
 tests/test_pipeline.py::test_data_generation PASSED
 tests/test_pipeline.py::test_feature_store_and_validation PASSED
 tests/test_pipeline.py::test_crypto_signature PASSED
@@ -196,8 +215,11 @@ tests/test_scenarios_t0_t5.py::test_t2_cryptographic_defense_before_mlflow PASSE
 tests/test_scenarios_t0_t5.py::test_t3_missing_signature PASSED
 tests/test_scenarios_t0_t5.py::test_t4_compromised_producer_valid_signature PASSED
 tests/test_scenarios_t0_t5.py::test_t5_safe_format_safetensors PASSED
+tests/test_scientific_consistency.py::test_json_report_exists_and_valid PASSED
+tests/test_scientific_consistency.py::test_json_report_scientific_properties PASSED
+tests/test_scientific_consistency.py::test_json_and_markdown_statistical_reconciliation PASSED
 
-================= 35 passed, 1 skipped, 7 warnings in 22.99s ==================
+================= 54 passed, 1 skipped, 8 warnings in 36.48s ==================
 ```
 
 ### 2. Pipeline GitHub Actions (`.github/workflows/ci.yml`)
@@ -224,9 +246,15 @@ Per garantire la massima integrità accademica nella stesura della tesi, i confi
 ### 2. Cosa il Sistema NON Protegge (Limiti Intrinseci)
 - **Compromissione dell'ambiente Producer (Scenario T4):** Se un attaccante ottiene il controllo del nodo di addestramento (o della chiave privata RSA), può firmare legittimamente un pacchetto contenente codice arbitrario. L'Admission Gate convaliderà la firma, poiché essa attesta autenticità e integrità dell'origine, non l'assenza di payload intrinseci.
 - **Vulnerabilità intrinseca del formato Pickle:** Nessun meccanismo di firma o filtro statico può rendere intrinsecamente sicuro il formato pickle di Python, data la natura Turing-completa della sua stack machine.
-- **Necessità di Formati Safe (Capitolo 4 e 5):** L'unica contromisura definitiva contro la deserializzazione insicura rimane l'abbandono di pickle a favore di formati puramente tensoriali/dichiarativi come **Safetensors** (Scenario T5).
+- **Necessità di Formati Safe (Capitolo 4 e 5):** La contromisura strutturale raccomandata contro la deserializzazione insicura consiste nell'adozione di formati puramente tensoriali e dichiarativi privi di logica eseguibile come **Safetensors** (Scenario T5).
 
----
+### 3. Perimetro Architetturale: Model Registry Locale vs Docker Tracking Server
+Per garantire trasparenza e rigore metodologico, il laboratorio adotta due livelli complementari di verifica del Model Registry:
+1. **Testbed di Integrazione Python (`tests/test_mlflow_registry_security_gate_e2e.py`):** Utilizza un backend store SQLite locale (`sqlite:///...`) conforme alle API ufficiali di MLflow. Questo consente l'esecuzione autonoma e deterministica della catena Model Registry -> Download API -> Security Gate -> Inference Service all'interno di un workspace temporaneo isolato, con chiavi crittografiche effimere e ripristino globale, senza dipendere da socket di rete esterni.
+2. **Testbed Multi-Container Docker (`docker-compose.yml`):** Esegue il servizio dedicato `mlops-tracking-server` su container autonomo (`python:3.11-slim`) con SQLite backend e storage su filesystem dedicato (`/app/artifacts`), verificando la comunicazione tra container su rete bridge Docker unprivileged.
+
+### 4. Qualificazione dei Lockfile e Distinzione Ambientale (Host vs CI)
+I file di lock `reports/mlflow_3_12_0_requirements_lock.txt` e `reports/mlflow_3_15_0_requirements_lock.txt` documentano lo snapshot congelato dell'ambiente di calcolo dell'autore (Windows 11 AMD64, CPython 3.13) su cui è stato eseguito l'esperimento EXP1, certificato con `pip check`. Per la pipeline di integrazione continua (CI) e i container di produzione, le dipendenze sono gestite su container Linux (Ubuntu / Python 3.11-slim) tramite `requirements-lock.txt` multipiattaforma, garantendo riproducibilità sia in locale che in cloud.
 
 ## Sezione I — Tabella di Conformità con i Requisiti della Relatrice
 
@@ -240,4 +268,4 @@ Per garantire la massima integrità accademica nella stesura della tesi, i confi
 
 ---
 
-*Relazione redatta e certificata dall'agente di audit ingegneristico e scientifico.*
+*Relazione redatta e revisionata conformemente ai protocolli di verifica ingegneristica e riproducibilità scientifica.*

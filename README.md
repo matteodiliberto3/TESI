@@ -1,58 +1,74 @@
-# Testbed Sperimentale di Sicurezza per Pipeline MLOps & Data-Centric AI
+# Testbed Sperimentale di Sicurezza MLOps — Insecure Deserialization (CVE-2026-96804)
 
-Questo repository costituisce l'ambiente sperimentale e il Proof of Concept (PoC) per la tesi di laurea:
+Questo repository costituisce l'ambiente sperimentale e il laboratorio di validazione empirica per la tesi di laurea in Informatica:
 
-> **Analisi delle Vulnerabilità e Hardening delle Pipeline Dati nei Sistemi MLOps (Software 2.0)**
+> **Insecure Deserialization nelle Pipeline MLOps: Riproduzione Empirica della CVE-2026-96804 e Hardening Crittografico di Pacchetto**  
+> *Struttura della tesi: 5 Capitoli | Limite editoriale: < 70 pagine*
 
 ---
 
-## 🏛️ Mappatura dei Moduli con i Capitoli della Tesi
+## 🏛️ Mappatura del Laboratorio con i 5 Capitoli della Tesi
 
-| Capitolo Tesi | Sezione | Modulo / Script Corrispondente | Descrizione Tecnica |
+| Capitolo Tesi | Titolo del Capitolo | Moduli del Laboratorio | Proprietà Dimostrate Scientificamente |
 | :--- | :--- | :--- | :--- |
-| **Capitolo 2** | 2.1 | `feature_store/store.py` | Implementazione logica del Feature Store duale (Offline Parquet + Online SQLite a bassa latenza). |
-| **Capitolo 3** | 3.1 | `experiments/exp2_feature_poisoning.py` | Dimostrazione dell'effetto leva: propagazione di feature contaminate a valle. |
-| **Capitolo 3** | 3.2 | `experiments/exp1_deserialization.py` | Studio dell'opcode `__reduce__` in Python pickle e potenziale esecuzione arbitraria. |
-| **Capitolo 4** | 4.1-4.3 | `config.py`, DFD architecture | Trust boundaries tra data ingestion, storage non protetto e worker di calcolo. |
-| **Capitolo 5** | 5.1 | `Dockerfile`, `docker-compose.yml` | Ambiente sperimentale containerizzato per testbed riproducibile a zero costi cloud. |
-| **Capitolo 5** | 5.2 | `experiments/exp1_deserialization.py` | Scenario d'attacco 1: Insecure deserialization da model registry compromesso. |
-| **Capitolo 5** | 5.3 | `experiments/exp2_feature_poisoning.py` | Scenario d'attacco 2: Iniezione di backdoor trigger (`distance_from_home=999.0`). |
-| **Capitolo 6** | 6.1 | `pipeline/train.py`, `benchmark_defense.py` | Transizione a formati statici a tensori puri (`Safetensors`) e benchmark prestazionali. |
-| **Capitolo 6** | 6.2 | `pipeline/crypto_signer.py` | Attestazione crittografica degli artefatti con firma asimmetrica (paradigma Sigstore/Cosign). |
-| **Capitolo 6** | 6.3 | `feature_store/validator.py` | Hardening del Feature Store tramite Z-score anomaly detection e schema validation. |
+| **Capitolo 1** | **Introduzione e Supply Chain nei Sistemi MLOps** | `config.py`, `pipeline/train.py`, `feature_store/` | Trust boundaries tra model store non protetto, registry e worker di inferenza; superfici d'attacco nel Software 2.0. |
+| **Capitolo 2** | **La Superficie d'Attacco della Deserializzazione Non Sicura** | `pipeline/payload_generator.py`, `experiments/exp1_deserialization.py` | Meccanismo degli op-code pickle (`__reduce__`), iniezione di payload trojan portabili ed esecuzione di codice arbitrario in fase di unpickling. |
+| **Capitolo 3** | **Analisi Empirica della CVE-2026-96804 in MLflow** | `experiments/verify_real_mlflow_releases.py`, `reports/cve_2026_96804_real_releases_study.json` | Riproduzione sulle release ufficiali PyPI: bypass della policy `MLFLOW_ALLOW_PICKLE_DESERIALIZATION=false` in MLflow 3.12.0 vs blocco fail-closed in MLflow 3.15.0 (50 iterazioni con telemetria a regime). |
+| **Capitolo 4** | **Hardening Architetturale: Security Gate Crittografico e Formati Statici** | `pipeline/crypto_signer.py`, `pipeline/serve.py` | Firma digitale RSA-PSS di pacchetto completo (`mlflow_manifest.json`), validazione semantica `MLmodel`, isolamento in sandbox anti-TOCTOU (`mkdtemp`), transizione atomica su `/reload` e formati statici a tensori puri (`safetensors`). |
+| **Capitolo 5** | **Validazione Sperimentale, Benchmark e Analisi dei Risultati** | `tests/`, `reports/FINAL_SECURITY_AND_SCIENTIFIC_AUDIT.md`, `docker-compose.yml` | Suite completa di test negativi, benchmark prestazionali (IQR, mediana, media troncata), verifica architettura containerizzata Docker e pipeline CI automatizzata. |
 
 ---
 
-## 🚀 Istruzioni per l'Esecuzione
+## 🔬 Risultati Sperimentali Chiave (EXP1)
 
-### Opzione A: Esecuzione Locale con Virtual Environment (Consigliata)
+Dati estratti dal protocollo scientifico a 50 iterazioni (`reports/cve_2026_96804_real_releases_study.json`):
 
-1. Attiva l'ambiente virtuale:
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
-2. Esegui la suite completa degli esperimenti con un solo comando:
-   ```powershell
-   python experiments/run_all_experiments.py
-   ```
-3. Tutti i log, i report in Markdown e i grafici per la tesi verranno salvati nella cartella `reports/`:
-   - `reports/EXPERIMENT_RESULTS.md`: Tabelle comparative pronte da inserire nella tesi.
-   - `reports/benchmark_latency.png`: Grafico della latenza di caricamento Pickle vs Safetensors.
-   - `reports/poisoning_impact.png`: Grafico dell'impatto del backdoor trigger e della remediation.
+| Parametro Statistico | MLflow 3.12.0 (Unpatched — Sonda Eseguita) | MLflow 3.15.0 (Patched — Bloccato da Policy) |
+| :--- | :--- | :--- |
+| **Esito di Sicurezza** | **100% Vulnerabile** (Sonda eseguita in-process) | **100% Protetto** (`MlflowException` fail-closed) |
+| **Protocollo Sperimentale** | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] | 50 prove (+ 3 warm-up) [FULL_SCIENTIFIC_STUDY] |
+| **Tempo Medio** | **2.936 ms** | **1.795 ms** |
+| **Media Troncata (10%)** | **2.911 ms** | **1.771 ms** |
+| **Mediana (p50)** | **2.926 ms** | **1.757 ms** |
+| **Range Interquartile (IQR)** | **0.229 ms** | **0.105 ms** |
+| **Deviazione Standard** | **0.198 ms** | **0.148 ms** |
 
-### Opzione B: Esecuzione tramite Docker Compose
+*Nota metodologica: la differenza temporale riflette l'intercettazione anticipata pre-unpickler in MLflow 3.15.0 rispetto al completamento della deserializzazione del grafo di oggetti in MLflow 3.12.0, non un confronto algoritmico.*
 
-Se Docker Desktop è attivo sul sistema:
+---
+
+## 🛡️ Proprietà di Sicurezza Verificate (Security Gate)
+
+1. **Manifest di Pacchetto Completo:** Rifiuto di firme parziali sul solo file `model.statsmodels`. Obbligo di `mlflow_manifest.json` con hash SHA-256 e firma RSA-PSS.
+2. **Validazione Semantica Descrittore `MLmodel`:** Verifica rigorosa della struttura YAML, del flavor `statsmodels` e di tutti i puntatori di file (`data`, `code`, `model_data`).
+3. **Isolamento Sandbox Anti-TOCTOU:** Copia dei file in directory temporanea privata prima della verifica e del caricamento; distruzione garantita in blocco `finally`.
+4. **Endpoint Amministrativo `/reload`:** Autenticazione fail-closed senza credenziali cablate (`MLOPS_ADMIN_TOKEN`), confronto timing-safe via `secrets.compare_digest` e caricamento atomico.
+
+---
+
+## 🚀 Istruzioni per la Riproduzione Locale
+
+### 1. Esecuzione Suite di Test Unitari e di Sicurezza
+```bash
+pytest tests/ -v
+```
+
+### 2. Esecuzione Studio Empirico Ufficiale CVE-2026-96804
+```bash
+python experiments/verify_real_mlflow_releases.py 50
+```
+
+### 3. Avvio Ambiente Containerizzato Docker E2E
 ```bash
 docker compose up --build
 ```
-I volumi monteranno automaticamente `reports/` e `artifacts/` sulla cartella host.
+Verifica l'interazione tra i servizi containerizzati: `mlops-training-producer` (addestramento e firma), `mlops-security-gate` (validazione crittografica e ammissione) e `mlops-inference-consumer` (microservizio FastAPI unprivileged con montaggio della sola chiave pubblica in sola lettura).
 
----
-
-## 🧪 Esecuzione dei Test Unitari
-
-Per validare l'integrità dei componenti:
-```powershell
-.\.venv\Scripts\pytest tests/
+### 4. Compilazione e Avvio della Dashboard Dimostrativa React
+La dashboard interattiva (`demo/`) è un'applicazione frontend in React/Vite che fornisce una rappresentazione visuale e didattica dell'architettura Software 2.0 e degli scenari di attacco e difesa analizzati nella tesi. Utilizza simulazioni locali ed esplorazione interattiva dei nodi della pipeline (disaccoppiata dal runtime REST, validata in CI tramite build statica TypeScript/Vite):
+```bash
+cd demo
+npm ci
+npm run dev   # per avvio dell'interfaccia visuale in locale
+npm run build # per verifica di compilazione TypeScript e bundle di produzione (testato in CI)
 ```
