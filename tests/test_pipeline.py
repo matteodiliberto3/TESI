@@ -190,9 +190,10 @@ def test_audit_persisted_artifacts_and_statistical_schemas():
     """
     import json
     
-    # 1. RQ3 Evasion per-seed persistence
-    evasion_json = config.REPORTS_DIR / "evasion_results.json"
-    assert evasion_json.exists(), "reports/evasion_results.json must exist"
+    # 1. RQ3 Evasion per-seed persistence (Archived legacy artifacts)
+    legacy_reports_dir = config.BASE_DIR / "archive_legacy_thesis" / "reports"
+    evasion_json = legacy_reports_dir / "evasion_results.json"
+    assert evasion_json.exists(), "archive_legacy_thesis/reports/evasion_results.json must exist"
     with open(evasion_json, encoding="utf-8") as f:
         ev_data = json.load(f)
     for strat in ["naive_outlier", "sub_threshold_univariate", "multivariate_pattern"]:
@@ -203,9 +204,9 @@ def test_audit_persisted_artifacts_and_statistical_schemas():
         s0 = ev_data[strat]["seed_results"][0]
         assert "seed" in s0 and "asr_unhardened" in s0 and "clean_fraud_recall" in s0
 
-    # 2. RQ2 Causal ablation mechanistic and non-parametric diagnostics
-    ablation_json = config.REPORTS_DIR / "causal_ablation_results.json"
-    assert ablation_json.exists(), "reports/causal_ablation_results.json must exist"
+    # 2. RQ2 Causal ablation mechanistic and non-parametric diagnostics (Archived legacy artifacts)
+    ablation_json = legacy_reports_dir / "causal_ablation_results.json"
+    assert ablation_json.exists(), "archive_legacy_thesis/reports/causal_ablation_results.json must exist"
     with open(ablation_json, encoding="utf-8") as f:
         ab_data = json.load(f)
     
